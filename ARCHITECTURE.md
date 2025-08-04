@@ -9,25 +9,20 @@ prompt-expert-bank/
 │       ├── evaluate-prompts.yml    # Main reusable workflow for prompt evaluation
 │       └── validate-experts.yml    # Validates JavaScript expert modules (CI/CD)
 │
-├── experts/                        # JavaScript expert implementations (THE MAIN DIRECTORY)
-│   └── security-expert.js         # Security domain expert with embedded test scenarios
+├── experts/                        # Expert evaluation logic
+│   └── security-expert.js         # Security domain expert
 │
-├── reference/                      # Reference materials (not used by system)
-│   ├── prompt-experts/            # Original markdown expert definitions
-│   │   ├── data_analysis_expert.md
-│   │   ├── financial_analysis_expert.md
-│   │   ├── gas_javascript_expert.md
-│   │   └── general_purpose_expert.md
-│   └── test-scenarios/            # Original JSON test scenarios
-│       ├── financial_scenarios.json
-│       └── gas_scenarios.json
+├── test-scenarios/                 # Test cases for each expert
+│   ├── security-tests.js          # Test scenarios for security expert
+│   └── test-scenario-template.js  # Template for new test scenarios
 │
 ├── examples/                       # Example implementations
 │   ├── sample-security-prompt-v1.md # "Before" prompt example
-│   └── sample-security-prompt-v2.md # "After" prompt example
+│   ├── sample-security-prompt-v2.md # "After" prompt example
+│   └── workflow-template.yml      # Template workflow for repositories
 │
 ├── expert-templates/               # Templates for new experts
-│   └── expert_template.md         # Expert creation template
+│   └── expert-template.js         # JavaScript expert creation template
 │
 ├── ARCHITECTURE.md                # This file
 ├── README.md                      # Main documentation
@@ -69,20 +64,21 @@ The workflow:
 
 ## 🔧 Adding New Experts
 
-1. Create new expert in `experts/` directory (JavaScript)
-2. Include test scenarios within the expert module
-3. Define evaluation metrics and scoring logic
+1. Copy `expert-templates/expert-template.js` to `experts/[domain]-expert.js`
+2. Create test scenarios in `test-scenarios/[domain]-tests.js`
+3. Define evaluation metrics and scoring logic in the expert
 4. Ensure domain detection keywords are documented
+5. The expert will automatically load its test scenarios
 
 ## 📊 Current Experts
 
-| Expert | Implementation | Status |
-|--------|---------------|--------|
-| Security | ✅ JavaScript | Active |
-| Financial | 📄 Markdown only | Needs JS implementation |
-| Data Analysis | 📄 Markdown only | Needs JS implementation |
-| GAS/JavaScript | 📄 Markdown only | Needs JS implementation |
-| General Purpose | 📄 Markdown only | Needs JS implementation |
+| Expert | Status |
+|--------|--------|
+| Security | ✅ Implemented |
+| Financial | ⏳ Needed |
+| Data Analysis | ⏳ Needed |
+| Code Review | ⏳ Needed |
+| General Purpose | ⏳ Needed |
 
 ## 🚀 Future Enhancements
 

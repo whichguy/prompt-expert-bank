@@ -1,34 +1,21 @@
 /**
  * Template for creating new domain expert modules
  * Copy this file to experts/[domain]-expert.js and customize
+ * Create corresponding test scenarios in test-scenarios/[domain]-tests.js
  */
+
+const path = require('path');
+const fs = require('fs');
+
+// Load test scenarios from separate file
+const testScenariosPath = path.join(__dirname, '..', 'test-scenarios', '[domain]-tests.js');
+const testData = fs.existsSync(testScenariosPath) ? require(testScenariosPath) : null;
 
 const domainExpert = {
   name: 'Domain Expert Name',
   domain: 'domain-name',
   description: 'Expert for evaluating [domain] prompts',
-  
-  // Define test scenarios specific to your domain
-  testScenarios: [
-    {
-      name: "scenario-1",
-      input: "User input that tests a specific capability",
-      expected: {
-        // Define what you expect the prompt to produce
-        type: "expected-behavior", // e.g., "correct", "safe", "accurate"
-        // Add other domain-specific expectations
-      }
-    },
-    {
-      name: "scenario-2",
-      input: "Another test case",
-      expected: {
-        type: "expected-behavior",
-        // Domain-specific expectations
-      }
-    }
-    // Add more scenarios as needed
-  ],
+  testScenarios: testData ? testData.scenarios : [],
   
   async evaluatePrompts(oldPrompt, newPrompt, anthropic) {
     // Test both prompts

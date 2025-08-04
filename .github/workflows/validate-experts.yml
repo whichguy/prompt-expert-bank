@@ -4,10 +4,12 @@ on:
   push:
     paths:
       - 'experts/**'
+      - 'test-scenarios/**'
       - 'package.json'
   pull_request:
     paths:
       - 'experts/**'
+      - 'test-scenarios/**'
       - 'package.json'
 
 jobs:
@@ -31,6 +33,7 @@ jobs:
           const path = require('path');
           
           const expertsDir = path.join(__dirname, 'experts');
+          const testScenariosDir = path.join(__dirname, 'test-scenarios');
           const expertFiles = fs.readdirSync(expertsDir).filter(f => f.endsWith('.js'));
           
           let allValid = true;
@@ -39,6 +42,7 @@ jobs:
           
           for (const file of expertFiles) {
             const filePath = path.join(expertsDir, file);
+            const expertName = file.replace('.js', '');
             console.log(\`### Checking \${file}\`);
             
             try {
@@ -57,10 +61,19 @@ jobs:
               
               // Check test scenarios
               if (expert.testScenarios && Array.isArray(expert.testScenarios)) {
-                console.log(\`✅ Contains \${expert.testScenarios.length} test scenarios\`);
+                console.log(\`✅ Loaded \${expert.testScenarios.length} test scenarios\`);
               } else {
                 console.log('❌ Invalid or missing test scenarios');
                 allValid = false;
+              }
+              
+              // Check for corresponding test file
+              const testFileName = \`\${expert.domain || expertName.replace('-expert', '')}-tests.js\`;
+              const testFilePath = path.join(testScenariosDir, testFileName);
+              if (fs.existsSync(testFilePath)) {
+                console.log(\`✅ Test file found: \${testFileName}\`);
+              } else {
+                console.log(\`⚠️  No test file found: \${testFileName}\`);
               }
               
             } catch (error) {
