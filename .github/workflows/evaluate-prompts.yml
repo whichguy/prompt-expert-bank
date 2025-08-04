@@ -98,7 +98,6 @@ jobs:
               
               // Detect domain from filename and content
               let domain = null;
-              let expertModule = null;
               
               for (const file of promptFiles) {
                 const newContent = await getFileContent(octokit, OWNER, REPO, file.filename);
