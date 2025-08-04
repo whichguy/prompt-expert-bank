@@ -9,6 +9,11 @@ on:
       repository:
         required: true
         type: string
+      auto-close-on-fail:
+        required: false
+        type: boolean
+        default: true
+        description: 'Automatically close PR if evaluation fails'
     secrets:
       github-token:
         required: true
@@ -198,6 +203,25 @@ jobs:
                 body: fullReport
               });
               
+              // Auto-close PR if not approved and auto-close is enabled
+              const autoCloseOnFail = process.env.AUTO_CLOSE_ON_FAIL !== 'false';
+              if (overallRecommendation !== 'APPROVE' && autoCloseOnFail) {
+                console.log('Closing PR due to failed evaluation...');
+                await octokit.pulls.update({
+                  owner: OWNER,
+                  repo: REPO,
+                  pull_number: PR_NUMBER,
+                  state: 'closed'
+                });
+                
+                await octokit.issues.createComment({
+                  owner: OWNER,
+                  repo: REPO,
+                  issue_number: PR_NUMBER,
+                  body: `🚫 **PR automatically closed** due to failed security evaluation.\n\nPlease address the feedback above and submit a new PR with the improvements.`
+                });
+              }
+              
               console.log('Evaluation completed successfully');
               
             } catch (error) {
@@ -237,4 +261,4 @@ jobs:
           EOF
           
           # Run evaluation
-          OWNER="${OWNER}" REPO="${REPO}" PR_NUMBER="${{ inputs.pr-number }}" GITHUB_BASE_REF="${{ github.base_ref }}" node evaluate.js
+          OWNER="${OWNER}" REPO="${REPO}" PR_NUMBER="${{ inputs.pr-number }}" GITHUB_BASE_REF="${{ github.base_ref }}" AUTO_CLOSE_ON_FAIL="${{ inputs.auto-close-on-fail }}" node evaluate.js
