@@ -72,13 +72,13 @@ The workflow:
 
 ## 📊 Current Experts
 
-| Expert | Status |
-|--------|--------|
-| Security | ✅ Implemented |
-| Financial | ⏳ Needed |
-| Data Analysis | ⏳ Needed |
-| Code Review | ⏳ Needed |
-| General Purpose | ⏳ Needed |
+| Expert | Status | Test Scenarios |
+|--------|--------|----------------|
+| Security | ✅ Implemented | 8 scenarios |
+| Node.js | ✅ Implemented | 10 scenarios |
+| Financial | ⏳ Needed | - |
+| Data Analysis | ⏳ Needed | - |
+| General Purpose | ⏳ Needed | - |
 
 ## 🚀 Future Enhancements
 

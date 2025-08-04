@@ -75,7 +75,7 @@ jobs:
 | Domain | Detection Keywords | Status |
 |--------|-------------------|---------|
 | Security | `security`, `risk`, `safety` | ✅ Ready |
-| Code Review | `code`, `review`, `programming` | 🚧 Coming Soon |
+| Node.js | `node`, `nodejs`, `javascript`, `code review` | ✅ Ready |
 | Data Analysis | `data`, `analysis`, `analytics` | 🚧 Coming Soon |
 | Financial | `financial`, `finance`, `budget` | 🚧 Coming Soon |
 

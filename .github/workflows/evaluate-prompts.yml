@@ -101,8 +101,10 @@ jobs:
                 // Try to detect domain from filename or content
                 if (file.filename.includes('security') || newContent.toLowerCase().includes('security')) {
                   domain = 'security';
-                } else if (file.filename.includes('code') || newContent.toLowerCase().includes('code review')) {
-                  domain = 'code-review';
+                } else if (file.filename.includes('node') || file.filename.includes('nodejs') || 
+                         newContent.toLowerCase().includes('node.js') || newContent.toLowerCase().includes('javascript') ||
+                         newContent.toLowerCase().includes('code review') || newContent.toLowerCase().includes('programming')) {
+                  domain = 'nodejs';
                 } else if (file.filename.includes('data') || newContent.toLowerCase().includes('data analysis')) {
                   domain = 'data-analysis';
                 }
