@@ -131,21 +131,47 @@ jobs:
               
               // Domain detection now always succeeds with 'general' as fallback
               
-              // Load the appropriate expert module
-              const expertPath = path.join(__dirname, 'experts', `${domain}-expert.js`);
+              // Try new architecture first
+              let expertModule = null;
               
-              if (!fs.existsSync(expertPath)) {
-                await octokit.issues.createComment({
-                  owner: OWNER,
-                  repo: REPO,
-                  issue_number: PR_NUMBER,
-                  body: `⚠️ No expert module found for domain: ${domain}. Available experts: ${fs.readdirSync(path.join(__dirname, 'experts')).join(', ')}`
-                });
-                return;
+              try {
+                // Check if lib directory exists
+                if (fs.existsSync(path.join(__dirname, 'lib'))) {
+                  const ExpertLoader = require('./lib/expert-loader');
+                  const expertLoader = new ExpertLoader();
+                  
+                  // Check if we have a new-style expert for this domain
+                  expertModule = expertLoader.getExpert(domain);
+                }
+              } catch (e) {
+                console.log('New expert architecture not available, falling back to legacy');
               }
               
-              // Load expert module
-              expertModule = require(expertPath);
+              if (!expertModule) {
+                // Fall back to old-style expert
+                const expertPath = path.join(__dirname, 'experts', `${domain}-expert.js`);
+                
+                if (!fs.existsSync(expertPath)) {
+                  await octokit.issues.createComment({
+                    owner: OWNER,
+                    repo: REPO,
+                    issue_number: PR_NUMBER,
+                    body: `⚠️ No expert module found for domain: ${domain}. Please check available experts.`
+                  });
+                  return;
+                }
+                
+                // Load old-style expert module
+                const legacyExpert = require(expertPath);
+                
+                // Wrap legacy expert if needed
+                if (fs.existsSync(path.join(__dirname, 'lib', 'legacy-expert-adapter.js'))) {
+                  const LegacyExpertAdapter = require('./lib/legacy-expert-adapter');
+                  expertModule = new LegacyExpertAdapter(legacyExpert);
+                } else {
+                  expertModule = legacyExpert;
+                }
+              }
               
               // Process each changed file
               let fullReport = `## 🏦 Prompt Expert Bank - Evaluation Report\n\n`;
