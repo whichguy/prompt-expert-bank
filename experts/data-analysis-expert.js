@@ -27,16 +27,23 @@ const dataAnalysisExpert = {
     // Generate report
     const report = this.generateReport(oldMetrics, newMetrics, oldResults, newResults);
     
-    // Determine recommendation
+    // Determine recommendation - NEVER NEUTRAL
     const improvement = oldPrompt ? newMetrics.overallScore - oldMetrics.overallScore : 0;
-    let recommendation = 'NEUTRAL';
+    let recommendation;
     
-    if (improvement > 0.1) {
+    if (improvement > 0.05) {
+      // Any meaningful improvement warrants approval
       recommendation = 'APPROVE';
-    } else if (improvement < -0.1) {
+    } else if (improvement < -0.05) {
+      // Any decline warrants changes
       recommendation = 'REQUEST_CHANGES';
-    } else if (!oldPrompt && newMetrics.overallScore > 0.7) {
-      recommendation = 'APPROVE';
+    } else if (!oldPrompt) {
+      // New prompts: approve if decent, request changes if poor
+      recommendation = newMetrics.overallScore >= 0.65 ? 'APPROVE' : 'REQUEST_CHANGES';
+    } else {
+      // Existing prompts with minimal change: lean toward current state
+      // But still make a decision - approve if good, request changes if poor
+      recommendation = newMetrics.overallScore >= 0.65 ? 'APPROVE' : 'REQUEST_CHANGES';
     }
     
     return {

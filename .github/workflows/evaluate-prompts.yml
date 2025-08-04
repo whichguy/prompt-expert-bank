@@ -176,21 +176,18 @@ jobs:
                 }
               }
               
-              // Add final recommendation
+              // Add final recommendation - NEVER NEUTRAL
               fullReport += `## 🎯 Final Recommendation\n\n`;
               
-              if (overallRecommendation === 'APPROVE' && totalImprovement > 0) {
+              if (overallRecommendation === 'APPROVE') {
                 fullReport += `### ✅ APPROVE\n\n`;
-                fullReport += `The changes improve the prompt effectiveness.\n\n`;
+                fullReport += `The changes are acceptable and ready for merge.\n\n`;
                 fullReport += `**Ready to merge** ✅`;
-              } else if (overallRecommendation === 'REQUEST_CHANGES') {
+              } else {
+                // All non-APPROVE cases become REQUEST_CHANGES
                 fullReport += `### ❌ REQUEST CHANGES\n\n`;
                 fullReport += `The changes need improvement before merging.\n\n`;
                 fullReport += `**Needs revision** ❌`;
-              } else {
-                fullReport += `### ⚠️ NEUTRAL\n\n`;
-                fullReport += `The changes show minimal impact.\n\n`;
-                fullReport += `**Review suggested** ⚠️`;
               }
               
               // Post comment
