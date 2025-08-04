@@ -75,9 +75,10 @@ jobs:
 | Domain | Detection Keywords | Status |
 |--------|-------------------|---------|
 | Security | `security`, `risk`, `safety` | ✅ Ready |
-| Node.js | `node`, `nodejs`, `javascript`, `code review` | ✅ Ready |
-| Data Analysis | `data`, `analysis`, `analytics` | 🚧 Coming Soon |
-| Financial | `financial`, `finance`, `budget` | 🚧 Coming Soon |
+| Programming & Code Review | `code`, `programming`, `javascript`, `python`, `java`, `api`, `function`, `algorithm`, `debug` | ✅ Ready |
+| Data Analysis | `data`, `analysis`, `analytics`, `visualization` | ✅ Ready |
+| Financial | `financial`, `finance`, `budget`, `investment` | ✅ Ready |
+| General Purpose | All other prompts (fallback expert) | ✅ Ready |
 
 ## 🤝 Contributing
 

@@ -75,10 +75,10 @@ The workflow:
 | Expert | Status | Test Scenarios |
 |--------|--------|----------------|
 | Security | ✅ Implemented | 8 scenarios |
-| Node.js | ✅ Implemented | 10 scenarios |
-| Financial | ⏳ Needed | - |
-| Data Analysis | ⏳ Needed | - |
-| General Purpose | ⏳ Needed | - |
+| Programming & Code Review | ✅ Implemented | 15 scenarios |
+| Financial | ✅ Implemented | 10 scenarios |
+| Data Analysis | ✅ Implemented | 10 scenarios |
+| General Purpose | ✅ Implemented | 12 scenarios |
 
 ## 🚀 Future Enhancements
 
