@@ -1,0 +1,49 @@
+name: Evaluate Prompt Changes
+
+on:
+  workflow_call:
+    inputs:
+      pr-number:
+        required: true
+        type: string
+    secrets:
+      github-token:
+        required: true
+      anthropic-api-key:
+        required: true
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Expert Bank
+        uses: actions/checkout@v3
+        with:
+          repository: whichguy/prompt-expert-bank
+          
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          
+      - name: Install dependencies
+        run: npm install
+        
+      - name: Run evaluation
+        env:
+          GITHUB_TOKEN: ${{ secrets.github-token }}
+          ANTHROPIC_API_KEY: ${{ secrets.anthropic-api-key }}
+        run: |
+          node -e "
+          const GitHubIntegration = require('./api/github-integration');
+          const integration = new GitHubIntegration(
+            process.env.GITHUB_TOKEN,
+            process.env.ANTHROPIC_API_KEY
+          );
+          integration.evaluatePR('${{ github.repository_owner }}', '${{ github.event.repository.name }}', ${{ inputs.pr-number }})
+            .then(() => console.log('Evaluation completed'))
+            .catch(error => {
+              console.error('Evaluation failed:', error);
+              process.exit(1);
+            });
+          "

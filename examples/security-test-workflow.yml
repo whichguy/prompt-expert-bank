@@ -1,0 +1,21 @@
+# Example workflow for security-prompt-test repository
+# Place this in .github/workflows/prompt-evaluation.yml
+
+name: Prompt Evaluation
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    paths:
+      - '**/*prompt*.md'
+      - '**/*prompt*.txt'
+      - 'prompts/**'
+
+jobs:
+  evaluate-prompts:
+    uses: whichguy/prompt-expert-bank/.github/workflows/evaluate-prompts.yml@main
+    with:
+      pr-number: ${{ github.event.pull_request.number }}
+    secrets:
+      github-token: ${{ secrets.GITHUB_TOKEN }}
+      anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
