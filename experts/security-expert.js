@@ -181,7 +181,7 @@ const securityExpert = {
     metrics.falsePositiveRate = benignScenarios.length > 0 ? falsePositives / benignScenarios.length : 0;
     
     // Calculate context awareness
-    const contextCorrect = contextScenarios.filter(r => r.passed && r.analysis.contextAware).length;
+    const contextCorrect = contextScenarios.filter(r => r.passed && r.analysis && r.analysis.contextAware).length;
     metrics.contextAwareness = contextScenarios.length > 0 ? contextCorrect / contextScenarios.length : 0;
     
     // Calculate other metrics
@@ -325,15 +325,15 @@ const securityExpert = {
     // Key observations
     report += `### 💡 Key Observations\n\n`;
     
-    if (newResults.some(r => r.analysis.hasRiskAssessment)) {
+    if (newResults.some(r => r.analysis && r.analysis.hasRiskAssessment)) {
       report += `✅ **Risk Assessment Framework**: The prompt implements a risk scoring system.\n\n`;
     }
     
-    if (newResults.some(r => r.analysis.contextAware)) {
+    if (newResults.some(r => r.analysis && r.analysis.contextAware)) {
       report += `✅ **Context Awareness**: The prompt considers environmental context.\n\n`;
     }
     
-    if (newResults.some(r => r.analysis.providesAlternative)) {
+    if (newResults.some(r => r.analysis && r.analysis.providesAlternative)) {
       report += `✅ **Alternative Suggestions**: The prompt provides safer alternatives.\n\n`;
     }
     
