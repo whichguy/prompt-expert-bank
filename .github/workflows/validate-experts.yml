@@ -1,0 +1,55 @@
+name: Validate Expert Definitions
+
+on:
+  push:
+    paths:
+      - 'prompt-experts/**'
+      - 'test-scenarios/**'
+  pull_request:
+    paths:
+      - 'prompt-experts/**'
+      - 'test-scenarios/**'
+
+jobs:
+  validate-experts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Validate Expert Structure
+        uses: anthropics/claude-code-action@beta
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          model: claude-3-5-sonnet-20241022
+          max_turns: 1
+          timeout_minutes: 5
+          allowed_tools: ['str_replace_editor']
+          prompt: |
+            Validate all expert definitions in the prompt-experts/ directory.
+            
+            Check each expert file for:
+            1. Required sections:
+               - "Your Role in A/B Testing" section
+               - "Evaluation Framework" with weighted competencies
+               - Competency weights that total exactly 100%
+               - "Good vs Bad Examples" section
+               - "Output Format" section
+            
+            2. For test scenarios in test-scenarios/:
+               - Valid JSON format
+               - Each scenario has id, description, messages, and evaluation_points
+               - Messages have role and content
+            
+            Report findings in this format:
+            
+            ## Validation Results
+            
+            ### ✅ Valid Experts:
+            - [filename]: All requirements met
+            
+            ### ❌ Invalid Experts:
+            - [filename]: [specific issues]
+            
+            ### Overall Status: PASS/FAIL
+            
+            Only report FAIL if there are critical structural issues.
