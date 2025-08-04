@@ -63,6 +63,122 @@ chmod +x setup-ab-testing.sh
 gh secret set ANTHROPIC_API_KEY
 ```
 
+## 🏁 Integration Guide - Step by Step
+
+### 1. Choose Your Setup Method
+
+#### Method A: Quick Integration (for existing repositories)
+Best for: Repositories that already have prompts and want to add evaluation
+
+#### Method B: New Repository Setup
+Best for: Starting fresh with prompt development
+
+### 2. Basic Integration Steps
+
+#### Step 1: Add the GitHub Workflow
+Create `.github/workflows/prompt-evaluation.yml` in your repository:
+
+```yaml
+name: Prompt Evaluation
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    paths:
+      # Customize these paths to match your prompt file locations
+      - '**/*prompt*.md'
+      - '**/*prompt*.txt'
+      - 'prompts/**'
+      - 'agents/**'  # Add your custom paths
+
+jobs:
+  evaluate-prompts:
+    uses: whichguy/prompt-expert-bank/.github/workflows/evaluate-prompts.yml@main
+    with:
+      pr-number: ${{ github.event.pull_request.number }}
+      repository: ${{ github.repository }}
+    secrets:
+      github-token: ${{ secrets.GITHUB_TOKEN }}
+      anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+```
+
+#### Step 2: Set Up API Key
+```bash
+# Using GitHub CLI
+gh secret set ANTHROPIC_API_KEY
+
+# Or via GitHub UI:
+# Settings → Secrets and variables → Actions → New repository secret
+```
+
+#### Step 3: Organize Your Prompts
+Ensure your prompt files include domain keywords for automatic expert selection:
+- **Security prompts**: Include "security", "risk", "safety" in filename or content
+- **Code review prompts**: Include "code", "review", "programming"
+- **Data analysis prompts**: Include "data", "analysis", "analytics"
+- **Financial prompts**: Include "financial", "finance", "budget"
+
+Example file structure:
+```
+your-repo/
+├── prompts/
+│   ├── security-command-prompt.md
+│   ├── code-review-prompt.md
+│   └── data-analysis-prompt.md
+├── agents/
+│   └── security-agent.md
+└── .github/
+    └── workflows/
+        └── prompt-evaluation.yml
+```
+
+#### Step 4: Test Your Setup
+1. Create a new branch: `git checkout -b test-prompt-evaluation`
+2. Modify any prompt file
+3. Create a pull request
+4. Watch the evaluation results appear as PR comments
+
+### 3. Advanced Integration
+
+#### Custom Domain Detection
+If your prompts don't follow standard naming, add domain hints:
+
+```markdown
+<!-- domain: security -->
+# My Custom Prompt
+
+You are an AI assistant that evaluates commands for security risks...
+```
+
+#### Multiple Environments
+For different evaluation strategies per environment:
+
+```yaml
+jobs:
+  evaluate-prompts-dev:
+    if: github.base_ref == 'develop'
+    uses: whichguy/prompt-expert-bank/.github/workflows/evaluate-prompts.yml@main
+    # ... with dev-specific configuration
+
+  evaluate-prompts-prod:
+    if: github.base_ref == 'main'
+    uses: whichguy/prompt-expert-bank/.github/workflows/evaluate-prompts.yml@main
+    # ... with production configuration
+```
+
+#### CI/CD Integration
+Add prompt quality gates to your deployment pipeline:
+
+```yaml
+deploy:
+  needs: evaluate-prompts
+  if: needs.evaluate-prompts.outputs.recommendation == 'APPROVE'
+  runs-on: ubuntu-latest
+  steps:
+    - name: Deploy approved prompts
+      run: ./deploy.sh
+```
+
 ## 📋 What You'll Get
 
 When you create a PR with prompt changes, you'll receive a comprehensive evaluation report:
