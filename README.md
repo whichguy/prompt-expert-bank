@@ -1,40 +1,103 @@
-# Prompt Expert Bank
+# Prompt Expert Bank 🏦
 
-Central bank of domain experts for LLM prompt evaluation and A/B testing.
+Central repository of domain experts for evaluating LLM prompt outputs using result-focused A/B testing.
 
-## Overview
+## 🎯 Philosophy
 
-This repository contains specialized domain experts that evaluate and compare LLM prompts through systematic A/B testing. Each expert provides detailed analysis and recommendations for prompt improvements.
+**Evaluate outputs, not prompts.** Our experts assess what prompts produce, not how they're written.
 
-## Architecture
+## 🚀 Quick Start
+
+### Enable A/B Testing in Your Repository (2 minutes)
+
+```bash
+# In your repository:
+curl -O https://raw.githubusercontent.com/whichguy/prompt-expert-bank/main/setup-ab-testing.sh
+chmod +x setup-ab-testing.sh
+./setup-ab-testing.sh
+
+# Add your API key:
+gh secret set ANTHROPIC_API_KEY
+```
+
+That's it! Now when you create a PR with prompt changes, the system will automatically:
+- 🔍 Detect which prompts changed
+- 🧠 Load the appropriate expert
+- 🧪 Run A/B tests comparing outputs
+- 📊 Post results to your PR
+
+## 📊 Available Experts
+
+| Expert | Domain | Key Competencies |
+|--------|--------|------------------|
+| [`security_expert`](experts/security-expert.js) | Security prompts, risk assessment | Detection rate (40%), False positive rate (30%), Context awareness (20%), Response clarity (10%) |
+| [`financial_analysis_expert`](prompt-experts/financial_analysis_expert.md) | Financial advice, budgeting, investments | Mathematical accuracy (30%), Risk assessment (25%), Practical applicability (25%), Professional standards (20%) |
+| [`gas_javascript_expert`](prompt-experts/gas_javascript_expert.md) | Google Apps Script, automation | GAS compatibility (35%), Code quality (25%), Performance (25%), Integration (15%) |
+| [`data_analysis_expert`](prompt-experts/data_analysis_expert.md) | Data processing, analytics | Statistical accuracy (30%), Visualization (25%), Insights (25%), Technical implementation (20%) |
+| [`general_purpose_expert`](prompt-experts/general_purpose_expert.md) | General technical content | Accuracy (30%), Completeness (25%), Clarity (25%), Efficiency (20%) |
+
+## 📈 How It Works
+
+1. **You make a prompt change** in your repository
+2. **Create a pull request** 
+3. **GitHub Action triggers** and loads the expert
+4. **Expert evaluates outputs** (not prompt structure)
+5. **Results posted to PR** with specific feedback
+
+### Example PR Comment
+
+```
+## 🧪 A/B Test Results
+
+**Recommendation:** ✅ APPROVE
+**Confidence:** 92%
+
+This prompt change improves output quality by 58%.
+
+Key Improvements:
+- Mathematical accuracy: 15% → 95% (now includes compound interest calculations)
+- Risk assessment: 40% → 85% (added appropriate disclaimers)
+- Actionable advice: "save more" → "transfer $650/month to 4.5% APY savings"
+
+[View Full Report]
+```
+
+## 🔧 Configuration
+
+Your repository's `.claude-ab-tests/config.yml`:
+
+```yaml
+version: "1.0"
+
+expert_bank:
+  repository: "whichguy/prompt-expert-bank"
+  
+expert_mapping:
+  - pattern: "**/*security*|**/*risk*"
+    expert: "security_expert"
+    
+  - pattern: "**/*financial*|**/*budget*"
+    expert: "financial_analysis_expert"
+    
+  - pattern: "**/*gas*|**/*apps-script*"
+    expert: "gas_javascript_expert"
+    
+  - pattern: "**"
+    expert: "general_purpose_expert"
+```
+
+## 🏗️ Architecture
 
 ```
 prompt-expert-bank/
-├── experts/              # Domain expert definitions
-├── evaluation/           # Evaluation frameworks and criteria
-├── tests/               # Test scenarios and benchmarks
-└── api/                 # API for external integrations
+├── experts/              # Domain expert implementations
+├── evaluation/           # Test scenarios and evaluation logic
+├── api/                  # GitHub integration API
+├── .github/workflows/    # Reusable GitHub Actions
+└── examples/             # Example configurations and prompts
 ```
 
-## How It Works
-
-1. **Prompt Submission**: PRs in monitored repositories trigger evaluation
-2. **A/B Testing**: Experts compare old vs new prompts using test scenarios
-3. **Analysis**: Experts provide detailed metrics and recommendations
-4. **Feedback**: Results are posted as PR comments with approval/rejection
-
-## Integration
-
-This system integrates with GitHub Actions to automatically evaluate prompt changes in pull requests.
-
-## Expert Types
-
-- **Security Expert**: Evaluates security-related prompts
-- **Performance Expert**: Measures response time and efficiency
-- **Accuracy Expert**: Tests correctness and edge cases
-- **Clarity Expert**: Assesses prompt clarity and ambiguity
-
-## API Usage
+## 📦 API Usage
 
 ```javascript
 const expertBank = require('prompt-expert-bank');
@@ -46,3 +109,39 @@ const results = await expertBank.evaluate({
   testScenarios: ["scenario1", "scenario2"]
 });
 ```
+
+## ➕ Adding New Experts
+
+1. Use the [expert template](expert-templates/expert_template.md)
+2. Create a new file in `experts/`
+3. Ensure competency weights total 100%
+4. Include specific good/bad examples
+5. Submit a PR
+
+## 📊 Test Scenarios
+
+Each expert has associated test scenarios in `evaluation/`:
+- [`test-scenarios.js`](evaluation/test-scenarios.js) - Security scenarios for risk detection
+- [`financial_scenarios.json`](test-scenarios/financial_scenarios.json) - Emergency funds, investments, budgets
+- [`gas_scenarios.json`](test-scenarios/gas_scenarios.json) - Batch processing, error handling, triggers
+
+## 🤝 Contributing
+
+We welcome new experts! Please:
+1. Fork this repository
+2. Create your expert following the template
+3. Add relevant test scenarios
+4. Submit a pull request
+
+## 📝 License
+
+MIT License - Use freely in your projects!
+
+## 🆘 Support
+
+- **Issues**: [GitHub Issues](https://github.com/whichguy/prompt-expert-bank/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/whichguy/prompt-expert-bank/discussions)
+
+---
+
+*Remember: Better outputs, not better prompts. Focus on what matters - the results!*
