@@ -252,27 +252,65 @@ const securityExpert = {
       report += `| **Overall Score** | **${improvements.overallScore > 0 ? '+' : ''}${improvements.overallScore}%** | **${improvements.overallScore > 0 ? '✅' : '❌'}** |\n\n`;
     }
     
-    // Detailed test case analysis
+    // Detailed A vs B test comparison
+    if (oldResults.length > 0) {
+      report += `### 🔍 Detailed Test Responses Comparison\n\n`;
+      
+      for (let i = 0; i < newResults.length; i++) {
+        const oldTest = oldResults[i];
+        const newTest = newResults[i];
+        
+        const oldStatus = oldTest.passed ? '✅ PASS' : '❌ FAIL';
+        const newStatus = newTest.passed ? '✅ PASS' : '❌ FAIL';
+        const changeStatus = !oldTest.passed && newTest.passed ? ' → ✅ IMPROVED' : 
+                           oldTest.passed && !newTest.passed ? ' → ❌ REGRESSED' : '';
+        
+        report += `#### Test ${i + 1}: ${newTest.scenario}\n`;
+        report += `**Input Command**: \`${newTest.input}\`\n`;
+        report += `**Expected**: ${newTest.expected.type} (risk level ${newTest.expected.riskLevel})\n\n`;
+        
+        report += `| Aspect | Old Prompt | New Prompt |\n`;
+        report += `|--------|------------|------------|\n`;
+        report += `| **Result** | ${oldStatus} | ${newStatus}${changeStatus} |\n`;
+        report += `| **Response** | ${oldTest.actualResponse} | ${newTest.actualResponse} |\n`;
+        
+        if (oldTest.analysis && newTest.analysis) {
+          report += `| **Risk Assessment** | ${oldTest.analysis.hasRiskAssessment ? '✅' : '❌'} | ${newTest.analysis.hasRiskAssessment ? '✅' : '❌'} |\n`;
+          report += `| **Context Aware** | ${oldTest.analysis.contextAware ? '✅' : '❌'} | ${newTest.analysis.contextAware ? '✅' : '❌'} |\n`;
+          report += `| **Provides Alternative** | ${oldTest.analysis.providesAlternative ? '✅' : '❌'} | ${newTest.analysis.providesAlternative ? '✅' : '❌'} |\n`;
+        }
+        
+        report += `\n`;
+        
+        // Add analysis notes for significant changes
+        if (!oldTest.passed && newTest.passed) {
+          report += `🎯 **Improvement**: This test now passes with the new prompt!\n\n`;
+        } else if (oldTest.passed && !newTest.passed) {
+          report += `⚠️ **Regression**: This test was passing but now fails.\n\n`;
+        } else if (!newTest.passed) {
+          report += `❌ **Still Failing**: Consider enhancing the prompt to handle this scenario.\n\n`;
+        }
+      }
+    }
+    
+    // Summary of failed tests
     const failedNewTests = newResults.filter(r => !r.passed);
     const improvedTests = newResults.filter((r, i) => 
       oldResults[i] && !oldResults[i].passed && r.passed
     );
     
     if (improvedTests.length > 0) {
-      report += `#### ✅ Newly Passing Tests (${improvedTests.length})\n`;
+      report += `### ✅ Summary: Newly Passing Tests (${improvedTests.length})\n`;
       for (const test of improvedTests) {
-        report += `- **${test.scenario}**: "${test.input}"\n`;
-        report += `  - Now correctly ${test.expected.type}s with ${test.analysis.hasRiskAssessment ? 'risk assessment' : 'appropriate response'}\n`;
+        report += `- **${test.scenario}**: Now correctly handles "${test.input}"\n`;
       }
       report += `\n`;
     }
     
     if (failedNewTests.length > 0) {
-      report += `#### ❌ Still Failing Tests (${failedNewTests.length})\n`;
+      report += `### ❌ Summary: Still Failing Tests (${failedNewTests.length})\n`;
       for (const test of failedNewTests) {
-        report += `- **${test.scenario}**: "${test.input}"\n`;
-        report += `  - Expected: ${test.expected.type} (risk level ${test.expected.riskLevel})\n`;
-        report += `  - Actual: ${test.actualResponse}\n`;
+        report += `- **${test.scenario}**: "${test.input}" (Expected: ${test.expected.type})\n`;
       }
       report += `\n`;
     }
