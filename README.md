@@ -19,7 +19,7 @@ gh secret set ANTHROPIC_API_KEY
 ## 📋 How It Works
 
 1. **You**: Create a PR with prompt changes
-2. **Expert Bank**: Detects domain, runs A/B tests
+2. **Expert**: Detects domain, runs A/B tests
 3. **You**: Get detailed evaluation report as PR comment
 4. **Result**: Merge with confidence or iterate based on feedback
 
@@ -28,7 +28,7 @@ gh secret set ANTHROPIC_API_KEY
 Example evaluation on your PR:
 
 ```
-🏦 Prompt Expert Bank - Evaluation Report
+🏦 Prompt Expert - Evaluation Report
 
 Security Command Analysis Expert
 Timestamp: 2024-01-20T15:30:00Z
@@ -82,7 +82,7 @@ jobs:
 
 ## 🏗️ Architecture
 
-The Prompt Expert Bank uses a modular architecture:
+The Prompt Expert uses a modular architecture:
 
 ```
 prompt-expert/

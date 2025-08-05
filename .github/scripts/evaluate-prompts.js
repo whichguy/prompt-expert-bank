@@ -287,7 +287,7 @@ Note: IMPROVEMENTS NEEDED section is only required for SUGGEST decisions.`
     };
     
     // Process each changed file
-    let fullReport = `## 🏦 Prompt Expert Bank - Evaluation Report\n\n`;
+    let fullReport = `## 🏦 Prompt Expert - Evaluation Report\n\n`;
     fullReport += `*Domain Expert: ${expertModule.name || domain}*\n`;
     fullReport += `*Timestamp: ${new Date().toISOString()}*\n`;
     
