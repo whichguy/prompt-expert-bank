@@ -1,7 +1,7 @@
 {
-  "name": "prompt-expert-bank",
+  "name": "prompt-expert",
   "version": "1.0.0",
-  "description": "Central bank of domain experts for LLM prompt evaluation",
+  "description": "Domain experts for LLM prompt evaluation and GitHub PR automation",
   "main": "api/index.js",
   "scripts": {
     "start": "node api/index.js",

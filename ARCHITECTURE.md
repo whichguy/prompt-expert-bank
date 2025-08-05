@@ -1,13 +1,13 @@
-# Prompt Expert Bank Architecture
+# Prompt Expert Architecture
 
 ## 🎯 Overview
 
-The Prompt Expert Bank is an automated system that evaluates prompt changes in GitHub PRs using domain-specific AI experts. Each expert is defined entirely in Markdown files and contains both domain expertise and evaluation criteria.
+Prompt Expert is an automated system that evaluates prompt changes in GitHub PRs using domain-specific AI experts. Each expert is defined entirely in Markdown files and contains both domain expertise and evaluation criteria.
 
 ## 📁 Directory Structure
 
 ```
-prompt-expert-bank/
+prompt-expert/
 ├── .github/
 │   └── workflows/
 │       └── evaluate-prompts.yml    # Main reusable workflow for prompt evaluation

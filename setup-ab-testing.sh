@@ -1,7 +1,7 @@
 #!/bin/bash
 # Setup script to enable prompt evaluation in any repository
 
-echo "🚀 Setting up Prompt Expert Bank evaluation in your repository..."
+echo "🚀 Setting up Prompt Expert evaluation in your repository..."
 
 # Create necessary directories
 echo "📁 Creating directory structure..."
@@ -22,7 +22,7 @@ on:
 
 jobs:
   evaluate-prompts:
-    uses: whichguy/prompt-expert-bank/.github/workflows/evaluate-prompts.yml@main
+    uses: whichguy/prompt-expert/.github/workflows/evaluate-prompts.yml@main
     with:
       pr-number: ${{ github.event.pull_request.number }}
       repository: ${{ github.repository }}

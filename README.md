@@ -1,4 +1,4 @@
-# Prompt Expert Bank 🏦
+# Prompt Expert 🤖
 
 Automated LLM prompt evaluation using domain experts. Get detailed A/B testing feedback on every pull request.
 
@@ -8,7 +8,7 @@ Automated LLM prompt evaluation using domain experts. Get detailed A/B testing f
 # 1. Create workflow file
 mkdir -p .github/workflows
 curl -o .github/workflows/prompt-evaluation.yml \
-  https://raw.githubusercontent.com/whichguy/prompt-expert-bank/main/examples/workflow-template.yml
+  https://raw.githubusercontent.com/whichguy/prompt-expert/main/examples/workflow-template.yml
 
 # 2. Set API key
 gh secret set ANTHROPIC_API_KEY
@@ -61,7 +61,7 @@ on:
       
 jobs:
   evaluate-prompts:
-    uses: whichguy/prompt-expert-bank/.github/workflows/evaluate-prompts.yml@main
+    uses: whichguy/prompt-expert/.github/workflows/evaluate-prompts.yml@main
     with:
       pr-number: ${{ github.event.pull_request.number }}
       repository: ${{ github.repository }}
@@ -85,7 +85,7 @@ jobs:
 The Prompt Expert Bank uses a modular architecture:
 
 ```
-prompt-expert-bank/
+prompt-expert/
 ├── expert-definitions/    # Markdown files with expert system prompts
 ├── test-scenarios/       # JSON files with test cases
 ├── lib/                  # Core implementation
@@ -111,7 +111,7 @@ MIT License
 
 ## 🆘 Support
 
-- [Issues](https://github.com/whichguy/prompt-expert-bank/issues)
+- [Issues](https://github.com/whichguy/prompt-expert/issues)
 - [Example Implementation](https://github.com/whichguy/security-prompt-test)
 
 ---
