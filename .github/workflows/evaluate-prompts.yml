@@ -71,7 +71,7 @@ jobs:
             const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
             const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
             
-            console.log(`Evaluating PR #${PR_NUMBER} in ${OWNER}/${REPO}`);
+            console.log(\`Evaluating PR #\${PR_NUMBER} in \${OWNER}/\${REPO}\`);
             
             try {
               // Track improvement iterations
@@ -87,7 +87,7 @@ jobs:
                 comment.body.includes('💡 SUGGEST - Improvements Needed')
               ).length;
               
-              console.log(`Improvement cycles detected: ${improvementCycles}`);
+              console.log(\`Improvement cycles detected: \${improvementCycles}\`);
               
               // Get PR files
               const { data: files } = await octokit.pulls.listFiles({
@@ -146,14 +146,14 @@ jobs:
               // Domain detection now always succeeds with 'general' as fallback
               
               // Load MD-based expert definition
-              const expertPath = path.join(__dirname, 'expert-definitions', `${domain}-expert.md`);
+              const expertPath = path.join(__dirname, 'expert-definitions', \`\${domain}-expert.md\`);
               
               if (!fs.existsSync(expertPath)) {
                 await octokit.issues.createComment({
                   owner: OWNER,
                   repo: REPO,
                   issue_number: PR_NUMBER,
-                  body: `⚠️ No expert definition found for domain: ${domain}. Please check available experts in expert-definitions/.`
+                  body: \`⚠️ No expert definition found for domain: \${domain}. Please check available experts in expert-definitions/.\`
                 });
                 return;
               }
@@ -163,7 +163,7 @@ jobs:
               
               // Create MD-based expert module
               const expertModule = {
-                name: `${domain.charAt(0).toUpperCase() + domain.slice(1)} Expert`,
+                name: \`\${domain.charAt(0).toUpperCase() + domain.slice(1)} Expert\`,
                 definition: expertDefinition,
                 async evaluatePrompts(oldContent, newContent, anthropic) {
                   // Use 3-thread evaluation model as designed
@@ -174,7 +174,7 @@ jobs:
                     max_tokens: 4000,
                     messages: [{
                       role: 'user',
-                      content: \`You are primed with this prompt definition:\\n\\n\${oldContent}\\n\\nNow respond to this test scenario: "Analyze the command 'sudo rm -rf /var/lib/docker' in a production environment"\`
+                      content: \\`You are primed with this prompt definition:\\n\\n\\${oldContent}\\n\\nNow respond to this test scenario: "Analyze the command 'sudo rm -rf /var/lib/docker' in a production environment"\\`
                     }]
                   });
                   
@@ -184,12 +184,12 @@ jobs:
                     max_tokens: 4000,
                     messages: [{
                       role: 'user',
-                      content: \`You are primed with this prompt definition:\\n\\n\${newContent}\\n\\nNow respond to this test scenario: "Analyze the command 'sudo rm -rf /var/lib/docker' in a production environment"\`
+                      content: \\`You are primed with this prompt definition:\\n\\n\\${newContent}\\n\\nNow respond to this test scenario: "Analyze the command 'sudo rm -rf /var/lib/docker' in a production environment"\\`
                     }]
                   });
                   
                   // Thread C: Expert comparison with clear instructions
-                  const iterationContext = improvementCycles > 0 ? \`
+                  const iterationContext = improvementCycles > 0 ? \\`
 
 ### ITERATION CONTEXT
 This is improvement iteration #\${improvementCycles + 1}. The prompt has been revised \${improvementCycles} time(s) based on previous expert feedback.
@@ -202,7 +202,7 @@ This is improvement iteration #\${improvementCycles + 1}. The prompt has been re
                     max_tokens: 4000,
                     messages: [{
                       role: 'user',
-                      content: \`## EVALUATION FRAMEWORK
+                      content: \\`## EVALUATION FRAMEWORK
 
 You are an expert prompt evaluator. Your role is to compare two prompt implementations and provide one of three recommendations:
 
@@ -329,16 +329,16 @@ Note: IMPROVEMENTS NEEDED section is only required for SUGGEST decisions.\`
                     if (score !== null) {
                       if (score >= 8.5) {
                         recommendation = 'APPROVE';
-                        console.log(`Auto-approving based on high score: ${score}/10`);
+                        console.log(\`Auto-approving based on high score: \${score}/10\`);
                       } else if (score >= 6.0) {
                         recommendation = 'SUGGEST';
-                        console.log(`Suggesting improvements based on moderate score: ${score}/10`);
+                        console.log(\`Suggesting improvements based on moderate score: \${score}/10\`);
                       }
                     }
                   }
                   
                   return {
-                    report: \`### 🔍 3-Thread Evaluation Results\\n\\n**Test Scenario:**\\n"Analyze the command 'sudo rm -rf /var/lib/docker' in a production environment"\\n\\n**Thread A (Current Prompt Response):**\\n\${threadA.content[0].text}\\n\\n**Thread B (Proposed Prompt Response):**\\n\${threadB.content[0].text}\\n\\n**Thread C (Expert Analysis):**\\n\${expertResponse}\\n\\n\`,
+                    report: \\`### 🔍 3-Thread Evaluation Results\\n\\n**Test Scenario:**\\n"Analyze the command 'sudo rm -rf /var/lib/docker' in a production environment"\\n\\n**Thread A (Current Prompt Response):**\\n\\${threadA.content[0].text}\\n\\n**Thread B (Proposed Prompt Response):**\\n\\${threadB.content[0].text}\\n\\n**Thread C (Expert Analysis):**\\n\\${expertResponse}\\n\\n\\`,
                     recommendation: recommendation,
                     improvements: improvements,
                     improvement: recommendation === 'APPROVE' ? 1 : 0
@@ -347,29 +347,29 @@ Note: IMPROVEMENTS NEEDED section is only required for SUGGEST decisions.\`
               };
               
               // Process each changed file
-              let fullReport = `## 🏦 Prompt Expert Bank - Evaluation Report\n\n`;
-              fullReport += `*Domain Expert: ${expertModule.name || domain}*\n`;
-              fullReport += `*Timestamp: ${new Date().toISOString()}*\n`;
+              let fullReport = \`## 🏦 Prompt Expert Bank - Evaluation Report\n\n\`;
+              fullReport += \`*Domain Expert: \${expertModule.name || domain}*\n\`;
+              fullReport += \`*Timestamp: \${new Date().toISOString()}*\n\`;
               
               // Add iteration tracking to report
               if (improvementCycles > 0) {
-                fullReport += `*Improvement Iteration: ${improvementCycles + 1}*\n`;
+                fullReport += \`*Improvement Iteration: \${improvementCycles + 1}*\n\`;
                 if (improvementCycles >= 3) {
-                  fullReport += `\n⚠️ **Warning**: This PR has gone through ${improvementCycles} improvement cycles. Consider manual review if improvements are not converging.\n`;
+                  fullReport += \`\n⚠️ **Warning**: This PR has gone through \${improvementCycles} improvement cycles. Consider manual review if improvements are not converging.\n\`;
                 }
               }
               
-              fullReport += `\n`;
+              fullReport += \`\n\`;
               
               let overallRecommendation = 'APPROVE';
               let totalImprovement = 0;
               let overallImprovements = [];
               
               for (const file of promptFiles) {
-                fullReport += `## 📄 File: ${file.filename}\n\n`;
-                fullReport += `### Change Summary\n`;
-                fullReport += `- **Status**: ${file.status}\n`;
-                fullReport += `- **Lines changed**: +${file.additions} -${file.deletions}\n\n`;
+                fullReport += \`## 📄 File: \${file.filename}\n\n\`;
+                fullReport += \`### Change Summary\n\`;
+                fullReport += \`- **Status**: \${file.status}\n\`;
+                fullReport += \`- **Lines changed**: +\${file.additions} -\${file.deletions}\n\n\`;
                 
                 // Get the old and new content
                 const oldContent = file.status === 'added' ? '' : await getFileContent(octokit, OWNER, REPO, file.filename, file.previous_filename, 'base');
@@ -398,37 +398,37 @@ Note: IMPROVEMENTS NEEDED section is only required for SUGGEST decisions.\`
               }
               
               // Add final recommendation based on three outcomes
-              fullReport += `## 🎯 Final Recommendation\n\n`;
+              fullReport += \`## 🎯 Final Recommendation\n\n\`;
               
               if (overallRecommendation === 'APPROVE') {
-                fullReport += `### ✅ MERGE - Approved for Production\n\n`;
-                fullReport += `The expert has determined that the new prompt implementation is superior and ready for deployment.\n\n`;
-                fullReport += `**Ready to merge** ✅`;
+                fullReport += \`### ✅ MERGE - Approved for Production\n\n\`;
+                fullReport += \`The expert has determined that the new prompt implementation is superior and ready for deployment.\n\n\`;
+                fullReport += \`**Ready to merge** ✅\`;
               } else if (overallRecommendation === 'SUGGEST') {
-                fullReport += `### 💡 SUGGEST - Improvements Needed\n\n`;
-                fullReport += `The expert has identified that while the prompt shows promise, it needs specific improvements before merging.\n\n`;
+                fullReport += \`### 💡 SUGGEST - Improvements Needed\n\n\`;
+                fullReport += \`The expert has identified that while the prompt shows promise, it needs specific improvements before merging.\n\n\`;
                 
                 if (overallImprovements.length > 0) {
-                  fullReport += `**Required Improvements:**\n`;
+                  fullReport += \`**Required Improvements:**\n\`;
                   overallImprovements.forEach(improvement => {
-                    fullReport += `${improvement}\n`;
+                    fullReport += \`\${improvement}\n\`;
                   });
-                  fullReport += `\n`;
+                  fullReport += \`\n\`;
                 }
                 
-                fullReport += `### 🔧 Implementation Options\n\n`;
-                fullReport += `You can implement these improvements in two ways:\n\n`;
-                fullReport += `**Option 1 - Automated (Claude)**: Comment with\n`;
-                fullReport += `\`\`\`\n@claude please implement the improvements suggested above\n\`\`\`\n\n`;
-                fullReport += `**Option 2 - Targeted (PromptExpert)**: Comment with\n`;
-                fullReport += `\`\`\`\n@promptexpert ${domain} --suggest:"your specific improvement request"\n\`\`\`\n\n`;
-                fullReport += `**Status:** Awaiting implementation choice 🔄`;
+                fullReport += \`### 🔧 Implementation Options\n\n\`;
+                fullReport += \`You can implement these improvements in two ways:\n\n\`;
+                fullReport += \`**Option 1 - Automated (Claude)**: Comment with\n\`;
+                fullReport += \`\\`\\`\\`\n@claude please implement the improvements suggested above\n\\`\\`\\`\n\n\`;
+                fullReport += \`**Option 2 - Targeted (PromptExpert)**: Comment with\n\`;
+                fullReport += \`\\`\\`\\`\n@promptexpert \${domain} --suggest:"your specific improvement request"\n\\`\\`\\`\n\n\`;
+                fullReport += \`**Status:** Awaiting implementation choice 🔄\`;
               } else {
                 // REJECT case
-                fullReport += `### ❌ REJECT - Critical Issues Found\n\n`;
-                fullReport += `The expert has determined that the new prompt has critical flaws or is inferior to the current version.\n\n`;
-                fullReport += `**Action Required:** Please review the expert's analysis above and create a new implementation that addresses the fundamental issues.\n\n`;
-                fullReport += `**PR will be closed** ❌`;
+                fullReport += \`### ❌ REJECT - Critical Issues Found\n\n\`;
+                fullReport += \`The expert has determined that the new prompt has critical flaws or is inferior to the current version.\n\n\`;
+                fullReport += \`**Action Required:** Please review the expert's analysis above and create a new implementation that addresses the fundamental issues.\n\n\`;
+                fullReport += \`**PR will be closed** ❌\`;
               }
               
               // Post comment
@@ -450,8 +450,8 @@ Note: IMPROVEMENTS NEEDED section is only required for SUGGEST decisions.\`
                     owner: OWNER,
                     repo: REPO,
                     pull_number: PR_NUMBER,
-                    commit_title: `PromptExpert: MERGE approved`,
-                    commit_message: `Automatically merged after expert evaluation.\n\n✅ Expert decision: MERGE\n📊 The new prompt implementation is superior and ready for production\n🤖 Merged by PromptExpert system at ${new Date().toISOString()}`,
+                    commit_title: \`PromptExpert: MERGE approved\`,
+                    commit_message: \`Automatically merged after expert evaluation.\n\n✅ Expert decision: MERGE\n📊 The new prompt implementation is superior and ready for production\n🤖 Merged by PromptExpert system at \${new Date().toISOString()}\`,
                     merge_method: 'squash'
                   });
                   
@@ -459,7 +459,7 @@ Note: IMPROVEMENTS NEEDED section is only required for SUGGEST decisions.\`
                     owner: OWNER,
                     repo: REPO,
                     issue_number: PR_NUMBER,
-                    body: `🎉 **PR automatically merged!**\n\n✅ Expert decision: **MERGE**\n🚀 The improved prompt is now live in the main branch.`
+                    body: \`🎉 **PR automatically merged!**\n\n✅ Expert decision: **MERGE**\n🚀 The improved prompt is now live in the main branch.\`
                   });
                 } catch (mergeError) {
                   console.error('Failed to merge PR:', mergeError.message);
@@ -467,7 +467,7 @@ Note: IMPROVEMENTS NEEDED section is only required for SUGGEST decisions.\`
                     owner: OWNER,
                     repo: REPO,
                     issue_number: PR_NUMBER,
-                    body: `✅ **Expert approved (MERGE)** but auto-merge failed: ${mergeError.message}\n\nPlease merge manually - the evaluation was successful!`
+                    body: \`✅ **Expert approved (MERGE)** but auto-merge failed: \${mergeError.message}\n\nPlease merge manually - the evaluation was successful!\`
                   });
                 }
               } else if (overallRecommendation === 'SUGGEST') {
@@ -481,26 +481,26 @@ Note: IMPROVEMENTS NEEDED section is only required for SUGGEST decisions.\`
                     owner: OWNER,
                     repo: REPO,
                     issue_number: PR_NUMBER,
-                    body: `🛑 **Maximum improvement cycles reached (${improvementCycles})**\n\n` +
-                          `This PR has undergone multiple automated improvement attempts without converging to an acceptable solution.\n\n` +
-                          `**Manual intervention required**: Please review the expert feedback history and make the necessary changes manually.\n\n` +
-                          `The PR will remain open for manual improvements.`
+                    body: \`🛑 **Maximum improvement cycles reached (\${improvementCycles})**\n\n\` +
+                          \`This PR has undergone multiple automated improvement attempts without converging to an acceptable solution.\n\n\` +
+                          \`**Manual intervention required**: Please review the expert feedback history and make the necessary changes manually.\n\n\` +
+                          \`The PR will remain open for manual improvements.\`
                   });
                 } else {
                   // Post instructions for implementing improvements
-                  const iterationNote = improvementCycles > 0 ? `\n\n📊 This is improvement iteration #${improvementCycles + 1}` : '';
+                  const iterationNote = improvementCycles > 0 ? \`\n\n📊 This is improvement iteration #\${improvementCycles + 1}\` : '';
                   
                   await octokit.issues.createComment({
                     owner: OWNER,
                     repo: REPO,
                     issue_number: PR_NUMBER,
-                    body: `💡 **Expert Suggestions Available**\n\n` +
-                          `The expert has identified improvements needed for this prompt. You have two options:\n\n` +
-                          `**1. Full Implementation (@claude)**\n` +
-                          `Comment: \`@claude please implement the improvements suggested by the expert above\`\n\n` +
-                          `**2. Targeted Implementation (@promptexpert)**\n` +
-                          `Comment: \`@promptexpert ${domain} --suggest:"your specific improvement"\`\n` +
-                          `Example: \`@promptexpert security --suggest:"Add risk scoring from 0-10 and provide safer alternatives"\`${iterationNote}`
+                    body: \`💡 **Expert Suggestions Available**\n\n\` +
+                          \`The expert has identified improvements needed for this prompt. You have two options:\n\n\` +
+                          \`**1. Full Implementation (@claude)**\n\` +
+                          \`Comment: \\`@claude please implement the improvements suggested by the expert above\\`\n\n\` +
+                          \`**2. Targeted Implementation (@promptexpert)**\n\` +
+                          \`Comment: \\`@promptexpert \${domain} --suggest:"your specific improvement"\\`\n\` +
+                          \`Example: \\`@promptexpert security --suggest:"Add risk scoring from 0-10 and provide safer alternatives"\\`\${iterationNote}\`
                   });
                 }
                 
@@ -520,7 +520,7 @@ Note: IMPROVEMENTS NEEDED section is only required for SUGGEST decisions.\`
                   owner: OWNER,
                   repo: REPO,
                   issue_number: PR_NUMBER,
-                  body: `🚫 **PR automatically closed**\n\n❌ Expert decision: **REJECT**\n\nThe expert found critical issues with this implementation. Please review the detailed analysis above and create a new PR that addresses the fundamental problems identified.`
+                  body: \`🚫 **PR automatically closed**\n\n❌ Expert decision: **REJECT**\n\nThe expert found critical issues with this implementation. Please review the detailed analysis above and create a new PR that addresses the fundamental problems identified.\`
                 });
               }
               
@@ -532,7 +532,7 @@ Note: IMPROVEMENTS NEEDED section is only required for SUGGEST decisions.\`
                 owner: OWNER,
                 repo: REPO,
                 issue_number: PR_NUMBER,
-                body: `❌ Evaluation failed: ${error.message}`
+                body: \`❌ Evaluation failed: \${error.message}\`
               });
               throw error;
             }
@@ -543,7 +543,7 @@ Note: IMPROVEMENTS NEEDED section is only required for SUGGEST decisions.\`
               let ref;
               if (refType === 'head') {
                 // Get from PR branch
-                ref = `refs/pull/${process.env.PR_NUMBER}/head`;
+                ref = \`refs/pull/\${process.env.PR_NUMBER}/head\`;
               } else if (refType === 'base') {
                 // Get from base branch
                 ref = process.env.GITHUB_BASE_REF || 'main';
@@ -563,7 +563,7 @@ Note: IMPROVEMENTS NEEDED section is only required for SUGGEST decisions.\`
                 return Buffer.from(data.content, 'base64').toString('utf-8');
               }
             } catch (error) {
-              console.log(`Could not fetch previous version of ${path}: ${error.message}`);
+              console.log(\`Could not fetch previous version of \${path}: \${error.message}\`);
             }
             return '';
           }
