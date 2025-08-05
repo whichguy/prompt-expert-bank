@@ -66,6 +66,15 @@ jobs:
           npm init -y
           npm install @anthropic-ai/sdk@0.24.0 @octokit/rest@19.0.0
           
+      - name: Debug setup
+        if: steps.parse.outputs.valid == 'true'
+        run: |
+          echo "Current directory: $(pwd)"
+          echo "Files in .github/scripts:"
+          ls -la .github/scripts/ || echo "Scripts directory not found"
+          echo "All files:"
+          find . -name "*.js" -type f | head -20
+          
       - name: Process valid command
         if: steps.parse.outputs.valid == 'true'
         env:
@@ -76,4 +85,9 @@ jobs:
           ISSUE_NUMBER: ${{ github.event.issue.number }}
           COMMENT_AUTHOR: ${{ github.event.comment.user.login }}
         run: |
-          node .github/scripts/process-promptexpert.js
+          if [ -f ".github/scripts/process-promptexpert.js" ]; then
+            node .github/scripts/process-promptexpert.js
+          else
+            echo "Error: Script file not found"
+            exit 1
+          fi
