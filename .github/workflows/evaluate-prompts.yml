@@ -100,7 +100,7 @@ jobs:
               let domain = null;
               
               for (const file of promptFiles) {
-                const newContent = await getFileContent(octokit, OWNER, REPO, file.filename);
+                const newContent = await getFileContent(octokit, OWNER, REPO, file.filename, null, 'head');
                 
                 // Try to detect domain from filename or content
                 if (file.filename.includes('security') || newContent.toLowerCase().includes('security') ||
@@ -209,8 +209,8 @@ jobs:
                 fullReport += `- **Lines changed**: +${file.additions} -${file.deletions}\n\n`;
                 
                 // Get the old and new content
-                const oldContent = file.status === 'added' ? '' : await getFileContent(octokit, OWNER, REPO, file.filename, file.previous_filename);
-                const newContent = await getFileContent(octokit, OWNER, REPO, file.filename);
+                const oldContent = file.status === 'added' ? '' : await getFileContent(octokit, OWNER, REPO, file.filename, file.previous_filename, 'base');
+                const newContent = await getFileContent(octokit, OWNER, REPO, file.filename, null, 'head');
                 
                 // Use expert module to evaluate
                 const evaluation = await expertModule.evaluatePrompts(oldContent, newContent, anthropic);
@@ -283,13 +283,25 @@ jobs:
             }
           }
           
-          async function getFileContent(octokit, owner, repo, path, previousPath) {
+          async function getFileContent(octokit, owner, repo, path, previousPath, refType) {
             try {
+              let ref;
+              if (refType === 'head') {
+                // Get from PR branch
+                ref = `refs/pull/${process.env.PR_NUMBER}/head`;
+              } else if (refType === 'base') {
+                // Get from base branch
+                ref = process.env.GITHUB_BASE_REF || 'main';
+              } else {
+                // Default behavior
+                ref = process.env.GITHUB_BASE_REF || 'main';
+              }
+              
               const { data } = await octokit.repos.getContent({
                 owner: owner,
                 repo: repo,
                 path: previousPath || path,
-                ref: process.env.GITHUB_BASE_REF || 'main'
+                ref: ref
               });
               
               if (data.content) {
