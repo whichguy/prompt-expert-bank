@@ -1,4 +1,4 @@
-name: PromptExpert PR Action
+name: PromptExpert Command Handler
 
 permissions:
   contents: write
