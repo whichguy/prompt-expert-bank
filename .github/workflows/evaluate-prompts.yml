@@ -278,9 +278,39 @@ jobs:
                 body: fullReport
               });
               
-              // Auto-close PR if not approved and auto-close is enabled
+              // Handle PR actions based on evaluation result
               const autoCloseOnFail = process.env.AUTO_CLOSE_ON_FAIL !== 'false';
-              if (overallRecommendation !== 'APPROVE' && autoCloseOnFail) {
+              
+              if (overallRecommendation === 'APPROVE') {
+                // Auto-merge approved PRs
+                console.log('Merging PR due to successful evaluation...');
+                try {
+                  await octokit.pulls.merge({
+                    owner: OWNER,
+                    repo: REPO,
+                    pull_number: PR_NUMBER,
+                    commit_title: `PromptExpert approved merge`,
+                    commit_message: `Automatically merged after expert evaluation approval.\n\n✅ Expert recommendation: APPROVE\n📊 Evaluation completed: ${new Date().toISOString()}\n🤖 Merged by PromptExpert system`,
+                    merge_method: 'squash'
+                  });
+                  
+                  await octokit.issues.createComment({
+                    owner: OWNER,
+                    repo: REPO,
+                    issue_number: PR_NUMBER,
+                    body: `🎉 **PR automatically merged** after expert approval!\n\n✅ Expert evaluation: APPROVED\n🚀 Changes are now live in main branch.`
+                  });
+                } catch (mergeError) {
+                  console.error('Failed to merge PR:', mergeError.message);
+                  await octokit.issues.createComment({
+                    owner: OWNER,
+                    repo: REPO,
+                    issue_number: PR_NUMBER,
+                    body: `✅ **Expert approved** but auto-merge failed: ${mergeError.message}\n\nPlease merge manually - the evaluation was successful!`
+                  });
+                }
+              } else if (autoCloseOnFail) {
+                // Auto-close failed PRs
                 console.log('Closing PR due to failed evaluation...');
                 await octokit.pulls.update({
                   owner: OWNER,
