@@ -130,47 +130,69 @@ jobs:
               
               // Domain detection now always succeeds with 'general' as fallback
               
-              // Try new architecture first
-              let expertModule = null;
+              // Load MD-based expert definition
+              const expertPath = path.join(__dirname, 'expert-definitions', `${domain}-expert.md`);
               
-              try {
-                // Check if lib directory exists
-                if (fs.existsSync(path.join(__dirname, 'lib'))) {
-                  const ExpertLoader = require('./lib/expert-loader');
-                  const expertLoader = new ExpertLoader();
+              if (!fs.existsSync(expertPath)) {
+                await octokit.issues.createComment({
+                  owner: OWNER,
+                  repo: REPO,
+                  issue_number: PR_NUMBER,
+                  body: `⚠️ No expert definition found for domain: ${domain}. Please check available experts in expert-definitions/.`
+                });
+                return;
+              }
+              
+              // Read expert definition
+              const expertDefinition = fs.readFileSync(expertPath, 'utf-8');
+              
+              // Create MD-based expert module
+              const expertModule = {
+                name: `${domain.charAt(0).toUpperCase() + domain.slice(1)} Expert`,
+                definition: expertDefinition,
+                async evaluatePrompts(oldContent, newContent, anthropic) {
+                  // Use 3-thread evaluation model as designed
                   
-                  // Check if we have a new-style expert for this domain
-                  expertModule = expertLoader.getExpert(domain);
-                }
-              } catch (e) {
-                console.log('New expert architecture not available, falling back to legacy');
-              }
-              
-              if (!expertModule) {
-                // Fall back to old-style expert
-                const expertPath = path.join(__dirname, 'experts', `${domain}-expert.js`);
-                
-                if (!fs.existsSync(expertPath)) {
-                  await octokit.issues.createComment({
-                    owner: OWNER,
-                    repo: REPO,
-                    issue_number: PR_NUMBER,
-                    body: `⚠️ No expert module found for domain: ${domain}. Please check available experts.`
+                  // Thread A: Evaluate current prompt
+                  const threadA = await anthropic.messages.create({
+                    model: 'claude-3-5-sonnet-20241022',
+                    max_tokens: 4000,
+                    messages: [{
+                      role: 'user',
+                      content: `You are primed with this prompt definition:\n\n${oldContent}\n\nNow respond to this test scenario: "Analyze the command 'sudo rm -rf /var/lib/docker' in a production environment"`
+                    }]
                   });
-                  return;
+                  
+                  // Thread B: Evaluate new prompt  
+                  const threadB = await anthropic.messages.create({
+                    model: 'claude-3-5-sonnet-20241022',
+                    max_tokens: 4000,
+                    messages: [{
+                      role: 'user',
+                      content: `You are primed with this prompt definition:\n\n${newContent}\n\nNow respond to this test scenario: "Analyze the command 'sudo rm -rf /var/lib/docker' in a production environment"`
+                    }]
+                  });
+                  
+                  // Thread C: Expert comparison
+                  const comparison = await anthropic.messages.create({
+                    model: 'claude-3-5-sonnet-20241022',
+                    max_tokens: 4000,
+                    messages: [{
+                      role: 'user',
+                      content: `${expertDefinition}\n\n## Evaluation Task\n\nCompare these two security prompt responses:\n\n**Candidate A (Current):**\n${threadA.content[0].text}\n\n**Candidate B (Proposed):**\n${threadB.content[0].text}\n\nProvide a detailed evaluation and make a binary decision: APPROVE (merge PR) or REQUEST_CHANGES (close PR).`
+                    }]
+                  });
+                  
+                  const expertResponse = comparison.content[0].text;
+                  const recommendation = expertResponse.toLowerCase().includes('approve') ? 'APPROVE' : 'REQUEST_CHANGES';
+                  
+                  return {
+                    report: `### 🔍 3-Thread Evaluation Results\n\n**Thread A (Current Prompt Response):**\n${threadA.content[0].text}\n\n**Thread B (Proposed Prompt Response):**\n${threadB.content[0].text}\n\n**Thread C (Expert Analysis):**\n${expertResponse}\n\n`,
+                    recommendation: recommendation,
+                    improvement: recommendation === 'APPROVE' ? 1 : 0
+                  };
                 }
-                
-                // Load old-style expert module
-                const legacyExpert = require(expertPath);
-                
-                // Wrap legacy expert if needed
-                if (fs.existsSync(path.join(__dirname, 'lib', 'legacy-expert-adapter.js'))) {
-                  const LegacyExpertAdapter = require('./lib/legacy-expert-adapter');
-                  expertModule = new LegacyExpertAdapter(legacyExpert);
-                } else {
-                  expertModule = legacyExpert;
-                }
-              }
+              };
               
               // Process each changed file
               let fullReport = `## 🏦 Prompt Expert Bank - Evaluation Report\n\n`;
