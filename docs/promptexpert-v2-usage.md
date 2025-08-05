@@ -8,6 +8,23 @@ The new PromptExpert v2 workflow uses a flexible command syntax:
 @promptexpert <expert> <instructions>
 ```
 
+## Usage Contexts
+
+### Pull Requests
+When used in PR comments, PromptExpert receives:
+- Full PR metadata (title, author, branches)
+- Git diff patches showing exact changes
+- Current file contents after changes
+- Recent PR comments and commit history
+- Can take actions: update files, approve/reject PR, post comments
+
+### Regular Issues
+When used in issue comments, PromptExpert receives:
+- Issue metadata (title, author, labels, state)
+- Full issue description
+- Recent issue comments (last 5)
+- Can take actions: post analysis/guidance, add labels, provide resources
+
 ## Examples
 
 ### Review a PR for Security Issues
