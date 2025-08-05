@@ -31,7 +31,7 @@ jobs:
       - name: Checkout Expert
         uses: actions/checkout@v3
         with:
-          repository: whichguy/prompt-expert
+          repository: whichguy/prompt-expert-bank
           
       - name: Setup Node.js
         uses: actions/setup-node@v3
