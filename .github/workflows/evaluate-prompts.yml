@@ -174,7 +174,7 @@ jobs:
                     max_tokens: 4000,
                     messages: [{
                       role: 'user',
-                      content: `You are primed with this prompt definition:\n\n${oldContent}\n\nNow respond to this test scenario: "Analyze the command 'sudo rm -rf /var/lib/docker' in a production environment"`
+                      content: \`You are primed with this prompt definition:\\n\\n\${oldContent}\\n\\nNow respond to this test scenario: "Analyze the command 'sudo rm -rf /var/lib/docker' in a production environment"\`
                     }]
                   });
                   
@@ -184,25 +184,25 @@ jobs:
                     max_tokens: 4000,
                     messages: [{
                       role: 'user',
-                      content: `You are primed with this prompt definition:\n\n${newContent}\n\nNow respond to this test scenario: "Analyze the command 'sudo rm -rf /var/lib/docker' in a production environment"`
+                      content: \`You are primed with this prompt definition:\\n\\n\${newContent}\\n\\nNow respond to this test scenario: "Analyze the command 'sudo rm -rf /var/lib/docker' in a production environment"\`
                     }]
                   });
                   
                   // Thread C: Expert comparison with clear instructions
-                  const iterationContext = improvementCycles > 0 ? `
+                  const iterationContext = improvementCycles > 0 ? \`
 
 ### ITERATION CONTEXT
-This is improvement iteration #${improvementCycles + 1}. The prompt has been revised ${improvementCycles} time(s) based on previous expert feedback.
-${improvementCycles >= 2 ? '- Be more lenient in your evaluation as improvements have been attempted multiple times' : ''}
-${improvementCycles >= 3 ? '- Consider approving if the prompt is reasonably good (7.5/10 or better) to avoid endless cycles' : ''}
-` : '';
+This is improvement iteration #\${improvementCycles + 1}. The prompt has been revised \${improvementCycles} time(s) based on previous expert feedback.
+\${improvementCycles >= 2 ? '- Be more lenient in your evaluation as improvements have been attempted multiple times' : ''}
+\${improvementCycles >= 3 ? '- Consider approving if the prompt is reasonably good (7.5/10 or better) to avoid endless cycles' : ''}
+\` : '';
 
                   const comparison = await anthropic.messages.create({
                     model: 'claude-3-5-sonnet-20241022',
                     max_tokens: 4000,
                     messages: [{
                       role: 'user',
-                      content: `## EVALUATION FRAMEWORK
+                      content: \`## EVALUATION FRAMEWORK
 
 You are an expert prompt evaluator. Your role is to compare two prompt implementations and provide one of three recommendations:
 
@@ -220,21 +220,21 @@ When using SUGGEST, you MUST provide:
 2. Clear, actionable instructions for each improvement
 3. Examples where helpful
 
-Your evaluation will be used to automatically invoke an AI assistant to implement suggestions, so be precise and implementation-focused.${iterationContext}
+Your evaluation will be used to automatically invoke an AI assistant to implement suggestions, so be precise and implementation-focused.\${iterationContext}
 
 ## EXPERT DOMAIN CONTEXT
 
-${expertDefinition}
+\${expertDefinition}
 
 ## EVALUATION TASK
 
 Compare these two prompt implementations:
 
 **Candidate A (Current Implementation):**
-${threadA.content[0].text}
+\${threadA.content[0].text}
 
 **Candidate B (Proposed Implementation):**
-${threadB.content[0].text}
+\${threadB.content[0].text}
 
 ## REQUIRED OUTPUT FORMAT
 
@@ -251,7 +251,7 @@ IMPROVEMENTS NEEDED:
 - [etc.]
 === END RESULT ===
 
-Note: IMPROVEMENTS NEEDED section is only required for SUGGEST decisions.`
+Note: IMPROVEMENTS NEEDED section is only required for SUGGEST decisions.\`
                     }]
                   });
                   
@@ -338,7 +338,7 @@ Note: IMPROVEMENTS NEEDED section is only required for SUGGEST decisions.`
                   }
                   
                   return {
-                    report: `### 🔍 3-Thread Evaluation Results\n\n**Test Scenario:**\n"Analyze the command 'sudo rm -rf /var/lib/docker' in a production environment"\n\n**Thread A (Current Prompt Response):**\n${threadA.content[0].text}\n\n**Thread B (Proposed Prompt Response):**\n${threadB.content[0].text}\n\n**Thread C (Expert Analysis):**\n${expertResponse}\n\n`,
+                    report: \`### 🔍 3-Thread Evaluation Results\\n\\n**Test Scenario:**\\n"Analyze the command 'sudo rm -rf /var/lib/docker' in a production environment"\\n\\n**Thread A (Current Prompt Response):**\\n\${threadA.content[0].text}\\n\\n**Thread B (Proposed Prompt Response):**\\n\${threadB.content[0].text}\\n\\n**Thread C (Expert Analysis):**\\n\${expertResponse}\\n\\n\`,
                     recommendation: recommendation,
                     improvements: improvements,
                     improvement: recommendation === 'APPROVE' ? 1 : 0
