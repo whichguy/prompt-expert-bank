@@ -356,13 +356,11 @@ Note: IMPROVEMENTS NEEDED section is only required for SUGGEST decisions.`
         fullReport += `\n`;
       }
       
-      fullReport += `### 🔧 Implementation Options\n\n`;
-      fullReport += `You can implement these improvements in two ways:\n\n`;
-      fullReport += `**Option 1 - Automated (Claude)**: Comment with\n`;
-      fullReport += `\`\`\`\n@claude please implement the improvements suggested above\n\`\`\`\n\n`;
-      fullReport += `**Option 2 - Targeted (PromptExpert)**: Comment with\n`;
-      fullReport += `\`\`\`\n@promptexpert ${domain} --suggest:"your specific improvement request"\n\`\`\`\n\n`;
-      fullReport += `**Status:** Awaiting implementation choice 🔄`;
+      fullReport += `### 🤖 Automated Implementation\n\n`;
+      fullReport += `@claude will now automatically implement these improvements.\n\n`;
+      fullReport += `**Status:** Implementation in progress... 🔄\n\n`;
+      fullReport += `**Alternative Option**: If you prefer a different approach, you can use:\n`;
+      fullReport += `\`\`\`\n@promptexpert ${domain} --suggest:"your specific improvement request"\n\`\`\``;
     } else {
       // REJECT case
       fullReport += `### ❌ REJECT - Critical Issues Found\n\n`;
@@ -427,20 +425,21 @@ Note: IMPROVEMENTS NEEDED section is only required for SUGGEST decisions.`
                 `The PR will remain open for manual improvements.`
         });
       } else {
-        // Post instructions for implementing improvements
+        // Automatically invoke @claude to implement improvements
         const iterationNote = improvementCycles > 0 ? `\n\n📊 This is improvement iteration #${improvementCycles + 1}` : '';
+        
+        let improvementsList = '';
+        if (overallImprovements.length > 0) {
+          improvementsList = overallImprovements.join('\n');
+        } else {
+          improvementsList = 'Please review the expert analysis above and implement the suggested improvements.';
+        }
         
         await octokit.issues.createComment({
           owner: OWNER,
           repo: REPO,
           issue_number: PR_NUMBER,
-          body: `💡 **Expert Suggestions Available**\n\n` +
-                `The expert has identified improvements needed for this prompt. You have two options:\n\n` +
-                `**1. Full Implementation (@claude)**\n` +
-                `Comment:\n\`\`\`\n@claude please implement the improvements suggested by the expert above\n\`\`\`\n\n` +
-                `**2. Targeted Implementation (@promptexpert)**\n` +
-                `Comment:\n\`\`\`\n@promptexpert ${domain} --suggest:"your specific improvement"\n\`\`\`\n` +
-                `Example:\n\`\`\`\n@promptexpert security --suggest:"Add risk scoring from 0-10 and provide safer alternatives"\n\`\`\`${iterationNote}`
+          body: `@claude please implement the following improvements suggested by the expert:\n\n${improvementsList}\n\nMake sure to:\n1. Address all the specific points raised by the expert\n2. Maintain the existing structure and intent of the prompt\n3. Enhance the areas identified as needing improvement\n4. Commit the changes to this PR branch${iterationNote}`
         });
       }
       
