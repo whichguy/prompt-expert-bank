@@ -267,6 +267,33 @@ jobs:
                 // All non-APPROVE cases become REQUEST_CHANGES
                 fullReport += `### ❌ REQUEST CHANGES\n\n`;
                 fullReport += `The changes need improvement before merging.\n\n`;
+                
+                // Check if expert provided specific, actionable improvements
+                const hasActionableImprovements = expertResponse.toLowerCase().includes('add') || 
+                                                 expertResponse.toLowerCase().includes('include') ||
+                                                 expertResponse.toLowerCase().includes('implement') ||
+                                                 expertResponse.toLowerCase().includes('should have') ||
+                                                 expertResponse.toLowerCase().includes('missing');
+                
+                if (hasActionableImprovements && expertResponse.length > 500) {
+                  // Extract specific improvements from expert response
+                  const improvementMatches = expertResponse.match(/(?:should|add|include|implement|missing)[^.]*\./gi);
+                  
+                  fullReport += `\n### 🤖 Automated Improvement Available\n\n`;
+                  fullReport += `The expert has identified specific improvements that can be implemented automatically.\n\n`;
+                  
+                  if (improvementMatches && improvementMatches.length > 0) {
+                    fullReport += `**Key improvements needed:**\n`;
+                    improvementMatches.slice(0, 5).forEach(improvement => {
+                      fullReport += `- ${improvement.trim()}\n`;
+                    });
+                    fullReport += `\n`;
+                  }
+                  
+                  fullReport += `**To apply these improvements automatically**, comment:\n`;
+                  fullReport += `\`\`\`\n@claude please implement the improvements suggested by the expert above\n\`\`\`\n\n`;
+                }
+                
                 fullReport += `**Needs revision** ❌`;
               }
               
