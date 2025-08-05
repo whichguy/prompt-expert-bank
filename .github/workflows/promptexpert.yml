@@ -1,0 +1,26 @@
+name: PromptExpert Handler
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  handle-promptexpert:
+    if: contains(github.event.comment.body, '@promptexpert')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Echo trigger
+        run: |
+          echo "PromptExpert workflow triggered!"
+          echo "Comment: ${{ github.event.comment.body }}"
+          echo "PR: ${{ github.event.issue.number }}"
+          
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Process command
+        run: |
+          echo "Processing @promptexpert command..."
+          echo "This is a test implementation"
