@@ -106,6 +106,22 @@ async function evaluate() {
       name: `${domain.charAt(0).toUpperCase() + domain.slice(1)} Expert`,
       definition: expertDefinition,
       async evaluatePrompts(oldContent, newContent, anthropic) {
+        // Load domain-specific test scenario
+        const domainTestsPath = path.join(__dirname, '..', 'test-scenarios', 'domain-tests.json');
+        let testScenario = "Please demonstrate your capabilities with a relevant example.";
+        
+        try {
+          const domainTests = JSON.parse(fs.readFileSync(domainTestsPath, 'utf-8'));
+          if (domainTests[domain]) {
+            testScenario = domainTests[domain].scenario;
+            console.log(`Using ${domain} test scenario: ${testScenario}`);
+          } else {
+            console.log(`No specific test scenario for domain ${domain}, using default`);
+          }
+        } catch (error) {
+          console.log(`Could not load domain tests: ${error.message}, using default scenario`);
+        }
+        
         // Use 3-thread evaluation model as designed
         
         // Thread A: Evaluate current prompt
@@ -114,7 +130,7 @@ async function evaluate() {
           max_tokens: 4000,
           messages: [{
             role: 'user',
-            content: `You are primed with this prompt definition:\n\n${oldContent}\n\nNow respond to this test scenario: "Analyze the command 'sudo rm -rf /var/lib/docker' in a production environment"`
+            content: `You are primed with this prompt definition:\n\n${oldContent}\n\nNow respond to this test scenario: "${testScenario}"`
           }]
         });
         
@@ -124,7 +140,7 @@ async function evaluate() {
           max_tokens: 4000,
           messages: [{
             role: 'user',
-            content: `You are primed with this prompt definition:\n\n${newContent}\n\nNow respond to this test scenario: "Analyze the command 'sudo rm -rf /var/lib/docker' in a production environment"`
+            content: `You are primed with this prompt definition:\n\n${newContent}\n\nNow respond to this test scenario: "${testScenario}"`
           }]
         });
         
@@ -166,14 +182,21 @@ Your evaluation will be used to automatically invoke an AI assistant to implemen
 
 ${expertDefinition}
 
+## TEST SCENARIO USED
+
+Both prompts were tested with the following ${domain} domain scenario:
+"${testScenario}"
+
+This scenario is designed to test domain-specific capabilities and proper handling of ${domain}-related tasks.
+
 ## EVALUATION TASK
 
-Compare these two prompt implementations:
+Compare these two prompt implementations based on how well they handled the test scenario:
 
-**Candidate A (Current Implementation):**
+**Candidate A (Current Implementation's Response):**
 ${threadA.content[0].text}
 
-**Candidate B (Proposed Implementation):**
+**Candidate B (Proposed Implementation's Response):**
 ${threadB.content[0].text}
 
 ## REQUIRED OUTPUT FORMAT
@@ -278,7 +301,7 @@ Note: IMPROVEMENTS NEEDED section is only required for SUGGEST decisions.`
         }
         
         return {
-          report: `### 🔍 3-Thread Evaluation Results\n\n**Test Scenario:**\n"Analyze the command 'sudo rm -rf /var/lib/docker' in a production environment"\n\n**Thread A (Current Prompt Response):**\n${threadA.content[0].text}\n\n**Thread B (Proposed Prompt Response):**\n${threadB.content[0].text}\n\n**Thread C (Expert Analysis):**\n${expertResponse}\n\n`,
+          report: `### 🔍 3-Thread Evaluation Results\n\n**Test Scenario (${domain} domain):**\n"${testScenario}"\n\n**Thread A (Current Prompt Response):**\n${threadA.content[0].text}\n\n**Thread B (Proposed Prompt Response):**\n${threadB.content[0].text}\n\n**Thread C (Expert Analysis):**\n${expertResponse}\n\n`,
           recommendation: recommendation,
           improvements: improvements,
           improvement: recommendation === 'APPROVE' ? 1 : 0

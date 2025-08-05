@@ -160,26 +160,53 @@ jobs:
             const targetFile = promptFiles[0];
             const currentContent = await fs.readFile(targetFile.filename, 'utf-8');
             
+            // Load the expert definition for context
+            let expertContext = '';
+            try {
+              const expertDefPath = path.join(__dirname, '../../expert-definitions', `${domain}-expert.md`);
+              console.log(`Attempting to load expert definition from: ${expertDefPath}`);
+              expertContext = await fs.readFile(expertDefPath, 'utf-8');
+              console.log(`Loaded ${domain} expert definition`);
+            } catch (err) {
+              console.log(`Could not load expert definition: ${err.message}`);
+              expertContext = `You are a ${domain} expert focused on improving prompts in this domain.`;
+            }
+            
             // Use Claude to implement the suggestion
             const response = await anthropic.messages.create({
               model: 'claude-3-5-sonnet-20241022',
               max_tokens: 4000,
               messages: [{
                 role: 'user',
-                content: `You are a prompt engineering expert specializing in ${domain}. 
-                
-Here is the current prompt implementation:
+                content: `## YOUR ROLE
+
+You are a prompt engineering expert. Your task is to improve a prompt based on specific suggestions while maintaining its core purpose and structure.
+
+## EXPERT KNOWLEDGE CONTEXT
+
+Here is the expert definition for the ${domain} domain that guides evaluation criteria:
+
+${expertContext}
+
+## CURRENT PROMPT
+
+Here is the current prompt implementation that needs improvement:
 
 ${currentContent}
+
+## REQUESTED IMPROVEMENT
 
 The user has requested this specific improvement:
 "${suggestion}"
 
-Please rewrite the entire prompt incorporating this suggestion. Make sure to:
+## YOUR TASK
+
+Please rewrite the entire prompt incorporating the requested suggestion. Make sure to:
 1. Maintain the overall structure and purpose of the original prompt
 2. Fully implement the requested suggestion
-3. Ensure the enhancement is well-integrated
-4. Keep the prompt clear and effective
+3. Ensure the enhancement is well-integrated with existing content
+4. Keep the prompt clear, effective, and aligned with ${domain} best practices
+5. Address the evaluation criteria from the expert definition where relevant
 
 Return ONLY the complete updated prompt content, no explanations or markdown code blocks.`
               }]
