@@ -143,13 +143,30 @@ jobs:
             const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
             const [owner, repo] = process.env.GITHUB_REPOSITORY.split('/');
             
-            // Load expert definition
+            // Load expert definition - try local first, then remote
             let expertContent = '';
             try {
-              const expertPath = path.join('.github', 'expert-definitions', `${process.env.EXPERT}-expert.md`);
+              // Try local file first (for prompt-expert repo itself)
+              const expertPath = path.join('expert-definitions', `${process.env.EXPERT}-expert.md`);
               expertContent = fs.readFileSync(expertPath, 'utf-8');
-            } catch (err) {
-              expertContent = `You are a ${process.env.EXPERT} expert.`;
+              console.log(`Loaded ${process.env.EXPERT} expert definition from local file`);
+            } catch (localErr) {
+              try {
+                // Fallback to remote fetch (for other repos)
+                console.log(`Local expert definition not found, fetching from prompt-expert repo...`);
+                const expertUrl = `https://raw.githubusercontent.com/whichguy/prompt-expert-bank/main/expert-definitions/${process.env.EXPERT}-expert.md`;
+                const expertResponse = await fetch(expertUrl);
+                
+                if (expertResponse.ok) {
+                  expertContent = await expertResponse.text();
+                  console.log(`Successfully loaded ${process.env.EXPERT} expert definition from remote`);
+                } else {
+                  throw new Error(`HTTP ${expertResponse.status}`);
+                }
+              } catch (remoteErr) {
+                console.log(`Could not load expert definition: ${remoteErr.message}, using fallback`);
+                expertContent = `You are a ${process.env.EXPERT} expert providing analysis and guidance.`;
+              }
             }
             
             // Load PR context
