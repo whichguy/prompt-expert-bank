@@ -437,10 +437,10 @@ Note: IMPROVEMENTS NEEDED section is only required for SUGGEST decisions.`
           body: `💡 **Expert Suggestions Available**\n\n` +
                 `The expert has identified improvements needed for this prompt. You have two options:\n\n` +
                 `**1. Full Implementation (@claude)**\n` +
-                `Comment: \`@claude please implement the improvements suggested by the expert above\`\n\n` +
+                `Comment:\n\`\`\`\n@claude please implement the improvements suggested by the expert above\n\`\`\`\n\n` +
                 `**2. Targeted Implementation (@promptexpert)**\n` +
-                `Comment: \`@promptexpert ${domain} --suggest:"your specific improvement"\`\n` +
-                `Example: \`@promptexpert security --suggest:"Add risk scoring from 0-10 and provide safer alternatives"\`${iterationNote}`
+                `Comment:\n\`\`\`\n@promptexpert ${domain} --suggest:"your specific improvement"\n\`\`\`\n` +
+                `Example:\n\`\`\`\n@promptexpert security --suggest:"Add risk scoring from 0-10 and provide safer alternatives"\n\`\`\`${iterationNote}`
         });
       }
       
