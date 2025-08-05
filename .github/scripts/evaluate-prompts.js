@@ -357,10 +357,9 @@ Note: IMPROVEMENTS NEEDED section is only required for SUGGEST decisions.`
       }
       
       fullReport += `### 🤖 Automated Implementation\n\n`;
-      fullReport += `@claude will now automatically implement these improvements.\n\n`;
+      fullReport += `@promptexpert will now automatically implement these improvements.\n\n`;
       fullReport += `**Status:** Implementation in progress... 🔄\n\n`;
-      fullReport += `**Alternative Option**: If you prefer a different approach, you can use:\n`;
-      fullReport += `\`\`\`\n@promptexpert ${domain} --suggest:"your specific improvement request"\n\`\`\``;
+      fullReport += `**Note**: The improvements will be implemented using the ${domain} domain expert.`;
     } else {
       // REJECT case
       fullReport += `### ❌ REJECT - Critical Issues Found\n\n`;
@@ -435,15 +434,20 @@ Note: IMPROVEMENTS NEEDED section is only required for SUGGEST decisions.`
           improvementsList = 'Please review the expert analysis above and implement the suggested improvements.';
         }
         
+        // Format improvements as a single suggestion string
+        const suggestionText = overallImprovements.length > 0 
+          ? overallImprovements.join(' ') 
+          : 'Please review the expert analysis above and implement the suggested improvements.';
+        
         await octokit.issues.createComment({
           owner: OWNER,
           repo: REPO,
           issue_number: PR_NUMBER,
-          body: `@claude please implement the following improvements suggested by the expert:\n\n${improvementsList}\n\nMake sure to:\n1. Address all the specific points raised by the expert\n2. Maintain the existing structure and intent of the prompt\n3. Enhance the areas identified as needing improvement\n4. Commit the changes to this PR branch${iterationNote}`
+          body: `@promptexpert ${domain} --suggest:"${suggestionText}"${iterationNote}`
         });
       }
       
-      // Do not close the PR - let @claude work on it
+      // Do not close the PR - let @promptexpert work on it
       console.log('PR remains open for improvements');
     } else if (autoCloseOnFail) {
       // REJECT case - Close the PR
