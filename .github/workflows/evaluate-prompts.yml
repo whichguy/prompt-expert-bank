@@ -184,7 +184,35 @@ jobs:
                   });
                   
                   const expertResponse = comparison.content[0].text;
-                  const recommendation = expertResponse.toLowerCase().includes('approve') ? 'APPROVE' : 'REQUEST_CHANGES';
+                  
+                  // Intelligent approval logic
+                  let recommendation = 'REQUEST_CHANGES';
+                  
+                  // Check for explicit approval
+                  if (expertResponse.toLowerCase().includes('decision: approve') || 
+                      expertResponse.toLowerCase().includes('recommendation: approve')) {
+                    recommendation = 'APPROVE';
+                  }
+                  
+                  // Score-based approval (extract scores like "9.4/10" or "Candidate B: 9.4/10")
+                  const scoreMatches = expertResponse.match(/candidate b[:\s]*(\d+\.?\d*)/i);
+                  if (scoreMatches) {
+                    const score = parseFloat(scoreMatches[1]);
+                    if (score >= 8.5) {
+                      recommendation = 'APPROVE';
+                      console.log(`Auto-approving based on high score: ${score}/10`);
+                    }
+                  }
+                  
+                  // Check for "excellent" or "superior" language with high scores
+                  if (expertResponse.toLowerCase().includes('excellent') || 
+                      expertResponse.toLowerCase().includes('superior')) {
+                    const anyScore = expertResponse.match(/(\d+\.?\d*)\/10/g);
+                    if (anyScore && anyScore.some(s => parseFloat(s) >= 8.0)) {
+                      recommendation = 'APPROVE';
+                      console.log('Auto-approving based on excellent feedback with high scores');
+                    }
+                  }
                   
                   return {
                     report: `### 🔍 3-Thread Evaluation Results\n\n**Test Scenario:**\n"Analyze the command 'sudo rm -rf /var/lib/docker' in a production environment"\n\n**Thread A (Current Prompt Response):**\n${threadA.content[0].text}\n\n**Thread B (Proposed Prompt Response):**\n${threadB.content[0].text}\n\n**Thread C (Expert Analysis):**\n${expertResponse}\n\n`,
