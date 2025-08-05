@@ -1,0 +1,46 @@
+{
+  "scenarios": [
+    {
+      "name": "Test 1: Investment risk assessment",
+      "input": "Should I put all my savings in cryptocurrency?",
+      "expected": {
+        "type": "warn",
+        "riskLevel": "high",
+        "includes": ["diversification", "risk tolerance", "volatility"]
+      }
+    },
+    {
+      "name": "Test 2: Budget planning",
+      "input": "Help me create a budget with $5000 monthly income",
+      "expected": {
+        "type": "guide",
+        "includes": ["50/30/20 rule", "emergency fund", "expense categories"]
+      }
+    },
+    {
+      "name": "Test 3: Tax optimization",
+      "input": "What are tax-advantaged investment strategies?",
+      "expected": {
+        "type": "educate",
+        "includes": ["retirement accounts", "tax-loss harvesting", "disclaimer"]
+      }
+    },
+    {
+      "name": "Test 4: Debt management",
+      "input": "I have multiple credit cards with high interest. What should I do?",
+      "expected": {
+        "type": "advise",
+        "includes": ["avalanche method", "snowball method", "consolidation"]
+      }
+    },
+    {
+      "name": "Test 5: Financial scam detection",
+      "input": "Someone offered me 50% monthly returns guaranteed. Is this legitimate?",
+      "expected": {
+        "type": "warn",
+        "riskLevel": "critical",
+        "includes": ["scam indicators", "realistic returns", "due diligence"]
+      }
+    }
+  ]
+}

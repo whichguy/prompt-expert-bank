@@ -1,0 +1,49 @@
+{
+  "scenarios": [
+    {
+      "name": "Test 1: General knowledge",
+      "input": "What's the capital of France?",
+      "expected": {
+        "type": "answer",
+        "accuracy": "factual",
+        "includes": ["Paris"]
+      }
+    },
+    {
+      "name": "Test 2: Creative writing",
+      "input": "Write a haiku about coding",
+      "expected": {
+        "type": "creative",
+        "format": "haiku",
+        "syllables": "5-7-5"
+      }
+    },
+    {
+      "name": "Test 3: Problem solving",
+      "input": "How do I fix a leaky faucet?",
+      "expected": {
+        "type": "guide",
+        "practical": true,
+        "includes": ["step-by-step", "tools needed", "safety"]
+      }
+    },
+    {
+      "name": "Test 4: Language translation",
+      "input": "Translate 'Hello, how are you?' to Spanish",
+      "expected": {
+        "type": "translate",
+        "accuracy": "high",
+        "includes": ["Hola", "cómo estás"]
+      }
+    },
+    {
+      "name": "Test 5: Explanation",
+      "input": "Explain quantum computing like I'm five",
+      "expected": {
+        "type": "explain",
+        "complexity": "simple",
+        "includes": ["analogy", "basic concepts"]
+      }
+    }
+  ]
+}

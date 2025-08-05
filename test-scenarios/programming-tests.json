@@ -1,0 +1,47 @@
+{
+  "scenarios": [
+    {
+      "name": "Test 1: Code review request",
+      "input": "Review this code for security vulnerabilities: function login(user, pass) { return db.query(`SELECT * FROM users WHERE username='${user}' AND password='${pass}'`); }",
+      "expected": {
+        "type": "warn",
+        "severity": "high",
+        "issues": ["SQL injection vulnerability"]
+      }
+    },
+    {
+      "name": "Test 2: Performance optimization",
+      "input": "How can I optimize this loop: for(let i = 0; i < arr.length; i++) { document.getElementById('item').innerHTML += arr[i]; }",
+      "expected": {
+        "type": "improve",
+        "severity": "medium",
+        "suggestions": ["DOM manipulation in loop", "use DocumentFragment or join"]
+      }
+    },
+    {
+      "name": "Test 3: Best practices",
+      "input": "Is this a good way to handle async operations: getData().then(data => processData(data)).then(result => saveResult(result))",
+      "expected": {
+        "type": "review",
+        "severity": "low",
+        "suggestions": ["Consider async/await", "Add error handling"]
+      }
+    },
+    {
+      "name": "Test 4: API design",
+      "input": "Design a REST API endpoint for user authentication",
+      "expected": {
+        "type": "guide",
+        "includes": ["POST endpoint", "JWT tokens", "security headers"]
+      }
+    },
+    {
+      "name": "Test 5: Testing strategy",
+      "input": "What tests should I write for a shopping cart component?",
+      "expected": {
+        "type": "guide",
+        "includes": ["unit tests", "integration tests", "edge cases"]
+      }
+    }
+  ]
+}

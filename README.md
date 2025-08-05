@@ -80,12 +80,30 @@ jobs:
 | Financial | `financial`, `finance`, `budget`, `investment` | ✅ Ready |
 | General Purpose | All other prompts (fallback expert) | ✅ Ready |
 
+## 🏗️ Architecture
+
+The Prompt Expert Bank uses a modular architecture:
+
+```
+prompt-expert-bank/
+├── expert-definitions/    # Markdown files with expert system prompts
+├── test-scenarios/       # JSON files with test cases
+├── lib/                  # Core implementation
+│   ├── base-expert.js   # Base class for all experts
+│   └── [domain]-expert.js # Domain-specific implementations
+└── experts/              # Legacy experts (being phased out)
+```
+
 ## 🤝 Contributing
 
 To add a new expert:
-1. Copy `expert-templates/expert-template.js` to `experts/[domain]-expert.js`
-2. Implement test scenarios and evaluation logic
-3. Submit a PR
+
+1. Create an expert definition: `expert-definitions/[domain]-expert.md`
+2. Create test scenarios: `test-scenarios/[domain]-tests.json`
+3. Create expert implementation: `lib/[domain]-expert.js` (extends BaseExpert)
+4. Submit a PR
+
+See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed information.
 
 ## 📝 License
 
