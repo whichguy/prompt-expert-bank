@@ -36,23 +36,40 @@ jobs:
             echo "valid=false" >> $GITHUB_OUTPUT
           fi
           
+      - name: Post invalid command message
+        if: steps.parse.outputs.valid != 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: '❌ Invalid command format. Use: `@promptexpert <domain> --suggest:"your suggestion"`'
+            });
+            
       - name: Checkout PR
         if: steps.parse.outputs.valid == 'true'
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           ref: ${{ format('refs/pull/{0}/head', github.event.issue.number) }}
-          fetch-depth: 0  # Get full history
+          fetch-depth: 0
           
-      - name: Setup environment
+      - name: Setup Node.js
+        if: steps.parse.outputs.valid == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          
+      - name: Install dependencies
         if: steps.parse.outputs.valid == 'true'
         run: |
           npm init -y
           npm install @anthropic-ai/sdk @octokit/rest
           
-      - name: Gather context
+      - name: Gather PR context
         if: steps.parse.outputs.valid == 'true'
-        id: context
         uses: actions/github-script@v7
         with:
           script: |
@@ -106,7 +123,7 @@ jobs:
                 changes: f.changes,
                 patch: f.patch
               })),
-              recent_comments: comments.data.slice(-5).map(c => ({
+              comments: comments.data.map(c => ({
                 author: c.user.login,
                 body: c.body,
                 created_at: c.created_at
@@ -120,8 +137,9 @@ jobs:
             };
             
             fs.writeFileSync('pr-context.json', JSON.stringify(context_data, null, 2));
+            console.log('PR context saved');
             
-      - name: Process with expert
+      - name: Run PromptExpert handler
         if: steps.parse.outputs.valid == 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -129,250 +147,5 @@ jobs:
           EXPERT: ${{ steps.parse.outputs.expert }}
           INSTRUCTIONS: ${{ steps.parse.outputs.instructions }}
           PR_NUMBER: ${{ github.event.issue.number }}
-          COMMENT_AUTHOR: ${{ github.event.comment.user.login }}
         run: |
-          node << 'SCRIPT'
-          const { Anthropic } = require('@anthropic-ai/sdk');
-          const { Octokit } = require('@octokit/rest');
-          const fs = require('fs');
-          const path = require('path');
-          const { execSync } = require('child_process');
-          
-          async function process() {
-            const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-            const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
-            const [owner, repo] = process.env.GITHUB_REPOSITORY.split('/');
-            
-            // Load expert definition - try local first, then remote
-            let expertContent = '';
-            try {
-              // Try local file first (for prompt-expert repo itself)
-              const expertPath = path.join('expert-definitions', `${process.env.EXPERT}-expert.md`);
-              expertContent = fs.readFileSync(expertPath, 'utf-8');
-              console.log(`Loaded ${process.env.EXPERT} expert definition from local file`);
-            } catch (localErr) {
-              try {
-                // Fallback to remote fetch (for other repos)
-                console.log(`Local expert definition not found, fetching from prompt-expert repo...`);
-                const expertUrl = `https://raw.githubusercontent.com/whichguy/prompt-expert-bank/main/expert-definitions/${process.env.EXPERT}-expert.md`;
-                const expertResponse = await fetch(expertUrl);
-                
-                if (expertResponse.ok) {
-                  expertContent = await expertResponse.text();
-                  console.log(`Successfully loaded ${process.env.EXPERT} expert definition from remote`);
-                } else {
-                  throw new Error(`HTTP ${expertResponse.status}`);
-                }
-              } catch (remoteErr) {
-                console.log(`Could not load expert definition: ${remoteErr.message}, using fallback`);
-                expertContent = `You are a ${process.env.EXPERT} expert providing analysis and guidance.`;
-              }
-            }
-            
-            // Load PR context
-            const prContext = JSON.parse(fs.readFileSync('pr-context.json', 'utf-8'));
-            
-            // Read changed files content
-            const fileContents = {};
-            for (const file of prContext.files) {
-              if (file.filename.endsWith('.md') || file.filename.endsWith('.txt')) {
-                try {
-                  fileContents[file.filename] = fs.readFileSync(file.filename, 'utf-8');
-                } catch (err) {
-                  console.log(`Could not read ${file.filename}`);
-                }
-              }
-            }
-            
-            // Call Claude with all context
-            const response = await anthropic.messages.create({
-              model: 'claude-3-5-sonnet-20241022',
-              max_tokens: 4000,
-              messages: [{
-                role: 'user',
-                content: `## YOUR ROLE
-You are evaluating git file contents from a pull request. You will act as the expert defined below to review these changes and take appropriate actions.
-
-## EXPERT DEFINITION
-${expertContent}
-
-## CONTEXT: GIT PULL REQUEST INFORMATION
-You are reviewing changes in a Git pull request. The following data shows what files have been modified, added, or deleted in this PR:
-
-### Pull Request Metadata
-${JSON.stringify(prContext.pr, null, 2)}
-
-### Changed Files (Git Diff Patches)
-${JSON.stringify(prContext.files, null, 2)}
-
-### Recent PR Comments
-${JSON.stringify(prContext.recent_comments, null, 2)}
-
-### Commit History
-${JSON.stringify(prContext.commits, null, 2)}
-
-## CURRENT FILE CONTENTS IN THE PR
-These are the actual file contents after the changes have been applied:
-${JSON.stringify(fileContents, null, 2)}
-
-## USER INSTRUCTIONS
-User @${process.env.COMMENT_AUTHOR} has requested you to:
-"${process.env.INSTRUCTIONS}"
-
-## YOUR TASK
-As the ${process.env.EXPERT} expert, analyze these git file changes and follow the user's instructions. Consider:
-1. The nature of the changes (additions, deletions, modifications)
-2. The quality and appropriateness of the changes for the ${process.env.EXPERT} domain
-3. Any issues or improvements needed
-4. The specific instructions from the user
-
-Based on your expert analysis, provide a structured response indicating what actions to take.
-
-## RESPONSE FORMAT
-You must respond with a JSON object with this structure:
-{
-  "analysis": "Your detailed analysis here",
-  "actions": [
-    {
-      "type": "comment",
-      "content": "The comment to post on the PR"
-    },
-    {
-      "type": "update_file",
-      "filename": "path/to/file.md",
-      "content": "New content for the file"
-    },
-    {
-      "type": "close_pr",
-      "comment": "Optional comment explaining why"
-    },
-    {
-      "type": "approve_pr",
-      "comment": "Optional approval comment"
-    }
-  ],
-  "summary": "Brief summary of what was done"
-}
-
-Valid action types: comment, update_file, close_pr, approve_pr, request_changes
-
-Return ONLY the JSON object, no other text.`
-              }]
-            });
-            
-            // Parse response
-            let result;
-            try {
-              result = JSON.parse(response.content[0].text);
-            } catch (err) {
-              console.error('Failed to parse Claude response:', response.content[0].text);
-              throw new Error('Invalid response format from Claude');
-            }
-            
-            // Execute actions
-            for (const action of result.actions) {
-              switch (action.type) {
-                case 'comment':
-                  await octokit.issues.createComment({
-                    owner,
-                    repo,
-                    issue_number: process.env.PR_NUMBER,
-                    body: action.content
-                  });
-                  break;
-                  
-                case 'update_file':
-                  fs.writeFileSync(action.filename, action.content);
-                  execSync(`git add ${action.filename}`);
-                  break;
-                  
-                case 'close_pr':
-                  if (action.comment) {
-                    await octokit.issues.createComment({
-                      owner,
-                      repo,
-                      issue_number: process.env.PR_NUMBER,
-                      body: action.comment
-                    });
-                  }
-                  await octokit.pulls.update({
-                    owner,
-                    repo,
-                    pull_number: process.env.PR_NUMBER,
-                    state: 'closed'
-                  });
-                  break;
-                  
-                case 'approve_pr':
-                  await octokit.pulls.createReview({
-                    owner,
-                    repo,
-                    pull_number: process.env.PR_NUMBER,
-                    body: action.comment || 'Approved by PromptExpert',
-                    event: 'APPROVE'
-                  });
-                  break;
-                  
-                case 'request_changes':
-                  await octokit.pulls.createReview({
-                    owner,
-                    repo,
-                    pull_number: process.env.PR_NUMBER,
-                    body: action.comment || 'Changes requested by PromptExpert',
-                    event: 'REQUEST_CHANGES'
-                  });
-                  break;
-              }
-            }
-            
-            // Commit any file changes
-            try {
-              execSync('git diff --quiet');
-            } catch (err) {
-              // There are changes to commit
-              execSync('git config user.name "PromptExpert Bot"');
-              execSync('git config user.email "promptexpert[bot]@users.noreply.github.com"');
-              execSync(`git commit -m "PromptExpert: ${result.summary || 'Updates based on expert analysis'}"`);
-              execSync('git push');
-            }
-          }
-          
-          process().catch(async err => {
-            console.error('Error:', err);
-            const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
-            const [owner, repo] = process.env.GITHUB_REPOSITORY.split('/');
-            await octokit.issues.createComment({
-              owner,
-              repo,
-              issue_number: process.env.PR_NUMBER,
-              body: `❌ PromptExpert encountered an error: ${err.message}`
-            });
-            process.exit(1);
-          });
-          SCRIPT
-          
-      - name: Handle invalid command
-        if: steps.parse.outputs.valid != 'true'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            await github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: `❌ **Invalid PromptExpert command format**
-              
-**Expected format:**
-\`\`\`
-@promptexpert <expert> <instructions>
-\`\`\`
-
-**Examples:**
-\`\`\`
-@promptexpert security analyze this PR for security vulnerabilities
-@promptexpert programming review the code quality and suggest improvements
-@promptexpert financial check if proper disclaimers are included
-\`\`\`
-
-**Available experts:** security, programming, financial, data-analysis, general`
-            })
+          node .github/scripts/promptexpert-handler.js

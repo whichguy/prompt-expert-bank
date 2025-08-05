@@ -43,6 +43,20 @@ Previous Performance:        New Performance:
 Ready to merge ✅
 ```
 
+### Automatic Improvement Workflow
+
+The system now includes three possible outcomes:
+
+1. **✅ MERGE** (Score ≥ 8.5/10) - Your prompt is ready to merge
+2. **💡 SUGGEST** (Score 6-8.5/10) - Automatically invokes @claude to implement improvements
+3. **❌ REJECT** (Score < 6/10) - PR is closed, significant rework needed
+
+When your prompt receives a SUGGEST outcome, the system will:
+- Automatically invoke @claude with specific improvements
+- Track iteration count (max 5 iterations)
+- Become more lenient with each iteration
+- Re-evaluate after improvements are made
+
 ## 🛠️ Setup Options
 
 ### Basic Setup
@@ -79,6 +93,32 @@ jobs:
 | Data Analysis | `data`, `analysis`, `analytics`, `visualization` | ✅ Ready |
 | Financial | `financial`, `finance`, `budget`, `investment` | ✅ Ready |
 | General Purpose | All other prompts (fallback expert) | ✅ Ready |
+
+## 💬 Manual Improvements with @promptexpert
+
+You can request targeted improvements to your prompts using the `@promptexpert` command in PR comments:
+
+```bash
+@promptexpert <domain> --suggest:"your improvement request"
+```
+
+### Examples:
+```bash
+# Add risk severity levels to a security prompt
+@promptexpert security --suggest:"Add risk severity levels with color coding"
+
+# Enhance financial analysis structure
+@promptexpert financial --suggest:"Add sections for ROI calculation and risk assessment"
+
+# Improve code review prompt
+@promptexpert programming --suggest:"Add examples of common code smells to detect"
+```
+
+### How it works:
+1. **You**: Comment on any PR with `@promptexpert` command
+2. **Expert**: Analyzes your prompt and implements the improvements
+3. **Bot**: Commits the changes directly to your PR
+4. **You**: Review the improvements and continue iterating
 
 ## 🏗️ Architecture
 
