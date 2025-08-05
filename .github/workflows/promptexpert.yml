@@ -60,10 +60,20 @@ jobs:
               body: '❌ Invalid command format. Use: `@promptexpert <domain> --suggest:"your suggestion"`'
             })
             
-      - name: Process valid command
+      - name: Install dependencies
         if: steps.parse.outputs.valid == 'true'
         run: |
-          echo "Processing PromptExpert command"
-          echo "Domain: ${{ steps.parse.outputs.domain }}"
-          echo "Suggestion: ${{ steps.parse.outputs.suggestion }}"
-          echo "TODO: Implement actual processing"
+          npm init -y
+          npm install @anthropic-ai/sdk@0.24.0 @octokit/rest@19.0.0
+          
+      - name: Process valid command
+        if: steps.parse.outputs.valid == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          DOMAIN: ${{ steps.parse.outputs.domain }}
+          SUGGESTION: ${{ steps.parse.outputs.suggestion }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          COMMENT_AUTHOR: ${{ github.event.comment.user.login }}
+        run: |
+          node .github/scripts/process-promptexpert.js
