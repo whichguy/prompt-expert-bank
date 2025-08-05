@@ -86,7 +86,7 @@ async function evaluate() {
     // Domain detection now always succeeds with 'general' as fallback
     
     // Load MD-based expert definition
-    const expertPath = path.join(__dirname, '..', '..', 'expert-definitions', `${domain}-expert.md`);
+    const expertPath = path.join(__dirname, 'expert-definitions', `${domain}-expert.md`);
     
     if (!fs.existsSync(expertPath)) {
       await octokit.issues.createComment({
