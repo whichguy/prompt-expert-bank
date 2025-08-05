@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 
 const fs = require('fs');
-const { Anthropic } = require('@anthropic-ai/sdk');
-const { Octokit } = require('@octokit/rest');
 
 async function main() {
+  // Use dynamic imports for ES modules
+  const { Anthropic } = await import('@anthropic-ai/sdk');
+  const { Octokit } = await import('@octokit/rest');
+
   const anthropic = new Anthropic({
     apiKey: process.env.ANTHROPIC_API_KEY,
   });
