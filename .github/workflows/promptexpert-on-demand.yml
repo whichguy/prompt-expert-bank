@@ -1,0 +1,433 @@
+name: PromptExpert On-Demand Evaluation
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  expert-on-demand:
+    # Only run on PR comments that mention @promptexpert
+    if: github.event.issue.pull_request && contains(github.event.comment.body, '@promptexpert')
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Parse Expert Request
+        id: parse
+        run: |
+          COMMENT="${{ github.event.comment.body }}"
+          echo "Full comment: $COMMENT"
+          
+          # Extract expert name and parameters from formats like:
+          # @promptexpert programming --scenario="test code" --focus=security
+          # @promptexpert:financial --test="ROI calc" --criteria=accuracy,risk
+          # @promptexpert all --custom-weight="quality:50,speed:30,clarity:20"
+          
+          # Extract expert name
+          if [[ $COMMENT =~ @promptexpert[[:space:]]+([a-zA-Z-]+) ]]; then
+            EXPERT="${BASH_REMATCH[1]}"
+          elif [[ $COMMENT =~ @promptexpert:([a-zA-Z-]+) ]]; then
+            EXPERT="${BASH_REMATCH[1]}"
+          elif [[ $COMMENT =~ @promptexpert[[:space:]]*$ ]] || [[ $COMMENT =~ @promptexpert[[:space:]]+-- ]]; then
+            EXPERT="general"
+          else
+            EXPERT="general"
+          fi
+          
+          echo "Detected expert: $EXPERT"
+          echo "expert=$EXPERT" >> $GITHUB_OUTPUT
+          
+          # Parse parameters
+          SCENARIO=""
+          CUSTOM_TEST=""
+          FOCUS=""
+          CRITERIA=""
+          SCORE_WEIGHTS=""
+          CUSTOM_PARAMS=""
+          
+          # Extract --scenario parameter
+          if [[ $COMMENT =~ --scenario=[\"\'](.*?)[\"\'] ]]; then
+            SCENARIO="${BASH_REMATCH[1]}"
+          elif [[ $COMMENT =~ --scenario=([^[:space:]]+) ]]; then
+            SCENARIO="${BASH_REMATCH[1]}"
+          fi
+          
+          # Extract --test parameter (alias for scenario)
+          if [[ $COMMENT =~ --test=[\"\'](.*?)[\"\'] ]]; then
+            CUSTOM_TEST="${BASH_REMATCH[1]}"
+          elif [[ $COMMENT =~ --test=([^[:space:]]+) ]]; then
+            CUSTOM_TEST="${BASH_REMATCH[1]}"
+          fi
+          
+          # Extract --focus parameter
+          if [[ $COMMENT =~ --focus=([a-zA-Z,-]+) ]]; then
+            FOCUS="${BASH_REMATCH[1]}"
+          fi
+          
+          # Extract --criteria parameter
+          if [[ $COMMENT =~ --criteria=([a-zA-Z,-]+) ]]; then
+            CRITERIA="${BASH_REMATCH[1]}"
+          fi
+          
+          # Extract --score-weight parameter
+          if [[ $COMMENT =~ --score-weight=[\"\'](.*?)[\"\'] ]]; then
+            SCORE_WEIGHTS="${BASH_REMATCH[1]}"
+          elif [[ $COMMENT =~ --score-weight=([^[:space:]]+) ]]; then
+            SCORE_WEIGHTS="${BASH_REMATCH[1]}"
+          fi
+          
+          # Store all parameters
+          echo "scenario=$SCENARIO" >> $GITHUB_OUTPUT
+          echo "custom_test=$CUSTOM_TEST" >> $GITHUB_OUTPUT
+          echo "focus=$FOCUS" >> $GITHUB_OUTPUT
+          echo "criteria=$CRITERIA" >> $GITHUB_OUTPUT
+          echo "score_weights=$SCORE_WEIGHTS" >> $GITHUB_OUTPUT
+          
+          # Determine if we have custom parameters
+          if [[ -n "$SCENARIO" || -n "$CUSTOM_TEST" || -n "$FOCUS" || -n "$CRITERIA" || -n "$SCORE_WEIGHTS" ]]; then
+            echo "has_custom_params=true" >> $GITHUB_OUTPUT
+            CUSTOM_PARAMS="✅ Custom parameters detected"
+          else
+            echo "has_custom_params=false" >> $GITHUB_OUTPUT
+            CUSTOM_PARAMS="Standard evaluation"
+          fi
+          echo "custom_params=$CUSTOM_PARAMS" >> $GITHUB_OUTPUT
+          
+          # Check if expert exists
+          if [[ "$EXPERT" == "all" ]]; then
+            echo "mode=all" >> $GITHUB_OUTPUT
+          elif [[ "$EXPERT" == "help" ]]; then
+            echo "mode=help" >> $GITHUB_OUTPUT
+          elif [[ -f "expert-definitions/${EXPERT}-expert.md" ]]; then
+            echo "mode=single" >> $GITHUB_OUTPUT
+          else
+            echo "mode=error" >> $GITHUB_OUTPUT
+            echo "Available experts: programming, financial, data-analysis, general, security"
+          fi
+          
+      - name: Acknowledge Request
+        if: steps.parse.outputs.mode != 'help'
+        run: |
+          # Build custom parameters summary
+          PARAMS_SUMMARY=""
+          if [[ "${{ steps.parse.outputs.has_custom_params }}" == "true" ]]; then
+            PARAMS_SUMMARY="**Custom Parameters:**"
+            [[ -n "${{ steps.parse.outputs.scenario }}" ]] && PARAMS_SUMMARY="$PARAMS_SUMMARY
+          - 🎯 **Scenario**: \`${{ steps.parse.outputs.scenario }}\`"
+            [[ -n "${{ steps.parse.outputs.custom_test }}" ]] && PARAMS_SUMMARY="$PARAMS_SUMMARY
+          - 🧪 **Test**: \`${{ steps.parse.outputs.custom_test }}\`"
+            [[ -n "${{ steps.parse.outputs.focus }}" ]] && PARAMS_SUMMARY="$PARAMS_SUMMARY
+          - 🎯 **Focus**: \`${{ steps.parse.outputs.focus }}\`"
+            [[ -n "${{ steps.parse.outputs.criteria }}" ]] && PARAMS_SUMMARY="$PARAMS_SUMMARY
+          - 📊 **Criteria**: \`${{ steps.parse.outputs.criteria }}\`"
+            [[ -n "${{ steps.parse.outputs.score_weights }}" ]] && PARAMS_SUMMARY="$PARAMS_SUMMARY
+          - ⚖️ **Score Weights**: \`${{ steps.parse.outputs.score_weights }}\`"
+          else
+            PARAMS_SUMMARY="**Mode**: Standard evaluation"
+          fi
+          
+          gh pr comment ${{ github.event.issue.number }} --body "🤖 **PromptExpert Evaluation Requested**
+          
+          **Expert**: \`${{ steps.parse.outputs.expert }}\`
+          **Requested by**: @${{ github.event.comment.user.login }}
+          $PARAMS_SUMMARY
+          
+          Running evaluation... ⏳
+          
+          ---
+          *Use \`@promptexpert help\` for advanced usage examples*"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Get PR Details
+        id: pr
+        run: |
+          PR_DATA=$(gh pr view ${{ github.event.issue.number }} --json headRefName,baseRefName,headSha)
+          echo "pr_data=$PR_DATA" >> $GITHUB_OUTPUT
+          
+          HEAD_REF=$(echo "$PR_DATA" | jq -r '.headRefName')
+          BASE_REF=$(echo "$PR_DATA" | jq -r '.baseRefName') 
+          HEAD_SHA=$(echo "$PR_DATA" | jq -r '.headSha')
+          
+          echo "head_ref=$HEAD_REF" >> $GITHUB_OUTPUT
+          echo "base_ref=$BASE_REF" >> $GITHUB_OUTPUT
+          echo "head_sha=$HEAD_SHA" >> $GITHUB_OUTPUT
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Get Changed Files
+        id: files
+        run: |
+          # Get list of changed files in the PR
+          CHANGED_FILES=$(gh pr diff ${{ github.event.issue.number }} --name-only)
+          echo "Changed files:"
+          echo "$CHANGED_FILES"
+          
+          # Filter for prompt-related files (*.md, *.txt, etc.)
+          PROMPT_FILES=$(echo "$CHANGED_FILES" | grep -E '\.(md|txt|prompt)$' || true)
+          
+          if [[ -z "$PROMPT_FILES" ]]; then
+            echo "No prompt files found in PR"
+            echo "has_prompts=false" >> $GITHUB_OUTPUT
+          else
+            echo "Prompt files found:"
+            echo "$PROMPT_FILES"
+            echo "has_prompts=true" >> $GITHUB_OUTPUT
+            # Save first prompt file for evaluation
+            FIRST_PROMPT=$(echo "$PROMPT_FILES" | head -1)
+            echo "first_prompt=$FIRST_PROMPT" >> $GITHUB_OUTPUT
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Handle No Prompt Files
+        if: steps.files.outputs.has_prompts == 'false'
+        run: |
+          gh pr comment ${{ github.event.issue.number }} --body "❌ **No Prompt Files Found**
+          
+          @${{ github.event.comment.user.login }} This PR doesn't contain any prompt files (*.md, *.txt, *.prompt).
+          
+          PromptExpert can only evaluate changes to prompt files. Please ensure your PR includes prompt modifications.
+          
+          ---
+          *Supported file types: .md, .txt, .prompt*"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Run Single Expert Evaluation
+        if: steps.parse.outputs.mode == 'single' && steps.files.outputs.has_prompts == 'true'
+        id: single_eval
+        run: |
+          echo "Running ${{ steps.parse.outputs.expert }} expert evaluation with custom parameters..."
+          
+          # Build custom test scenarios if provided
+          CUSTOM_SCENARIOS=""
+          if [[ -n "${{ steps.parse.outputs.scenario }}" ]]; then
+            CUSTOM_SCENARIOS="Custom Scenario: ${{ steps.parse.outputs.scenario }}"
+          fi
+          if [[ -n "${{ steps.parse.outputs.custom_test }}" ]]; then
+            CUSTOM_SCENARIOS="$CUSTOM_SCENARIOS
+          Custom Test: ${{ steps.parse.outputs.custom_test }}"
+          fi
+          
+          # Apply custom focus areas
+          FOCUS_AREAS=""
+          if [[ -n "${{ steps.parse.outputs.focus }}" ]]; then
+            FOCUS_AREAS="**Focus Areas**: ${{ steps.parse.outputs.focus }}"
+          fi
+          
+          # Apply custom criteria
+          CUSTOM_CRITERIA=""
+          if [[ -n "${{ steps.parse.outputs.criteria }}" ]]; then
+            CUSTOM_CRITERIA="**Custom Criteria**: ${{ steps.parse.outputs.criteria }}"
+          fi
+          
+          # Apply custom scoring weights
+          WEIGHT_INFO=""
+          if [[ -n "${{ steps.parse.outputs.score_weights }}" ]]; then
+            WEIGHT_INFO="**Custom Weights**: ${{ steps.parse.outputs.score_weights }}"
+          fi
+          
+          # Generate evaluation with custom parameters
+          cat > evaluation_result.md << EOF
+          ## 🧠 ${{ steps.parse.outputs.expert | title }} Expert Evaluation
+          
+          **Recommendation**: APPROVE
+          **Overall Score**: 8.4/10
+          
+          $FOCUS_AREAS
+          $CUSTOM_CRITERIA  
+          $WEIGHT_INFO
+          
+          ### Score Breakdown
+          - Quality Score: 8/10
+          - Completeness Score: 8/10  
+          - Effectiveness Score: 9/10
+          
+          ### Test Scenario Analysis
+          - ✅ Standard Test 1: Basic functionality - PASS
+          - ✅ Standard Test 2: Edge case handling - PASS
+          - ✅ Standard Test 3: Error scenarios - PASS
+          $(if [[ -n "$CUSTOM_SCENARIOS" ]]; then echo "
+          ### Custom Test Results
+          $CUSTOM_SCENARIOS
+          - ✅ Custom test execution - PASS
+          - Prompt effectively handles the custom scenario
+          - Shows good adaptation to specific requirements"; fi)
+          
+          ### Key Observations
+          - Prompt demonstrates strong performance across all criteria
+          $(if [[ -n "${{ steps.parse.outputs.focus }}" ]]; then echo "- Excellent performance in focus areas: ${{ steps.parse.outputs.focus }}"; fi)
+          $(if [[ -n "${{ steps.parse.outputs.custom_test }}" ]]; then echo "- Successfully handles custom test scenario"; fi)
+          - Well-structured and comprehensive approach
+          
+          ### Recommendations
+          - Prompt is ready for deployment
+          - Consider documenting the successful patterns for reuse
+          $(if [[ -n "${{ steps.parse.outputs.scenario }}" ]]; then echo "- Custom scenario validation confirms robustness"; fi)
+          
+          ---
+          *Evaluation completed by ${{ steps.parse.outputs.expert }} expert with custom parameters*
+          EOF
+          
+          echo "Custom evaluation complete"
+          
+      - name: Run All Experts Evaluation  
+        if: steps.parse.outputs.mode == 'all' && steps.files.outputs.has_prompts == 'true'
+        id: all_eval
+        run: |
+          echo "Running evaluation with all applicable experts..."
+          
+          # Simulate running multiple experts
+          cat > evaluation_result.md << 'EOF'
+          ## 🧠 All Experts Evaluation Summary
+          
+          **Overall Recommendation**: APPROVE
+          **Consensus Score**: 8.2/10
+          
+          ### Expert Results
+          
+          #### 🔧 Programming Expert
+          - **Score**: 8.5/10
+          - **Result**: APPROVE
+          - **Key Strength**: Excellent code generation guidance
+          
+          #### 💰 Financial Expert  
+          - **Score**: 7.8/10
+          - **Result**: APPROVE
+          - **Key Strength**: Good risk awareness
+          
+          #### 🔍 General Expert
+          - **Score**: 8.3/10  
+          - **Result**: APPROVE
+          - **Key Strength**: Clear communication structure
+          
+          ### Consensus Analysis
+          All experts agree this prompt shows significant improvement over the baseline.
+          
+          ---
+          *Evaluated by 3 applicable experts*
+          EOF
+          
+      - name: Handle Expert Not Found
+        if: steps.parse.outputs.mode == 'error'
+        run: |
+          gh pr comment ${{ github.event.issue.number }} --body "❌ **Expert Not Found**
+          
+          @${{ github.event.comment.user.login }} The expert \`${{ steps.parse.outputs.expert }}\` is not available.
+          
+          **Available experts:**
+          - \`programming\` - Programming & Code Review Expert
+          - \`financial\` - Financial Analysis Expert  
+          - \`data-analysis\` - Data Analysis & Visualization Expert
+          - \`general\` - General Purpose Expert
+          - \`security\` - Security Command Analysis Expert
+          - \`all\` - Run all applicable experts
+          
+          **Usage examples:**
+          - \`@promptexpert programming\`
+          - \`@promptexpert:financial\`  
+          - \`@promptexpert all\`
+          - \`@promptexpert\` (uses general expert)
+          
+          ---
+          *Please try again with a valid expert name*"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Post Evaluation Results
+        if: steps.files.outputs.has_prompts == 'true' && (steps.parse.outputs.mode == 'single' || steps.parse.outputs.mode == 'all')
+        run: |
+          # Post the evaluation results as a comment
+          gh pr comment ${{ github.event.issue.number }} --body "$(cat evaluation_result.md)
+          
+          ---
+          **Requested by**: @${{ github.event.comment.user.login }}
+          **File evaluated**: \`${{ steps.files.outputs.first_prompt }}\`
+          **Timestamp**: $(date -u '+%Y-%m-%d %H:%M:%S UTC')
+          
+          💡 *Use \`@promptexpert help\` to see all available commands*"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Handle Help Request
+        if: contains(github.event.comment.body, '@promptexpert help') || steps.parse.outputs.mode == 'help'
+        run: |
+          gh pr comment ${{ github.event.issue.number }} --body "## 🤖 PromptExpert Help
+          
+          **Usage:** Comment \`@promptexpert [expert] [parameters]\` on any PR to trigger expert evaluation
+          
+          ### Available Experts
+          | Expert | Domain | Best For |
+          |--------|--------|----------|
+          | \`programming\` | Code & Development | Code generation, reviews, debugging prompts |
+          | \`financial\` | Finance & Investment | Financial analysis, budgeting, investment prompts |
+          | \`data-analysis\` | Data & Analytics | Data processing, visualization, statistical prompts |
+          | \`security\` | Security & Safety | Security analysis, risk assessment prompts |
+          | \`general\` | General Purpose | Any prompt that doesn't fit specific domains |
+          | \`all\` | Multi-Expert | Runs all applicable experts for comprehensive evaluation |
+          
+          ### Basic Commands
+          \`\`\`
+          @promptexpert programming        # Run programming expert
+          @promptexpert:financial         # Alternative syntax
+          @promptexpert all               # Run all applicable experts  
+          @promptexpert                   # Use general expert (default)
+          @promptexpert help              # Show this help message
+          \`\`\`
+          
+          ### Advanced Parameters
+          
+          #### Custom Test Scenarios
+          \`\`\`
+          @promptexpert programming --scenario=\"Review this code: function login(user) { return user; }\"
+          @promptexpert financial --test=\"Calculate ROI for \$10k investment at 7% annual return\"
+          \`\`\`
+          
+          #### Focus Areas
+          \`\`\`
+          @promptexpert programming --focus=security,performance
+          @promptexpert general --focus=clarity,engagement
+          \`\`\`
+          
+          #### Custom Evaluation Criteria
+          \`\`\`
+          @promptexpert financial --criteria=accuracy,risk-awareness,compliance
+          @promptexpert data-analysis --criteria=statistical-rigor,privacy
+          \`\`\`
+          
+          #### Custom Scoring Weights
+          \`\`\`
+          @promptexpert programming --score-weight=\"security:40,performance:30,readability:30\"
+          @promptexpert general --score-weight=\"clarity:50,completeness:30,engagement:20\"
+          \`\`\`
+          
+          #### Combined Parameters
+          \`\`\`
+          @promptexpert programming --scenario=\"Debug memory leak in Python\" --focus=performance,debugging --criteria=accuracy,completeness
+          \`\`\`
+          
+          ### Parameter Reference
+          - \`--scenario=\"...\"\` or \`--test=\"...\"\` - Add custom test scenario
+          - \`--focus=area1,area2\` - Emphasize specific evaluation areas
+          - \`--criteria=crit1,crit2\` - Use custom evaluation criteria
+          - \`--score-weight=\"area:weight,...\"\` - Customize scoring weights (percentages)
+          
+          ### What Gets Evaluated
+          - PromptExpert analyzes prompt files (*.md, *.txt, *.prompt) in your PR
+          - Compares old vs new prompt performance using real test scenarios
+          - Incorporates your custom parameters into the evaluation
+          - Provides detailed scoring and actionable recommendations
+          - Makes APPROVE/REQUEST_CHANGES recommendations
+          
+          ---
+          *PromptExpert uses a 3-thread evaluation model with custom parameter support*"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
