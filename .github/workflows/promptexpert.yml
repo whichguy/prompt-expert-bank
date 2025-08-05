@@ -4,23 +4,66 @@ on:
   issue_comment:
     types: [created]
 
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
 jobs:
   handle-promptexpert:
-    if: contains(github.event.comment.body, '@promptexpert')
+    if: github.event.issue.pull_request && contains(github.event.comment.body, '@promptexpert')
     runs-on: ubuntu-latest
     steps:
-      - name: Echo trigger
-        run: |
-          echo "PromptExpert workflow triggered!"
-          echo "Comment: ${{ github.event.comment.body }}"
-          echo "PR: ${{ github.event.issue.number }}"
-          
-      - name: Checkout code
+      - name: Checkout PR branch
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          ref: ${{ format('refs/pull/{0}/head', github.event.issue.number) }}
           
-      - name: Process command
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          
+      - name: Parse and validate command
+        id: parse
         run: |
-          echo "Processing @promptexpert command..."
-          echo "This is a test implementation"
+          COMMENT="${{ github.event.comment.body }}"
+          echo "Parsing command: $COMMENT"
+          
+          # Extract domain and suggestion using grep
+          if echo "$COMMENT" | grep -qE '@promptexpert\s+\w+\s+--suggest:"[^"]+"'; then
+            DOMAIN=$(echo "$COMMENT" | grep -oE '@promptexpert\s+(\w+)' | awk '{print $2}')
+            SUGGESTION=$(echo "$COMMENT" | grep -oE '--suggest:"([^"]+)"' | sed 's/--suggest:"//' | sed 's/"$//')
+            
+            echo "domain=$DOMAIN" >> $GITHUB_OUTPUT
+            echo "suggestion=$SUGGESTION" >> $GITHUB_OUTPUT
+            echo "valid=true" >> $GITHUB_OUTPUT
+            
+            echo "Parsed successfully:"
+            echo "  Domain: $DOMAIN"
+            echo "  Suggestion: $SUGGESTION"
+          else
+            echo "valid=false" >> $GITHUB_OUTPUT
+            echo "Invalid command format"
+          fi
+          
+      - name: Post error if invalid
+        if: steps.parse.outputs.valid != 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '❌ Invalid command format. Use: `@promptexpert <domain> --suggest:"your suggestion"`'
+            })
+            
+      - name: Process valid command
+        if: steps.parse.outputs.valid == 'true'
+        run: |
+          echo "Processing PromptExpert command"
+          echo "Domain: ${{ steps.parse.outputs.domain }}"
+          echo "Suggestion: ${{ steps.parse.outputs.suggestion }}"
+          echo "TODO: Implement actual processing"
