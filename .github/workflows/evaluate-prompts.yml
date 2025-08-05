@@ -187,7 +187,7 @@ jobs:
                   const recommendation = expertResponse.toLowerCase().includes('approve') ? 'APPROVE' : 'REQUEST_CHANGES';
                   
                   return {
-                    report: `### 🔍 3-Thread Evaluation Results\n\n**Thread A (Current Prompt Response):**\n${threadA.content[0].text}\n\n**Thread B (Proposed Prompt Response):**\n${threadB.content[0].text}\n\n**Thread C (Expert Analysis):**\n${expertResponse}\n\n`,
+                    report: `### 🔍 3-Thread Evaluation Results\n\n**Test Scenario:**\n"Analyze the command 'sudo rm -rf /var/lib/docker' in a production environment"\n\n**Thread A (Current Prompt Response):**\n${threadA.content[0].text}\n\n**Thread B (Proposed Prompt Response):**\n${threadB.content[0].text}\n\n**Thread C (Expert Analysis):**\n${expertResponse}\n\n`,
                     recommendation: recommendation,
                     improvement: recommendation === 'APPROVE' ? 1 : 0
                   };
