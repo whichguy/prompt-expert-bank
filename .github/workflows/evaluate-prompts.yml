@@ -239,17 +239,19 @@ ${threadB.content[0].text}
 ## REQUIRED OUTPUT FORMAT
 
 1. Provide detailed analysis comparing both candidates
-2. Score Candidate B on a scale of 0-10
-3. End with one of these exact phrases:
-   - "FINAL DECISION: MERGE" (for approval)
-   - "FINAL DECISION: REJECT" (for rejection)
-   - "FINAL DECISION: SUGGEST" (for improvements needed)
+2. Include specific examples and reasoning
+3. End your response with this structured format:
 
-If SUGGEST, follow with:
-"IMPROVEMENTS NEEDED:
+=== EVALUATION RESULT ===
+DECISION: [MERGE/REJECT/SUGGEST]
+SCORE: [X]/10
+IMPROVEMENTS NEEDED:
 - [Specific improvement 1]
 - [Specific improvement 2]
-- [etc.]"`
+- [etc.]
+=== END RESULT ===
+
+Note: IMPROVEMENTS NEEDED section is only required for SUGGEST decisions.`
                     }]
                   });
                   
@@ -258,31 +260,73 @@ If SUGGEST, follow with:
                   // Parse expert decision
                   let recommendation = 'REQUEST_CHANGES';
                   let improvements = [];
+                  let score = null;
                   
-                  // Check for explicit decision
-                  if (expertResponse.includes('FINAL DECISION: MERGE')) {
-                    recommendation = 'APPROVE';
-                    console.log('Expert decision: MERGE');
-                  } else if (expertResponse.includes('FINAL DECISION: REJECT')) {
-                    recommendation = 'REQUEST_CHANGES';
-                    console.log('Expert decision: REJECT');
-                  } else if (expertResponse.includes('FINAL DECISION: SUGGEST')) {
-                    recommendation = 'SUGGEST';
-                    console.log('Expert decision: SUGGEST improvements');
+                  // First try structured format
+                  const structuredMatch = expertResponse.match(/=== EVALUATION RESULT ===([\s\S]*?)=== END RESULT ===/);
+                  if (structuredMatch) {
+                    const structuredContent = structuredMatch[1];
+                    
+                    // Extract decision
+                    const decisionMatch = structuredContent.match(/DECISION:\s*(\w+)/);
+                    if (decisionMatch) {
+                      const decision = decisionMatch[1].toUpperCase();
+                      if (decision === 'MERGE') {
+                        recommendation = 'APPROVE';
+                        console.log('Expert decision: MERGE (structured)');
+                      } else if (decision === 'REJECT') {
+                        recommendation = 'REQUEST_CHANGES';
+                        console.log('Expert decision: REJECT (structured)');
+                      } else if (decision === 'SUGGEST') {
+                        recommendation = 'SUGGEST';
+                        console.log('Expert decision: SUGGEST (structured)');
+                      }
+                    }
+                    
+                    // Extract score
+                    const scoreMatch = structuredContent.match(/SCORE:\s*(\d+(?:\.\d+)?)/);
+                    if (scoreMatch) {
+                      score = parseFloat(scoreMatch[1]);
+                    }
                     
                     // Extract improvements
-                    const improvementsMatch = expertResponse.match(/IMPROVEMENTS NEEDED:([\s\S]*?)(?:\n\n|$)/);
+                    const improvementsMatch = structuredContent.match(/IMPROVEMENTS NEEDED:([\s\S]*?)(?:===|$)/);
                     if (improvementsMatch) {
                       const improvementsList = improvementsMatch[1].trim();
                       improvements = improvementsList.split('\n').filter(line => line.trim().startsWith('-')).map(line => line.trim());
                     }
+                  } else {
+                    // Fallback to old format for backward compatibility
+                    if (expertResponse.includes('FINAL DECISION: MERGE')) {
+                      recommendation = 'APPROVE';
+                      console.log('Expert decision: MERGE (legacy)');
+                    } else if (expertResponse.includes('FINAL DECISION: REJECT')) {
+                      recommendation = 'REQUEST_CHANGES';
+                      console.log('Expert decision: REJECT (legacy)');
+                    } else if (expertResponse.includes('FINAL DECISION: SUGGEST')) {
+                      recommendation = 'SUGGEST';
+                      console.log('Expert decision: SUGGEST (legacy)');
+                      
+                      // Extract improvements (old format)
+                      const improvementsMatch = expertResponse.match(/IMPROVEMENTS NEEDED:([\s\S]*?)(?:\n\n|$)/);
+                      if (improvementsMatch) {
+                        const improvementsList = improvementsMatch[1].trim();
+                        improvements = improvementsList.split('\n').filter(line => line.trim().startsWith('-')).map(line => line.trim());
+                      }
+                    }
                   }
                   
                   // Fallback to score-based logic if no explicit decision
-                  if (!expertResponse.includes('FINAL DECISION:')) {
-                    const scoreMatches = expertResponse.match(/(?:score|rating)[:\s]*(\d+\.?\d*)\/10/i);
-                    if (scoreMatches) {
-                      const score = parseFloat(scoreMatches[1]);
+                  if (!structuredMatch && !expertResponse.includes('FINAL DECISION:')) {
+                    // Use extracted score if available, otherwise search for it
+                    if (!score) {
+                      const scoreMatches = expertResponse.match(/(?:score|rating)[:\s]*(\d+\.?\d*)\/10/i);
+                      if (scoreMatches) {
+                        score = parseFloat(scoreMatches[1]);
+                      }
+                    }
+                    
+                    if (score !== null) {
                       if (score >= 8.5) {
                         recommendation = 'APPROVE';
                         console.log(`Auto-approving based on high score: ${score}/10`);
