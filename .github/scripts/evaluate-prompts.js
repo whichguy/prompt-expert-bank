@@ -466,7 +466,7 @@ Note: IMPROVEMENTS NEEDED section is only required for SUGGEST decisions.`
           owner: OWNER,
           repo: REPO,
           issue_number: PR_NUMBER,
-          body: `@promptexpert ${domain} --suggest:"${suggestionText}"${iterationNote}`
+          body: `@promptexpert ${domain} ${suggestionText}${iterationNote}`
         });
       }
       
