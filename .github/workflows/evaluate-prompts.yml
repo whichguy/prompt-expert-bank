@@ -189,13 +189,7 @@ jobs:
                   });
                   
                   // Thread C: Expert comparison with clear instructions
-                  const iterationContext = improvementCycles > 0 ? \\`
-
-### ITERATION CONTEXT
-This is improvement iteration #\${improvementCycles + 1}. The prompt has been revised \${improvementCycles} time(s) based on previous expert feedback.
-\${improvementCycles >= 2 ? '- Be more lenient in your evaluation as improvements have been attempted multiple times' : ''}
-\${improvementCycles >= 3 ? '- Consider approving if the prompt is reasonably good (7.5/10 or better) to avoid endless cycles' : ''}
-\` : '';
+                  const iterationContext = improvementCycles > 0 ? '\\n\\n### ITERATION CONTEXT\\nThis is improvement iteration #' + (improvementCycles + 1) + '. The prompt has been revised ' + improvementCycles + ' time(s) based on previous expert feedback.\\n' + (improvementCycles >= 2 ? '- Be more lenient in your evaluation as improvements have been attempted multiple times\\n' : '') + (improvementCycles >= 3 ? '- Consider approving if the prompt is reasonably good (7.5/10 or better) to avoid endless cycles\\n' : '') : '';
 
                   const comparison = await anthropic.messages.create({
                     model: 'claude-3-5-sonnet-20241022',
