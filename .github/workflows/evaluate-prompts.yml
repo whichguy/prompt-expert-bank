@@ -74,6 +74,21 @@ jobs:
             console.log(`Evaluating PR #${PR_NUMBER} in ${OWNER}/${REPO}`);
             
             try {
+              // Track improvement iterations
+              const { data: comments } = await octokit.issues.listComments({
+                owner: OWNER,
+                repo: REPO,
+                issue_number: PR_NUMBER
+              });
+              
+              // Count previous SUGGEST cycles
+              const improvementCycles = comments.filter(comment => 
+                comment.body.includes('Expert decision: SUGGEST') || 
+                comment.body.includes('💡 SUGGEST - Improvements Needed')
+              ).length;
+              
+              console.log(`Improvement cycles detected: ${improvementCycles}`);
+              
               // Get PR files
               const { data: files } = await octokit.pulls.listFiles({
                 owner: OWNER,
@@ -174,6 +189,14 @@ jobs:
                   });
                   
                   // Thread C: Expert comparison with clear instructions
+                  const iterationContext = improvementCycles > 0 ? `
+
+### ITERATION CONTEXT
+This is improvement iteration #${improvementCycles + 1}. The prompt has been revised ${improvementCycles} time(s) based on previous expert feedback.
+${improvementCycles >= 2 ? '- Be more lenient in your evaluation as improvements have been attempted multiple times' : ''}
+${improvementCycles >= 3 ? '- Consider approving if the prompt is reasonably good (7.5/10 or better) to avoid endless cycles' : ''}
+` : '';
+
                   const comparison = await anthropic.messages.create({
                     model: 'claude-3-5-sonnet-20241022',
                     max_tokens: 4000,
@@ -197,7 +220,7 @@ When using SUGGEST, you MUST provide:
 2. Clear, actionable instructions for each improvement
 3. Examples where helpful
 
-Your evaluation will be used to automatically invoke an AI assistant to implement suggestions, so be precise and implementation-focused.
+Your evaluation will be used to automatically invoke an AI assistant to implement suggestions, so be precise and implementation-focused.${iterationContext}
 
 ## EXPERT DOMAIN CONTEXT
 
@@ -282,7 +305,17 @@ If SUGGEST, follow with:
               // Process each changed file
               let fullReport = `## 🏦 Prompt Expert Bank - Evaluation Report\n\n`;
               fullReport += `*Domain Expert: ${expertModule.name || domain}*\n`;
-              fullReport += `*Timestamp: ${new Date().toISOString()}*\n\n`;
+              fullReport += `*Timestamp: ${new Date().toISOString()}*\n`;
+              
+              // Add iteration tracking to report
+              if (improvementCycles > 0) {
+                fullReport += `*Improvement Iteration: ${improvementCycles + 1}*\n`;
+                if (improvementCycles >= 3) {
+                  fullReport += `\n⚠️ **Warning**: This PR has gone through ${improvementCycles} improvement cycles. Consider manual review if improvements are not converging.\n`;
+                }
+              }
+              
+              fullReport += `\n`;
               
               let overallRecommendation = 'APPROVE';
               let totalImprovement = 0;
@@ -393,22 +426,38 @@ If SUGGEST, follow with:
                 // SUGGEST case - Invoke @claude to implement improvements
                 console.log('Expert decision: SUGGEST - Invoking @claude for improvements...');
                 
-                let improvementsList = '';
-                if (overallImprovements.length > 0) {
-                  improvementsList = overallImprovements.join('\n');
+                // Check if we've hit the improvement limit
+                if (improvementCycles >= 5) {
+                  console.log('Maximum improvement cycles reached - converting to manual review');
+                  await octokit.issues.createComment({
+                    owner: OWNER,
+                    repo: REPO,
+                    issue_number: PR_NUMBER,
+                    body: `🛑 **Maximum improvement cycles reached (${improvementCycles})**\n\n` +
+                          `This PR has undergone multiple automated improvement attempts without converging to an acceptable solution.\n\n` +
+                          `**Manual intervention required**: Please review the expert feedback history and make the necessary changes manually.\n\n` +
+                          `The PR will remain open for manual improvements.`
+                  });
                 } else {
-                  improvementsList = 'Please review the expert analysis above and implement the suggested improvements.';
+                  let improvementsList = '';
+                  if (overallImprovements.length > 0) {
+                    improvementsList = overallImprovements.join('\n');
+                  } else {
+                    improvementsList = 'Please review the expert analysis above and implement the suggested improvements.';
+                  }
+                  
+                  const iterationNote = improvementCycles > 0 ? `\n\n📊 This is improvement iteration #${improvementCycles + 1}` : '';
+                  
+                  await octokit.issues.createComment({
+                    owner: OWNER,
+                    repo: REPO,
+                    issue_number: PR_NUMBER,
+                    body: `@claude please implement the following improvements suggested by the expert:\n\n${improvementsList}\n\nMake sure to:\n1. Address all the specific points raised by the expert\n2. Maintain the existing structure and intent of the prompt\n3. Enhance the areas identified as needing improvement\n4. Commit the changes to this PR branch${iterationNote}`
+                  });
                 }
                 
-                await octokit.issues.createComment({
-                  owner: OWNER,
-                  repo: REPO,
-                  issue_number: PR_NUMBER,
-                  body: `@claude please implement the following improvements suggested by the expert:\n\n${improvementsList}\n\nMake sure to:\n1. Address all the specific points raised by the expert\n2. Maintain the existing structure and intent of the prompt\n3. Enhance the areas identified as needing improvement\n4. Commit the changes to this PR branch`
-                });
-                
                 // Do not close the PR - let @claude work on it
-                console.log('PR remains open for @claude improvements');
+                console.log('PR remains open for improvements');
               } else if (autoCloseOnFail) {
                 // REJECT case - Close the PR
                 console.log('Expert decision: REJECT - Closing PR...');
