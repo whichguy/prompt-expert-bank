@@ -1,0 +1,163 @@
+name: PromptExpert PR Action
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  promptexpert-action:
+    if: contains(github.event.comment.body, '@promptexpert')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.issue.pull_request && format('refs/pull/{0}/head', github.event.issue.number) || github.ref }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: |
+          npm init -y
+          npm install @anthropic-ai/sdk@0.24.0 @octokit/rest@19.0.0
+
+      - name: Process PromptExpert Command
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          cat > process-command.js << 'EOF'
+          const { Anthropic } = require('@anthropic-ai/sdk');
+          const { Octokit } = require('@octokit/rest');
+          const fs = require('fs').promises;
+          const path = require('path');
+          
+          async function processCommand() {
+            const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
+            const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+            
+            const comment = process.env.COMMENT_BODY;
+            const issueNumber = parseInt(process.env.ISSUE_NUMBER);
+            const [owner, repo] = process.env.GITHUB_REPOSITORY.split('/');
+            
+            console.log(`Processing command in PR #${issueNumber}`);
+            
+            // Parse command: @promptexpert <domain> --suggest:"suggestion text"
+            const commandMatch = comment.match(/@promptexpert\s+(\w+)\s+--suggest:\s*"([^"]+)"/i);
+            
+            if (!commandMatch) {
+              await octokit.issues.createComment({
+                owner,
+                repo,
+                issue_number: issueNumber,
+                body: `❌ Invalid command format. Use: \`@promptexpert <domain> --suggest:"your suggestion here"\`\n\nExample: \`@promptexpert security --suggest:"Add risk scoring system and alternative command suggestions"\``
+              });
+              return;
+            }
+            
+            const [, domain, suggestion] = commandMatch;
+            
+            // Get PR files
+            const { data: files } = await octokit.pulls.listFiles({
+              owner,
+              repo,
+              pull_number: issueNumber
+            });
+            
+            const promptFiles = files.filter(f => 
+              f.filename.includes('prompt') && 
+              (f.filename.endsWith('.md') || f.filename.endsWith('.txt'))
+            );
+            
+            if (promptFiles.length === 0) {
+              await octokit.issues.createComment({
+                owner,
+                repo,
+                issue_number: issueNumber,
+                body: '❌ No prompt files found in this PR'
+              });
+              return;
+            }
+            
+            // Process the first prompt file
+            const targetFile = promptFiles[0];
+            const currentContent = await fs.readFile(targetFile.filename, 'utf-8');
+            
+            // Use Claude to implement the suggestion
+            const response = await anthropic.messages.create({
+              model: 'claude-3-5-sonnet-20241022',
+              max_tokens: 4000,
+              messages: [{
+                role: 'user',
+                content: `You are a prompt engineering expert specializing in ${domain}. 
+                
+Here is the current prompt implementation:
+
+${currentContent}
+
+The user has requested this specific improvement:
+"${suggestion}"
+
+Please rewrite the entire prompt incorporating this suggestion. Make sure to:
+1. Maintain the overall structure and purpose of the original prompt
+2. Fully implement the requested suggestion
+3. Ensure the enhancement is well-integrated
+4. Keep the prompt clear and effective
+
+Return ONLY the complete updated prompt content, no explanations or markdown code blocks.`
+              }]
+            });
+            
+            const updatedContent = response.content[0].text;
+            
+            // Write the updated content
+            await fs.writeFile(targetFile.filename, updatedContent);
+            
+            // Commit and push changes
+            const { execSync } = require('child_process');
+            
+            execSync('git config user.name "PromptExpert Bot"');
+            execSync('git config user.email "promptexpert[bot]@users.noreply.github.com"');
+            execSync(`git add ${targetFile.filename}`);
+            execSync(`git commit -m "PromptExpert: Implement suggestion for ${domain} domain
+
+Suggestion: ${suggestion}
+
+Requested by: @${process.env.COMMENT_AUTHOR}"`);
+            execSync('git push');
+            
+            await octokit.issues.createComment({
+              owner,
+              repo,
+              issue_number: issueNumber,
+              body: `✅ **PromptExpert Implementation Complete**\n\n**Domain**: ${domain}\n**Suggestion Applied**: "${suggestion}"\n\nThe prompt has been updated with your requested improvements. The evaluation workflow will now re-assess the updated implementation.`
+            });
+          }
+          
+          processCommand().catch(async err => {
+            console.error('Error:', err);
+            const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
+            const [owner, repo] = process.env.GITHUB_REPOSITORY.split('/');
+            await octokit.issues.createComment({
+              owner,
+              repo,
+              issue_number: parseInt(process.env.ISSUE_NUMBER),
+              body: `❌ PromptExpert encountered an error: ${err.message}`
+            });
+            process.exit(1);
+          });
+          EOF
+          
+          COMMENT_BODY="${{ github.event.comment.body }}" \
+          ISSUE_NUMBER="${{ github.event.issue.number }}" \
+          COMMENT_AUTHOR="${{ github.event.comment.user.login }}" \
+          node process-command.js
