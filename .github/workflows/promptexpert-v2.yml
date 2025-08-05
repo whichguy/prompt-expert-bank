@@ -173,23 +173,43 @@ jobs:
               max_tokens: 4000,
               messages: [{
                 role: 'user',
-                content: `You are an expert assistant helping with pull request review and actions.
+                content: `## YOUR ROLE
+You are evaluating git file contents from a pull request. You will act as the expert defined below to review these changes and take appropriate actions.
 
 ## EXPERT DEFINITION
 ${expertContent}
 
-## PULL REQUEST CONTEXT
-${JSON.stringify(prContext, null, 2)}
+## CONTEXT: GIT PULL REQUEST INFORMATION
+You are reviewing changes in a Git pull request. The following data shows what files have been modified, added, or deleted in this PR:
 
-## FILE CONTENTS
+### Pull Request Metadata
+${JSON.stringify(prContext.pr, null, 2)}
+
+### Changed Files (Git Diff Patches)
+${JSON.stringify(prContext.files, null, 2)}
+
+### Recent PR Comments
+${JSON.stringify(prContext.recent_comments, null, 2)}
+
+### Commit History
+${JSON.stringify(prContext.commits, null, 2)}
+
+## CURRENT FILE CONTENTS IN THE PR
+These are the actual file contents after the changes have been applied:
 ${JSON.stringify(fileContents, null, 2)}
 
 ## USER INSTRUCTIONS
-User @${process.env.COMMENT_AUTHOR} has requested:
+User @${process.env.COMMENT_AUTHOR} has requested you to:
 "${process.env.INSTRUCTIONS}"
 
 ## YOUR TASK
-Analyze the pull request and follow the user's instructions. Based on your analysis, provide a structured response indicating what actions to take.
+As the ${process.env.EXPERT} expert, analyze these git file changes and follow the user's instructions. Consider:
+1. The nature of the changes (additions, deletions, modifications)
+2. The quality and appropriateness of the changes for the ${process.env.EXPERT} domain
+3. Any issues or improvements needed
+4. The specific instructions from the user
+
+Based on your expert analysis, provide a structured response indicating what actions to take.
 
 ## RESPONSE FORMAT
 You must respond with a JSON object with this structure:
