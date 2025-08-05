@@ -1,5 +1,9 @@
 # Prompt Expert Bank Architecture
 
+## 🎯 Overview
+
+The Prompt Expert Bank is an automated system that evaluates prompt changes in GitHub PRs using domain-specific AI experts. Each expert is defined entirely in Markdown files and contains both domain expertise and evaluation criteria.
+
 ## 📁 Directory Structure
 
 ```
@@ -8,21 +12,20 @@ prompt-expert-bank/
 │   └── workflows/
 │       └── evaluate-prompts.yml    # Main reusable workflow for prompt evaluation
 │
-├── expert-definitions/             # Expert system prompts (Markdown)
-│   └── [domain]-expert.md         # Domain-specific expert definitions
+├── expert-definitions/             # Expert system prompts with scoring (Markdown)
+│   ├── programming-expert.md       # Programming & code review expert
+│   ├── financial-expert.md         # Financial analysis expert
+│   ├── data-analysis-expert.md     # Data analysis & visualization expert
+│   ├── general-expert.md           # General purpose expert
+│   └── security-expert.md          # Security command analysis expert
 │
 ├── test-scenarios/                 # Test cases for evaluation (JSON)
-│   └── [domain]-tests.json        # Domain-specific test scenarios
+│   ├── programming-tests.json      # Programming domain test scenarios
+│   ├── financial-tests.json        # Financial domain test scenarios
+│   ├── data-analysis-tests.json    # Data analysis test scenarios
+│   ├── general-tests.json          # General purpose test scenarios
+│   └── security-tests.json         # Security domain test scenarios
 │
-├── lib/                           # Core implementation (new architecture)
-│   ├── base-expert.js            # Base class with shared evaluation logic
-│   ├── expert-loader.js          # Dynamic expert loading system
-│   ├── legacy-expert-adapter.js  # Adapter for old expert compatibility
-│   └── [domain]-expert.js        # Domain-specific implementations
-│
-├── experts/                       # Legacy expert implementations
-│   ├── [domain]-expert.js        # Old-style experts (being phased out)
-│   └── index.js                  # Backward compatibility wrapper
 │
 ├── examples/                      # Example implementations
 │   ├── sample-security-prompt-v1.md # "Before" prompt example
@@ -31,7 +34,6 @@ prompt-expert-bank/
 │
 ├── ARCHITECTURE.md               # This file
 ├── README.md                     # Main documentation
-├── README_NEW_ARCHITECTURE.md    # New architecture guide
 ├── package.json                  # Node.js dependencies
 └── setup-ab-testing.sh          # Quick setup script
 ```
@@ -46,121 +48,172 @@ When a PR is created/updated with prompt changes:
 ### 2. Expert Selection
 The workflow:
 - Fetches changed files from the PR
-- Analyzes file content for domain keywords
-- Loads the appropriate expert module (new or legacy)
+- Analyzes file content for domain keywords (programming, financial, data, security, etc.)
+- Loads the appropriate expert from `expert-definitions/`
 - Falls back to general expert if no specific domain matches
 
-### 3. Evaluation Process
-- Expert loads test scenarios from JSON files
-- Both old and new prompts are tested against scenarios
-- Results are scored based on domain-specific metrics
-- Comprehensive report is generated with A/B comparison
+### 3. Three-Thread Evaluation Process
 
-### 4. PR Feedback
-- Detailed evaluation report posted as PR comment
-- Includes metrics, comparisons, and recommendations
-- Binary decision: APPROVE or REQUEST_CHANGES
-- Optional auto-close for failed evaluations
+**Thread A (Current Prompt Evaluation):**
+- Prime LLM with current/baseline prompt definition
+- Execute all test scenarios against the primed LLM
+- Capture complete results: prompt + all test responses → **Candidate A**
 
-## 🏗️ New Architecture
+**Thread B (PR Prompt Evaluation):**
+- Prime LLM with proposed PR prompt definition  
+- Execute same test scenarios against the primed LLM
+- Capture complete results: prompt + all test responses → **Candidate B**
 
-### Base Expert Class
-All experts extend `BaseExpert` which provides:
-- Test execution framework
-- Report generation
-- Metric calculation framework
-- A/B comparison logic
+**Thread C (Expert Comparison):**
+- Prime LLM with expert definition from `expert-definitions/[domain]-expert.md`
+- Feed **Candidate A** results (current prompt + responses)
+- Feed **Candidate B** results (PR prompt + responses)
+- Expert evaluates both candidates using domain-specific scoring criteria
+- **Makes binary decision**: APPROVE (merge PR) or REQUEST_CHANGES (close PR)
 
-### Expert Definitions (Markdown)
+### 4. PR Feedback & Actions
+- **If APPROVE**: PR gets merged automatically ✅
+- **If REQUEST_CHANGES**: 
+  - Detailed evaluation report posted as PR comment
+  - Includes scores, test results, observations, and specific recommendations
+  - PR gets closed automatically ❌
+  - Contributor knows exactly what to improve
+
+## 🏗️ Simplified Architecture
+
+### Expert Definitions (Self-Contained Markdown)
+Each expert is a single MD file containing:
+
 ```markdown
 ---
-name: Expert Name
-domain: domain-key
-description: What this expert evaluates
+name: Programming & Code Review Expert
+domain: programming
+description: Evaluates prompts that generate, review, or analyze code
 ---
 
-# Expert System Prompt
+# Programming & Code Review Expert
 
-You are an expert in...
+You are an expert in evaluating programming prompts...
+
+## Evaluation Criteria
+### 1. Code Quality (30%)
+- Correctness, security, performance...
+
+### 2. Code Review Capabilities (25%)
+- Issue detection, feedback quality...
+
+## Scoring Instructions
+Rate each criterion from 0-10:
+- Code Quality Score: /10
+- Code Review Score: /10
+- Overall Score: (weighted calculation)
+- Recommendation: APPROVE or REQUEST_CHANGES
+
+## Response Format
+Always respond with this exact structure:
+```
+## Evaluation Results
+### Score Breakdown
+- Code Quality Score: X/10
+### Overall Assessment  
+- Result: PASS/FAIL
+- Recommendation: APPROVE/REQUEST_CHANGES
+### Test Scenario Analysis
+### Key Observations
+### Recommendations
+```
 ```
 
 ### Test Scenarios (JSON)
+Domain-specific test cases:
 ```json
 {
   "scenarios": [
     {
-      "name": "Test name",
-      "input": "Test input",
+      "name": "Test 1: Code review request",
+      "input": "Review this code for security vulnerabilities: function login(user, pass) { return db.query(`SELECT * FROM users WHERE username='${user}' AND password='${pass}'`); }",
       "expected": {
-        "type": "expected-behavior",
-        "customField": "value"
+        "type": "warn",
+        "issues": ["SQL injection vulnerability"]
       }
     }
   ]
 }
 ```
 
-### Domain Expert Implementation
-```javascript
-class DomainExpert extends BaseExpert {
-  constructor() {
-    super(definitionPath, scenariosPath);
-  }
-  
-  checkIfPassed(evaluation, expected) {
-    // Domain-specific pass/fail logic
-  }
-  
-  calculateMetrics(testResults) {
-    // Domain-specific metrics
-  }
-}
-```
+### GitHub Actions Workflow
+Orchestrates the three-thread evaluation:
+- **Thread A**: Tests current prompt against all scenarios → saves results
+- **Thread B**: Tests PR prompt against same scenarios → saves results  
+- **Thread C**: Expert evaluates both result sets → makes decision
+- **Action**: Merge PR (APPROVE) or close with detailed feedback (REQUEST_CHANGES)
 
-## 🎯 Design Principles
+## 🎯 Key Design Principles
 
-1. **Separation of Concerns**: Expert prompts, test data, and logic are separate
-2. **Result-Focused**: Evaluates outputs, not prompt structure
-3. **Reusable Components**: Base class provides shared functionality
-4. **Backward Compatible**: Supports both old and new expert formats
-5. **Data-Driven Tests**: Test scenarios are JSON, easy to modify
-6. **Binary Decisions**: Only APPROVE or REQUEST_CHANGES (no neutral)
+1. **Three-Thread Architecture**: Separate LLM contexts for candidate A, candidate B, and expert evaluation
+2. **Single Source of Truth**: Each expert entirely defined in one MD file
+3. **Complete Context Capture**: Full prompt + responses fed to expert for comparison
+4. **Domain Expertise**: Expert prompts contain both knowledge AND scoring criteria
+5. **Structured Scoring**: Consistent 0-10 scale with weighted categories
+6. **Binary Decisions**: Only APPROVE or REQUEST_CHANGES (never neutral)
+7. **Transparent Feedback**: Detailed reports explain exactly why PRs are rejected
+8. **No Code Complexity**: Pure prompt-based evaluation, no JavaScript logic needed
 
 ## 🔧 Adding New Experts
 
-### New Architecture (Recommended)
-1. Create expert definition: `expert-definitions/[domain]-expert.md`
-2. Create test scenarios: `test-scenarios/[domain]-tests.json`
-3. Create implementation: `lib/[domain]-expert.js` (extends BaseExpert)
-4. Expert is automatically detected and loaded
+### Simple 2-Step Process:
+1. **Create expert definition**: `expert-definitions/[domain]-expert.md`
+   - Include domain expertise, evaluation criteria, and scoring instructions
+   - Define structured response format for consistent parsing
 
-### Legacy Architecture (Still Supported)
-1. Create expert: `experts/[domain]-expert.js`
-2. Include test scenarios in the JavaScript file
-3. Implement evaluatePrompts method
+2. **Create test scenarios**: `test-scenarios/[domain]-tests.json`  
+   - Define test cases that cover the domain's key evaluation areas
+   - Include expected behaviors for different scenario types
+
+That's it! GitHub Actions automatically detects domains and uses the appropriate expert.
 
 ## 📊 Current Experts
 
-| Expert | Status | Architecture | Test Scenarios |
-|--------|--------|--------------|----------------|
-| Security | ✅ Implemented | New | 10 scenarios |
-| Programming | ✅ Implemented | Legacy | 15 scenarios |
-| Financial | ✅ Implemented | Legacy | 10 scenarios |
-| Data Analysis | ✅ Implemented | Legacy | 10 scenarios |
-| General Purpose | ✅ Implemented | Legacy | 12 scenarios |
+| Expert | Domain | Status | Test Scenarios |
+|--------|--------|--------|----------------|
+| Programming & Code Review | programming | ✅ Active | 5 scenarios |
+| Financial Analysis | financial | ✅ Active | 5 scenarios |
+| Data Analysis & Visualization | data-analysis | ✅ Active | 5 scenarios |
+| General Purpose | general | ✅ Active | 5 scenarios |
+| Security Command Analysis | security | ✅ Active | 10 scenarios |
 
-## 🔄 Migration Plan
+## 🚀 Benefits of Three-Thread Architecture
 
-1. **Phase 1**: Support both architectures (✅ Complete)
-2. **Phase 2**: Convert all experts to new architecture (In Progress)
-3. **Phase 3**: Deprecate legacy architecture
-4. **Phase 4**: Remove legacy code
+### For Evaluation Quality:
+- **Complete Context**: Expert sees full prompt + actual LLM responses
+- **Real Performance**: Tests actual behavior, not just prompt text
+- **Comparative Analysis**: Direct side-by-side evaluation of candidates
+- **Domain Expertise**: Expert applies specialized knowledge to scoring
+
+### For Maintainers:
+- **No Code Required**: Pure prompt-based system, edit MD files only
+- **Easy Expert Creation**: Add new domains without programming
+- **Transparent Logic**: All evaluation criteria visible in expert definitions
+- **Simple Architecture**: Three API calls, no complex state management
+
+### For Contributors:
+- **Clear Feedback**: Detailed reports explain exactly why PRs are rejected
+- **Actionable Guidance**: Specific recommendations for improvement
+- **Fair Comparison**: Both prompts tested under identical conditions
+- **Domain-Specific**: Get expert-level feedback tailored to prompt type
+
+## 🔄 Architecture Evolution
+
+- ✅ **Phase 1**: Three-thread evaluation model defined
+- ✅ **Phase 2**: All experts converted to MD-only format  
+- ✅ **Phase 3**: JavaScript complexity completely removed
+- ✅ **Phase 4**: Pure prompt-based evaluation system achieved
 
 ## 🚀 Future Enhancements
 
-1. Convert remaining experts to new architecture
-2. Add more domain-specific experts
-3. Create expert validation framework
-4. Build expert performance metrics dashboard
-5. Support for multi-modal prompts (images, etc.)
-6. Integration with more LLM providers
+1. **Multi-Modal Support**: Evaluate prompts with images, audio, etc.
+2. **Performance Metrics**: Track expert accuracy and response times
+3. **A/B Testing**: Compare different expert configurations
+4. **Custom Domains**: Allow repositories to define custom expert domains
+5. **LLM Provider Options**: Support multiple LLM providers beyond Anthropic
+6. **Expert Validation**: Automated testing of expert definitions
