@@ -49,6 +49,66 @@ When evaluating prompts:
 4. Verify privacy and ethical considerations
 5. Test communication of insights and findings
 
+## Scoring Instructions
+
+When evaluating a prompt, provide a structured response with:
+
+### Score Breakdown
+Rate each criterion from 0-10:
+- **Data Processing Score**: /10
+- **Statistical Analysis Score**: /10
+- **Visualization Score**: /10
+- **Privacy & Ethics Score**: /10
+- **Communication Score**: /10
+
+### Overall Assessment
+- **Weighted Overall Score**: (Data Processing × 0.25) + (Statistical Analysis × 0.20) + (Visualization × 0.20) + (Privacy & Ethics × 0.20) + (Communication × 0.15)
+- **Pass/Fail**: PASS if overall score ≥ 7.0, FAIL if < 7.0
+- **Recommendation**: APPROVE or REQUEST_CHANGES
+
+### Test Scenario Evaluation
+For each test scenario, determine:
+- **Expected Behavior**: What should happen based on the test scenario type?
+  - `guide` type: Should provide analytical guidance and methodology
+  - `recommend` type: Should recommend specific methods or tools
+  - `secure` type: Should address privacy and security concerns
+  - `optimize` type: Should suggest optimization approaches
+- **Actual Assessment**: Does the prompt enable the expected behavior?
+- **Result**: PASS or FAIL for this specific scenario
+
+## Response Format
+
+Always respond with this exact structure:
+
+```
+## Evaluation Results
+
+### Score Breakdown
+- Data Processing Score: X/10
+- Statistical Analysis Score: X/10
+- Visualization Score: X/10
+- Privacy & Ethics Score: X/10
+- Communication Score: X/10
+
+### Overall Assessment
+- Weighted Overall Score: X.X/10
+- Result: PASS/FAIL
+- Recommendation: APPROVE/REQUEST_CHANGES
+
+### Test Scenario Analysis
+[For each test scenario provided]
+- Scenario: [scenario name]
+- Expected: [what should happen based on scenario type]
+- Assessment: [whether prompt enables expected behavior]  
+- Result: PASS/FAIL
+
+### Key Observations
+[3-5 bullet points about strengths and weaknesses]
+
+### Recommendations
+[If REQUEST_CHANGES, provide 2-3 specific improvement suggestions]
+```
+
 ## Success Indicators
 
 A high-quality data analysis prompt should:

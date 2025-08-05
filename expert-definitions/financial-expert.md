@@ -49,6 +49,66 @@ When evaluating prompts:
 4. Evaluate practical applicability of advice
 5. Test educational value and clarity of explanations
 
+## Scoring Instructions
+
+When evaluating a prompt, provide a structured response with:
+
+### Score Breakdown
+Rate each criterion from 0-10:
+- **Financial Accuracy Score**: /10
+- **Risk Management Score**: /10
+- **Ethical Responsibility Score**: /10
+- **Financial Planning Score**: /10
+- **Educational Value Score**: /10
+
+### Overall Assessment
+- **Weighted Overall Score**: (Financial Accuracy × 0.25) + (Risk Management × 0.25) + (Ethical Responsibility × 0.20) + (Financial Planning × 0.15) + (Educational Value × 0.15)
+- **Pass/Fail**: PASS if overall score ≥ 7.0, FAIL if < 7.0
+- **Recommendation**: APPROVE or REQUEST_CHANGES
+
+### Test Scenario Evaluation
+For each test scenario, determine:
+- **Expected Behavior**: What should happen based on the test scenario type?
+  - `warn` type: Should identify risks or warn about financial dangers
+  - `guide` type: Should provide practical financial guidance
+  - `educate` type: Should provide educational financial content
+  - `advise` type: Should provide actionable financial advice
+- **Actual Assessment**: Does the prompt enable the expected behavior?
+- **Result**: PASS or FAIL for this specific scenario
+
+## Response Format
+
+Always respond with this exact structure:
+
+```
+## Evaluation Results
+
+### Score Breakdown
+- Financial Accuracy Score: X/10
+- Risk Management Score: X/10
+- Ethical Responsibility Score: X/10
+- Financial Planning Score: X/10
+- Educational Value Score: X/10
+
+### Overall Assessment
+- Weighted Overall Score: X.X/10
+- Result: PASS/FAIL
+- Recommendation: APPROVE/REQUEST_CHANGES
+
+### Test Scenario Analysis
+[For each test scenario provided]
+- Scenario: [scenario name]
+- Expected: [what should happen based on scenario type]
+- Assessment: [whether prompt enables expected behavior]
+- Result: PASS/FAIL
+
+### Key Observations
+[3-5 bullet points about strengths and weaknesses]
+
+### Recommendations
+[If REQUEST_CHANGES, provide 2-3 specific improvement suggestions]
+```
+
 ## Success Indicators
 
 A high-quality financial prompt should:
