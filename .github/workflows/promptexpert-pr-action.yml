@@ -50,21 +50,89 @@ jobs:
             const [owner, repo] = process.env.GITHUB_REPOSITORY.split('/');
             
             console.log(`Processing command in PR #${issueNumber}`);
+            console.log(`Repository: ${owner}/${repo}`);
+            console.log(`Comment author: ${process.env.COMMENT_AUTHOR}`);
+            console.log(`Full comment: ${comment}`);
             
             // Parse command: @promptexpert <domain> --suggest:"suggestion text"
             const commandMatch = comment.match(/@promptexpert\s+(\w+)\s+--suggest:\s*"([^"]+)"/i);
             
+            // Also check for common mistakes
+            const partialMatch = comment.match(/@promptexpert\s+(.+)/i);
+            
             if (!commandMatch) {
+              let debugInfo = '';
+              
+              if (partialMatch) {
+                const fullCommand = partialMatch[1];
+                debugInfo = `\n\n**Debug Information:**\n`;
+                debugInfo += `- Received: \`@promptexpert ${fullCommand}\`\n`;
+                
+                // Check for missing domain
+                if (fullCommand.startsWith('--suggest:')) {
+                  debugInfo += `- Issue: Missing domain parameter\n`;
+                  debugInfo += `- Expected format: \`@promptexpert <domain> --suggest:"text"\`\n`;
+                }
+                // Check for missing quotes
+                else if (fullCommand.includes('--suggest:') && !fullCommand.includes('"')) {
+                  debugInfo += `- Issue: Missing quotes around suggestion text\n`;
+                  debugInfo += `- Suggestion text must be wrapped in double quotes\n`;
+                }
+                // Check for wrong flag format
+                else if (fullCommand.includes('--') && !fullCommand.includes('--suggest:')) {
+                  const flagMatch = fullCommand.match(/--(\w+)/);
+                  if (flagMatch) {
+                    debugInfo += `- Issue: Invalid flag \`--${flagMatch[1]}\`\n`;
+                    debugInfo += `- Only \`--suggest:\` is supported\n`;
+                  }
+                }
+                // Check for missing flag
+                else if (!fullCommand.includes('--')) {
+                  debugInfo += `- Issue: Missing \`--suggest:\` flag\n`;
+                  debugInfo += `- The command requires the --suggest: flag followed by quoted text\n`;
+                }
+                else {
+                  debugInfo += `- Issue: Unrecognized command format\n`;
+                }
+              } else {
+                debugInfo = `\n\n**Debug Information:**\n`;
+                debugInfo += `- Could not parse any arguments after @promptexpert\n`;
+                debugInfo += `- Make sure to include both domain and suggestion\n`;
+              }
+              
               await octokit.issues.createComment({
                 owner,
                 repo,
                 issue_number: issueNumber,
-                body: `❌ Invalid command format. Use: \`@promptexpert <domain> --suggest:"your suggestion here"\`\n\nExample: \`@promptexpert security --suggest:"Add risk scoring system and alternative command suggestions"\``
+                body: `❌ **Invalid PromptExpert Command Format**\n\n**Expected format:**\n\`\`\`\n@promptexpert <domain> --suggest:"your suggestion here"\n\`\`\`\n\n**Valid domains:** security, programming, data-analysis, financial, general\n\n**Example:**\n\`\`\`\n@promptexpert security --suggest:"Add risk scoring system and alternative command suggestions"\n\`\`\`${debugInfo}`
               });
               return;
             }
             
             const [, domain, suggestion] = commandMatch;
+            
+            // Validate domain
+            const validDomains = ['security', 'programming', 'data-analysis', 'financial', 'general'];
+            if (!validDomains.includes(domain.toLowerCase())) {
+              await octokit.issues.createComment({
+                owner,
+                repo,
+                issue_number: issueNumber,
+                body: `❌ **Invalid Domain Specified**\n\n**Received domain:** \`${domain}\`\n\n**Valid domains:**\n${validDomains.map(d => `- \`${d}\``).join('\n')}\n\n**Example:**\n\`\`\`\n@promptexpert security --suggest:"Add risk scoring system"\n\`\`\`\n\n**Note:** The domain should match the type of prompt you're improving (security, programming, etc.)`
+              });
+              return;
+            }
+            
+            // Validate suggestion
+            if (!suggestion || suggestion.trim().length < 10) {
+              await octokit.issues.createComment({
+                owner,
+                repo,
+                issue_number: issueNumber,
+                body: `❌ **Invalid Suggestion**\n\n**Issue:** Suggestion is too short or empty\n**Received:** "${suggestion || '(empty)'}"\n\n**Requirements:**\n- Suggestion must be at least 10 characters long\n- Provide clear, specific improvement instructions\n\n**Good example:**\n\`\`\`\n@promptexpert security --suggest:"Add a risk scoring system with severity levels (low, medium, high, critical) and include specific remediation steps for each identified vulnerability"\n\`\`\``
+              });
+              return;
+            }
             
             // Get PR files
             const { data: files } = await octokit.pulls.listFiles({
@@ -139,7 +207,7 @@ Requested by: @${process.env.COMMENT_AUTHOR}"`);
               owner,
               repo,
               issue_number: issueNumber,
-              body: `✅ **PromptExpert Implementation Complete**\n\n**Domain**: ${domain}\n**Suggestion Applied**: "${suggestion}"\n\nThe prompt has been updated with your requested improvements. The evaluation workflow will now re-assess the updated implementation.`
+              body: `✅ **PromptExpert Implementation Complete**\n\n**Domain**: ${domain}\n**File Updated**: \`${targetFile.filename}\`\n**Suggestion Applied**: "${suggestion}"\n\n**What happens next:**\n1. The evaluation workflow will automatically re-run\n2. The ${domain} expert will assess the updated prompt\n3. You'll receive a new evaluation report\n\n**Commit Details:**\n- Author: @${process.env.COMMENT_AUTHOR}\n- Implementation: PromptExpert Bot\n- Time: ${new Date().toISOString()}`
             });
           }
           
