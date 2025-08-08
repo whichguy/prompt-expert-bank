@@ -216,11 +216,25 @@ async function evaluate() {
       pull_number: PR_NUMBER
     });
     
-    // Filter for prompt files - look for markdown or text files that appear to be prompts
-    const promptFiles = files.filter(f => 
-      (f.filename.includes('prompt') || f.filename.includes('instruction') || f.filename.includes('system')) && 
-      (f.filename.endsWith('.md') || f.filename.endsWith('.txt'))
-    );
+    // Filter for prompt files - support text, markdown, PDFs, and images
+    const promptFiles = files.filter(f => {
+      const isPromptRelated = f.filename.includes('prompt') || 
+                              f.filename.includes('instruction') || 
+                              f.filename.includes('system') ||
+                              f.filename.includes('spec') ||
+                              f.filename.includes('requirement');
+      
+      const isSupportedType = f.filename.endsWith('.md') || 
+                              f.filename.endsWith('.txt') ||
+                              f.filename.endsWith('.pdf') ||
+                              f.filename.endsWith('.png') ||
+                              f.filename.endsWith('.jpg') ||
+                              f.filename.endsWith('.jpeg') ||
+                              f.filename.endsWith('.gif') ||
+                              f.filename.endsWith('.webp');
+      
+      return isPromptRelated && isSupportedType;
+    });
     
     // Detect domain from filename and content, or use default
     let domain = 'programming'; // Default domain when no prompt files
@@ -368,13 +382,21 @@ async function evaluate() {
         
         if (file.synthetic) {
           // For context-only evaluation, create synthetic prompts
-          oldContent = `You are a helpful assistant. Please help with the user's request.`;
-          newContent = `You are a helpful assistant with access to repository context.
+          oldContent = {
+            type: 'text',
+            content: `You are a helpful assistant. Please help with the user's request.`,
+            filename: 'synthetic'
+          };
+          newContent = {
+            type: 'text',
+            content: `You are a helpful assistant with access to repository context.
           
 When responding to requests:
 1. Reference specific files and code from the repository context when relevant
 2. Use exact values, endpoints, and configurations from the provided files
-3. Provide accurate, context-aware responses based on the repository structure`;
+3. Provide accurate, context-aware responses based on the repository structure`,
+            filename: 'synthetic'
+          };
         } else if (useExternalBaseline) {
           // Use external baseline repo for Thread A
           console.log(`Using external baseline repo ${BASELINE_REPO} for Thread A`);
@@ -388,7 +410,11 @@ When responding to requests:
             } else if (file.status === 'renamed' && file.previousFilename) {
               oldContent = await getFileContent(octokit, OWNER, REPO, file.previousFilename, PR_NUMBER, 'base');
             } else {
-              oldContent = `You are a helpful assistant. Please help with the user's request.`;
+              oldContent = {
+                type: 'text',
+                content: `You are a helpful assistant. Please help with the user's request.`,
+                filename: file.filename
+              };
             }
           }
           
@@ -405,19 +431,31 @@ When responding to requests:
           if (file.previousFilename) {
             oldContent = await getFileContent(octokit, OWNER, REPO, file.previousFilename, PR_NUMBER, 'base');
           } else {
-            oldContent = `You are a helpful assistant. Please help with the user's request.`;
+            oldContent = {
+              type: 'text',
+              content: `You are a helpful assistant. Please help with the user's request.`,
+              filename: file.previousFilename || file.filename
+            };
           }
           newContent = await getFileContent(octokit, OWNER, REPO, file.filename, null, 'head');
           console.log(`Renamed file: ${file.previousFilename || 'new'} -> ${file.filename}`);
         } else if (file.status === 'added') {
           // Added file: use generic baseline for Thread A, new content for Thread B
-          oldContent = `You are a helpful assistant. Please help with the user's request.`;
+          oldContent = {
+            type: 'text',
+            content: `You are a helpful assistant. Please help with the user's request.`,
+            filename: file.filename
+          };
           newContent = await getFileContent(octokit, OWNER, REPO, file.filename, null, 'head');
           console.log(`Added file: using generic baseline vs ${file.filename}`);
         } else if (file.status === 'removed') {
           // Removed file: get base version for Thread A, use generic for Thread B
           oldContent = await getFileContent(octokit, OWNER, REPO, file.filename, PR_NUMBER, 'base');
-          newContent = `You are a helpful assistant. Please help with the user's request.`;
+          newContent = {
+            type: 'text',
+            content: `You are a helpful assistant. Please help with the user's request.`,
+            filename: file.filename
+          };
           console.log(`Removed file: ${file.filename} vs generic`);
         } else {
           // Fallback: try to get both versions
@@ -436,56 +474,108 @@ When responding to requests:
         const threadAMessages = [];
         const threadBMessages = [];
         
+        // Build content messages for old and new content (handles multimodal)
+        const oldContentMessages = buildContentMessage(oldContent, 'You are primed with this prompt definition');
+        const newContentMessages = buildContentMessage(newContent, 'You are primed with this prompt definition');
+        
         // Add context messages first (if available)
         if (contextMessages.length > 0) {
           console.log(`[EVALUATE] Injecting ${contextMessages.length} context messages into BOTH evaluation threads`);
           console.log(`[EVALUATE] Context includes files from: ${repoContext.summary ? repoContext.summary.totalFiles + ' files' : 'legacy format'}`);
           console.log(`[EVALUATE] Both Thread A and Thread B will receive the same repository context`);
           
-          // Thread A gets context + old prompt
+          // Build content array for Thread A
+          const threadAContent = [...contextMessages];
+          
+          // Add old content (can be text or multimodal)
+          if (Array.isArray(oldContentMessages)) {
+            threadAContent.push(...oldContentMessages);
+          } else {
+            threadAContent.push(oldContentMessages);
+          }
+          
+          // Add test scenario
+          threadAContent.push({
+            type: 'text',
+            text: `\n\nNow respond to this test scenario: "${testScenario}"`
+          });
+          
           threadAMessages.push({
             role: 'user',
-            content: [
-              ...contextMessages,
-              {
-                type: 'text',
-                text: `\n\nYou are primed with this prompt definition:\n\n${oldContent}\n\nNow respond to this test scenario: "${testScenario}"`
-              }
-            ]
+            content: threadAContent
           });
           console.log(`[EVALUATE] Thread A prepared with repository context + baseline prompt`);
           
-          // Thread B gets THE SAME context + new prompt
+          // Build content array for Thread B
+          const threadBContent = [...contextMessages];
+          
+          // Add new content (can be text or multimodal)
+          if (Array.isArray(newContentMessages)) {
+            threadBContent.push(...newContentMessages);
+          } else {
+            threadBContent.push(newContentMessages);
+          }
+          
+          // Add test scenario
+          threadBContent.push({
+            type: 'text',
+            text: `\n\nNow respond to this test scenario: "${testScenario}"`
+          });
+          
           threadBMessages.push({
             role: 'user',
-            content: [
-              ...contextMessages,
-              {
-                type: 'text',
-                text: `\n\nYou are primed with this prompt definition:\n\n${newContent}\n\nNow respond to this test scenario: "${testScenario}"`
-              }
-            ]
+            content: threadBContent
           });
           console.log(`[EVALUATE] Thread B prepared with repository context + PR prompt`);
           console.log(`[EVALUATE] File IDs from repository context are shared between threads`);
         } else {
           console.log(`[EVALUATE] No repository context available, using standard evaluation`);
-          // No context, use simple format
+          
+          // Build content for Thread A (no context)
+          const threadAContent = [];
+          if (Array.isArray(oldContentMessages)) {
+            threadAContent.push(...oldContentMessages);
+          } else {
+            threadAContent.push(oldContentMessages);
+          }
+          threadAContent.push({
+            type: 'text',
+            text: `\n\nNow respond to this test scenario: "${testScenario}"`
+          });
+          
           threadAMessages.push({
             role: 'user',
-            content: `You are primed with this prompt definition:\n\n${oldContent}\n\nNow respond to this test scenario: "${testScenario}"`
+            content: threadAContent
+          });
+          
+          // Build content for Thread B (no context)
+          const threadBContent = [];
+          if (Array.isArray(newContentMessages)) {
+            threadBContent.push(...newContentMessages);
+          } else {
+            threadBContent.push(newContentMessages);
+          }
+          threadBContent.push({
+            type: 'text',
+            text: `\n\nNow respond to this test scenario: "${testScenario}"`
           });
           
           threadBMessages.push({
             role: 'user',
-            content: `You are primed with this prompt definition:\n\n${newContent}\n\nNow respond to this test scenario: "${testScenario}"`
+            content: threadBContent
           });
         }
         
         // Log Thread A content
         console.log(`[THREAD A] Content being sent:`);
-        console.log(`[THREAD A] - Prompt content length: ${oldContent.length} chars`);
-        console.log(`[THREAD A] - First 200 chars of prompt: ${oldContent.substring(0, 200)}...`);
+        const oldContentText = oldContent?.content || oldContent || '';
+        console.log(`[THREAD A] - Prompt content type: ${oldContent?.type || 'text'}`);
+        if (oldContent?.type === 'media') {
+          console.log(`[THREAD A] - Media file: ${oldContent.filename} (${oldContent.mediaType})`);
+        } else {
+          console.log(`[THREAD A] - Prompt content length: ${oldContentText.length} chars`);
+          console.log(`[THREAD A] - First 200 chars of prompt: ${oldContentText.substring(0, 200)}...`);
+        }
         console.log(`[THREAD A] - Context messages: ${contextMessages.length}`);
         if (contextMessages.length > 0) {
           console.log(`[THREAD A] - Context includes: ${repoContext?.summary?.totalFiles || 0} files, ${Math.round((repoContext?.summary?.totalSize || 0) / 1024)}KB`);
@@ -501,8 +591,14 @@ When responding to requests:
         
         // Log Thread B content
         console.log(`[THREAD B] Content being sent:`);
-        console.log(`[THREAD B] - Prompt content length: ${newContent.length} chars`);
-        console.log(`[THREAD B] - First 200 chars of prompt: ${newContent.substring(0, 200)}...`);
+        const newContentText = newContent?.content || newContent || '';
+        console.log(`[THREAD B] - Prompt content type: ${newContent?.type || 'text'}`);
+        if (newContent?.type === 'media') {
+          console.log(`[THREAD B] - Media file: ${newContent.filename} (${newContent.mediaType})`);
+        } else {
+          console.log(`[THREAD B] - Prompt content length: ${newContentText.length} chars`);
+          console.log(`[THREAD B] - First 200 chars of prompt: ${newContentText.substring(0, 200)}...`);
+        }
         console.log(`[THREAD B] - Context messages: ${contextMessages.length}`);
         if (contextMessages.length > 0) {
           console.log(`[THREAD B] - Context includes: ${repoContext?.summary?.totalFiles || 0} files, ${Math.round((repoContext?.summary?.totalSize || 0) / 1024)}KB`);
@@ -630,6 +726,30 @@ This context was used to enhance the evaluation accuracy with cache control for 
 - **Thread B Source**: Current PR changes
 ` : '';
         
+        // Extract display content for report
+        let oldContentDisplay = '';
+        let newContentDisplay = '';
+        
+        if (oldContent?.type === 'media') {
+          oldContentDisplay = `[${oldContent.mediaType} file: ${oldContent.filename}]`;
+        } else if (oldContent?.type === 'text') {
+          oldContentDisplay = oldContent.content;
+        } else if (typeof oldContent === 'string') {
+          oldContentDisplay = oldContent;
+        } else {
+          oldContentDisplay = '[Unable to display content]';
+        }
+        
+        if (newContent?.type === 'media') {
+          newContentDisplay = `[${newContent.mediaType} file: ${newContent.filename}]`;
+        } else if (newContent?.type === 'text') {
+          newContentDisplay = newContent.content;
+        } else if (typeof newContent === 'string') {
+          newContentDisplay = newContent;
+        } else {
+          newContentDisplay = '[Unable to display content]';
+        }
+        
         results.push({
           file: file.filename,
           report: `### 🔍 Context-Enhanced Evaluation Results
@@ -652,8 +772,8 @@ ${expertResponse}
 `,
           recommendation: recommendation,
           improvements: improvements,
-          oldContent: oldContent,
-          newContent: newContent
+          oldContent: oldContentDisplay,
+          newContent: newContentDisplay
         });
         
       } catch (error) {
@@ -709,6 +829,97 @@ ${result.report}`;
 }
 
 /**
+ * Check if file is a binary/media file
+ */
+function isMediaFile(filename) {
+  const ext = filename.toLowerCase();
+  return ext.endsWith('.pdf') || ext.endsWith('.png') || ext.endsWith('.jpg') || 
+         ext.endsWith('.jpeg') || ext.endsWith('.gif') || ext.endsWith('.webp');
+}
+
+/**
+ * Get media type for Claude API
+ */
+function getMediaType(filename) {
+  const ext = filename.toLowerCase();
+  if (ext.endsWith('.pdf')) return 'application/pdf';
+  if (ext.endsWith('.png')) return 'image/png';
+  if (ext.endsWith('.jpg') || ext.endsWith('.jpeg')) return 'image/jpeg';
+  if (ext.endsWith('.gif')) return 'image/gif';
+  if (ext.endsWith('.webp')) return 'image/webp';
+  return 'application/octet-stream';
+}
+
+/**
+ * Build content message that can handle text and multimodal content
+ */
+function buildContentMessage(content, label) {
+  if (!content) {
+    return {
+      type: 'text',
+      text: `${label}: You are a helpful assistant. Please help with the user's request.`
+    };
+  }
+  
+  // Handle structured content (object with type field)
+  if (typeof content === 'object' && content.type) {
+    if (content.type === 'media') {
+      // For images, return image message part
+      if (content.mediaType && content.mediaType.startsWith('image/')) {
+        return [
+          {
+            type: 'image',
+            source: {
+              type: 'base64',
+              media_type: content.mediaType,
+              data: content.data
+            }
+          },
+          {
+            type: 'text',
+            text: `${label} (Image: ${content.filename})`
+          }
+        ];
+      }
+      // For PDFs, we need to extract text or convert to images
+      // For now, just include a note about the PDF
+      else if (content.mediaType === 'application/pdf') {
+        return {
+          type: 'text',
+          text: `${label}: [PDF file: ${content.filename}] - Note: PDF content processing not yet implemented. Please review the PDF manually.`
+        };
+      }
+      // Other binary files
+      else {
+        return {
+          type: 'text',
+          text: `${label}: [Binary file: ${content.filename}] - Binary content cannot be displayed.`
+        };
+      }
+    } else if (content.type === 'text') {
+      return {
+        type: 'text',
+        text: `${label}:\n\n${content.content}`
+      };
+    }
+  }
+  
+  // Handle plain text (backward compatibility)
+  if (typeof content === 'string') {
+    return {
+      type: 'text',
+      text: `${label}:\n\n${content}`
+    };
+  }
+  
+  // Fallback
+  return {
+    type: 'text',
+    text: `${label}: Unable to process content.`
+  };
+}
+
+/**
  * Get file content from an external GitHub repository
  */
 async function getExternalFileContent(octokit, repoPath, filePath) {
@@ -723,15 +934,30 @@ async function getExternalFileContent(octokit, repoPath, filePath) {
     });
     
     if (data.content) {
-      const content = Buffer.from(data.content, 'base64').toString('utf-8');
-      console.log(`Loaded ${filePath} from external repo ${repoPath} (${content.length} chars)`);
-      return content;
+      // Check if it's a binary file
+      if (isMediaFile(filePath)) {
+        // Return as base64 for binary files
+        console.log(`Loaded binary file ${filePath} from external repo ${repoPath}`);
+        return {
+          type: 'media',
+          mediaType: getMediaType(filePath),
+          data: data.content // Keep as base64
+        };
+      } else {
+        // Decode text files
+        const content = Buffer.from(data.content, 'base64').toString('utf-8');
+        console.log(`Loaded ${filePath} from external repo ${repoPath} (${content.length} chars)`);
+        return {
+          type: 'text',
+          content: content
+        };
+      }
     }
     
-    return '';
+    return null;
   } catch (error) {
     console.log(`File ${filePath} not found in external repo ${repoPath}: ${error.message}`);
-    return '';
+    return null;
   }
 }
 
@@ -751,7 +977,22 @@ async function getFileContent(octokit, owner, repo, path, pr, ref) {
         ref: prData.base.sha
       });
       
-      return Buffer.from(file.content, 'base64').toString('utf8');
+      // Check if it's a binary file
+      if (isMediaFile(path)) {
+        console.log(`Loaded binary file ${path} from base branch`);
+        return {
+          type: 'media',
+          mediaType: getMediaType(path),
+          data: file.content, // Keep as base64
+          filename: path
+        };
+      } else {
+        return {
+          type: 'text',
+          content: Buffer.from(file.content, 'base64').toString('utf8'),
+          filename: path
+        };
+      }
     } else {
       const { data: file } = await octokit.repos.getContent({
         owner: owner,
@@ -760,11 +1001,26 @@ async function getFileContent(octokit, owner, repo, path, pr, ref) {
         ref: ref || 'HEAD'
       });
       
-      return Buffer.from(file.content, 'base64').toString('utf8');
+      // Check if it's a binary file
+      if (isMediaFile(path)) {
+        console.log(`Loaded binary file ${path} from ${ref || 'head'} branch`);
+        return {
+          type: 'media',
+          mediaType: getMediaType(path),
+          data: file.content, // Keep as base64
+          filename: path
+        };
+      } else {
+        return {
+          type: 'text',
+          content: Buffer.from(file.content, 'base64').toString('utf8'),
+          filename: path
+        };
+      }
     }
   } catch (error) {
     console.log(`File ${path} not found in ${ref || 'current'} branch, using empty content`);
-    return '';
+    return null;
   }
 }
 
