@@ -63,16 +63,26 @@ async function evaluate() {
   
   console.log(`Evaluating PR #${PR_NUMBER} in ${OWNER}/${REPO}`);
   
+  // Get PR details including branch
+  const { data: pr } = await octokit.pulls.get({
+    owner: OWNER,
+    repo: REPO,
+    pull_number: PR_NUMBER
+  });
+  const BRANCH = pr.head.ref;
+  
   // Load repository context if REPO_PATH is specified
   let repoContext = null;
   let contextMessages = [];
+  let REPO_PATH = null;
   
   if (process.env.REPO_PATH) {
-    console.log(`Loading repository context from: ${process.env.REPO_PATH}`);
+    REPO_PATH = process.env.REPO_PATH;
+    console.log(`Loading repository context from: ${REPO_PATH}`);
     
     // Check if REPO_PATH is a GitHub URL or local path
     const { execSync } = require('child_process');
-    let actualRepoPath = process.env.REPO_PATH;
+    let actualRepoPath = REPO_PATH;
     let tempDir = null;
     
     try {
@@ -241,6 +251,8 @@ async function evaluate() {
     // Load expert using ExpertLoader
     let expertPrompt = '';
     let testScenarios = [];
+    let expertSpec = '';
+    let expertLocation = '';
     
     const expertLoader = new ExpertLoader({
       baseDir: path.join(__dirname, '..', '..')
@@ -250,11 +262,20 @@ async function evaluate() {
       await expertLoader.initialize();
       
       // Use custom expert if specified, otherwise use domain
-      const expertSpec = CUSTOM_EXPERT || domain;
+      expertSpec = CUSTOM_EXPERT || domain;
       console.log(`Loading expert: ${expertSpec}`);
       
       const expert = await expertLoader.loadExpert(expertSpec);
       expertPrompt = expert.content;
+      
+      // Store expert location for comment
+      if (expert.source === 'github') {
+        console.log(`[EVALUATE] Loaded expert from GitHub: ${expert.repo}/${expert.path}`);
+        expertLocation = `https://github.com/${expert.repo}/blob/main/${expert.path}`;
+      } else if (expert.source === 'local') {
+        console.log(`[EVALUATE] Loaded expert from: local`);
+        expertLocation = `expert-definitions/${expertSpec}-expert.md`;
+      }
       
       // Log expert source for debugging
       if (expert.source === 'github') {
@@ -461,23 +482,47 @@ If SUGGEST, also include:
           }
         }
         
+        // Build detailed file list from context
+        let filesList = '';
+        if (repoContext && repoContext.files) {
+          const files = repoContext.files.slice(0, 10); // Show first 10 files
+          filesList = '\n\n#### 📄 Files Leveraged:\n';
+          files.forEach(file => {
+            const sizeKB = Math.round(file.size / 1024 * 10) / 10;
+            filesList += `- \`${file.path}\` (${sizeKB}KB) - Hash: ${file.hash.substring(0, 8)}\n`;
+          });
+          if (repoContext.files.length > 10) {
+            filesList += `- ... and ${repoContext.files.length - 10} more files\n`;
+          }
+        }
+        
         // Build context notification for the report
         const contextNotification = repoContext ? `
 ### 📁 Repository Context
 Repository context was loaded and provided to both evaluation threads.
-- Text files analyzed: ${repoContext.summary?.textFiles || 0}
-- Image files included: ${repoContext.summary?.imageFiles || 0}
-- PDF files included: ${repoContext.summary?.pdfFiles || 0}
-- Total files: ${repoContext.summary?.totalFiles || 0}
-- Context size: ${Math.round((repoContext.summary?.totalSize || 0) / 1024)}KB
-- Unique content hashes: ${repoContext.summary?.uniqueHashes || 0}
+- **Repository Path**: \`${REPO_PATH || 'current repository'}\`
+- **Text files analyzed**: ${repoContext.summary?.textFiles || 0}
+- **Image files included**: ${repoContext.summary?.imageFiles || 0}
+- **PDF files included**: ${repoContext.summary?.pdfFiles || 0}
+- **Total files**: ${repoContext.summary?.totalFiles || 0}
+- **Context size**: ${Math.round((repoContext.summary?.totalSize || 0) / 1024)}KB
+- **Unique content hashes**: ${repoContext.summary?.uniqueHashes || 0}
+${filesList}
 This context was used to enhance the evaluation accuracy with cache control for efficiency.
+` : '';
+        
+        // Build expert info section
+        const expertInfo = expertLocation ? `
+### 🎯 Expert Definition
+- **Expert Used**: ${expertSpec || domain}
+- **Location**: [\`${expertLocation}\`](https://github.com/${OWNER}/${REPO}/blob/${BRANCH}/${expertLocation})
 ` : '';
         
         results.push({
           file: file.filename,
           report: `### 🔍 Context-Enhanced Evaluation Results
 
+${expertInfo}
 ${contextNotification}
 
 **Test Scenario (${domain} domain):**
