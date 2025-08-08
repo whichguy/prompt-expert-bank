@@ -44,15 +44,38 @@ Load from local filesystem:
 @prompt-expert /home/user/prompts/domain-expert.md --repo-path="."
 ```
 
-## 4. Combined Examples
+## 4. Path Interpretation Rules
+
+### For --repo-path:
+- **`./path` or `../path`** → Relative to prompt-expert-bank repository
+- **`/absolute/path`** → Absolute filesystem path
+- **`owner/repo`** → GitHub repository (e.g., `facebook/react`)
+- **`https://github.com/...`** → Full GitHub URL
+- **`test/demo`** → Relative to prompt-expert-bank (backward compatibility)
+
+### Examples:
+```bash
+# Local paths relative to prompt-expert-bank
+--repo-path="./test/context-test-demo"   # In prompt-expert-bank/test/
+--repo-path="../my-project"              # Sibling to prompt-expert-bank
+
+# Absolute filesystem paths
+--repo-path="/home/user/projects/app"    # Absolute path
+
+# GitHub repositories
+--repo-path="facebook/react"             # Clone from GitHub
+--repo-path="microsoft/vscode"           # Clone from GitHub
+```
+
+## 5. Combined Examples
 Load expert from one repository and context from another:
 
 ```
 # Use Google's code review expert on Facebook's React codebase
 @prompt-expert google/eng-practices:review/prompt.md --repo-path="facebook/react"
 
-# Use OpenAI's prompt engineering expert on your local project
-@prompt-expert openai/cookbook:prompts/engineer.md --repo-path="./my-project"
+# Use OpenAI's prompt engineering expert on local project in prompt-expert-bank
+@prompt-expert openai/cookbook:prompts/engineer.md --repo-path="./test/my-project"
 
 # Use Microsoft's TypeScript expert on Django codebase
 @prompt-expert microsoft/TypeScript:docs/assistant.md --repo-path="django/django"

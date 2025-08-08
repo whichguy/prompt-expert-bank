@@ -76,8 +76,22 @@ async function evaluate() {
     let tempDir = null;
     
     try {
-      // Check if it's a GitHub URL (e.g., github.com/user/repo or https://github.com/user/repo)
-      if (actualRepoPath.includes('github.com')) {
+      // Path interpretation:
+      // - Starts with ./ or ../ = relative to prompt-expert repo
+      // - Starts with / = absolute filesystem path
+      // - Contains github.com = GitHub URL
+      // - Format owner/repo = GitHub shorthand
+      // - Otherwise = relative to prompt-expert repo (backward compatibility)
+      
+      if (actualRepoPath.startsWith('./') || actualRepoPath.startsWith('../')) {
+        // Relative to prompt-expert repo
+        actualRepoPath = path.resolve(process.cwd(), actualRepoPath);
+        console.log(`Using local path relative to prompt-expert repo: ${actualRepoPath}`);
+      } else if (actualRepoPath.startsWith('/')) {
+        // Absolute filesystem path
+        console.log(`Using absolute filesystem path: ${actualRepoPath}`);
+      } else if (actualRepoPath.includes('github.com')) {
+        // GitHub URL
         console.log('Detected GitHub repository URL, cloning...');
         
         // Extract owner and repo from URL
@@ -95,8 +109,8 @@ async function evaluate() {
           actualRepoPath = tempDir;
           console.log(`Repository cloned to: ${tempDir}`);
         }
-      } else if (actualRepoPath.match(/^[^/]+\/[^/]+$/)) {
-        // Handle shorthand format: owner/repo
+      } else if (actualRepoPath.match(/^[a-zA-Z0-9][\w-]*\/[\w-]+$/)) {
+        // GitHub shorthand format: owner/repo (must start with alphanumeric to avoid matching paths)
         const [owner, repo] = actualRepoPath.split('/');
         tempDir = `/tmp/repo-context-${Date.now()}`;
         
@@ -107,6 +121,10 @@ async function evaluate() {
         
         actualRepoPath = tempDir;
         console.log(`Repository cloned to: ${tempDir}`);
+      } else {
+        // Default: treat as relative to prompt-expert repo (backward compatibility)
+        actualRepoPath = path.resolve(process.cwd(), actualRepoPath);
+        console.log(`Using path relative to prompt-expert repo: ${actualRepoPath}`);
       }
       
       // Run repo-context-v2.js to generate context
