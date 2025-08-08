@@ -507,6 +507,13 @@ ${expertResponse}
     for (const result of results) {
       let commentBody = `## 🤖 Prompt Expert Evaluation${repoContext ? ' (Context-Enhanced)' : ''}
 
+### 📄 **Evaluating File: \`${result.file}\`**
+
+> **🎯 Domain:** ${domain}  
+> **🔧 Expert:** ${expertSpec || 'default'}  
+> **📊 Context:** ${repoContext ? `✅ Loaded (${contextData?.summary?.totalFiles || 0} files from ${repoPath || 'repository'})` : '❌ Not loaded'}  
+> **📝 File Status:** ${result.oldContent ? 'Modified' : 'New file'}
+
 ${result.report}`;
       
       if (result.recommendation === 'MERGE') {
