@@ -316,6 +316,50 @@ When responding to requests:
         } else {
           oldContent = await getFileContent(octokit, OWNER, REPO, file.filename, PR_NUMBER, 'base');
           newContent = await getFileContent(octokit, OWNER, REPO, file.filename, null, 'head');
+          
+          // Skip evaluation for new files - no meaningful A/B comparison possible
+          if (!oldContent || oldContent.trim() === '') {
+            console.log(`[EVALUATE] Skipping ${file.filename} - new file with no baseline for comparison`);
+            
+            // Post informational comment instead of evaluation
+            const newFileComment = `## 📝 New Prompt File Added - ${domain.charAt(0).toUpperCase() + domain.slice(1)} Expert
+
+### 📄 File: ${file.filename}
+
+This is a **new prompt file** with no previous version for comparison. The prompt expert evaluation system requires an existing baseline to perform meaningful A/B comparisons between implementations.
+
+### 📊 File Status
+- **Status**: New file added
+- **Domain**: ${domain}  
+- **Lines**: +${newContent.split('\n').length}
+- **Evaluation**: Skipped (no baseline for comparison)
+
+### ✅ Next Steps
+The prompt will be evaluated in future PRs when modifications are made, allowing for proper A/B comparison between the current version and proposed changes.
+
+**Note**: Expert evaluation is designed for comparing prompt improvements, not validating new prompts from scratch.`;
+
+            await octokit.issues.createComment({
+              owner: OWNER,
+              repo: REPO,
+              issue_number: PR_NUMBER,
+              body: newFileComment
+            });
+            
+            // Add informational label
+            try {
+              await octokit.issues.addLabels({
+                owner: OWNER,
+                repo: REPO,
+                issue_number: PR_NUMBER,
+                labels: [`prompt-expert:${domain}`, `new-prompt-file`]
+              });
+            } catch (labelError) {
+              console.error(`Failed to apply labels: ${labelError.message}`);
+            }
+            
+            continue; // Skip to next file
+          }
         }
         
         // Select a test scenario
