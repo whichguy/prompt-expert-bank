@@ -215,8 +215,9 @@ async function evaluate() {
       pull_number: PR_NUMBER
     });
     
+    // Filter for prompt files - look for markdown or text files that appear to be prompts
     const promptFiles = files.filter(f => 
-      f.filename.includes('prompt') && 
+      (f.filename.includes('prompt') || f.filename.includes('instruction') || f.filename.includes('system')) && 
       (f.filename.endsWith('.md') || f.filename.endsWith('.txt'))
     );
     
@@ -312,17 +313,46 @@ async function evaluate() {
     // Evaluate prompt files or context-only
     const results = [];
     
-    // If no prompt files, create a synthetic evaluation using context
-    const filesToEvaluate = promptFiles.length > 0 ? promptFiles : [{
-      filename: 'context-evaluation',
-      synthetic: true
-    }];
+    // Process files for evaluation based on their PR status
+    const filesToEvaluate = [];
+    
+    if (promptFiles.length > 0) {
+      console.log(`Processing ${promptFiles.length} prompt files from PR`);
+      
+      for (const file of promptFiles) {
+        console.log(`File: ${file.filename}, Status: ${file.status}, Previous: ${file.previous_filename || 'N/A'}`);
+        
+        // Each file in the PR gets evaluated
+        // For modified files: base version is Thread A, head version is Thread B
+        // For renamed files: content at old filename is Thread A, content at new filename is Thread B  
+        // For added files: empty/generic baseline for Thread A, new content for Thread B
+        filesToEvaluate.push({
+          filename: file.filename,
+          previousFilename: file.previous_filename,
+          status: file.status,
+          changes: file.changes,
+          additions: file.additions,
+          deletions: file.deletions
+        });
+      }
+    } else {
+      // No prompt files found, create synthetic evaluation
+      console.log('No prompt files found in PR, using synthetic evaluation');
+      filesToEvaluate.push({
+        filename: 'context-evaluation',
+        synthetic: true
+      });
+    }
     
     for (const file of filesToEvaluate) {
-      console.log(file.synthetic ? 'Evaluating with repository context only...' : `Evaluating ${file.filename}...`);
+      if (file.synthetic) {
+        console.log('Evaluating with repository context only...');
+      } else {
+        console.log(`Evaluating ${file.filename} (${file.status})...`);
+      }
       
       try {
-        // Get old and new content
+        // Get old and new content based on file status
         let oldContent, newContent;
         
         if (file.synthetic) {
@@ -334,7 +364,32 @@ When responding to requests:
 1. Reference specific files and code from the repository context when relevant
 2. Use exact values, endpoints, and configurations from the provided files
 3. Provide accurate, context-aware responses based on the repository structure`;
+        } else if (file.status === 'modified') {
+          // Modified file: get base version for Thread A, head version for Thread B
+          oldContent = await getFileContent(octokit, OWNER, REPO, file.filename, PR_NUMBER, 'base');
+          newContent = await getFileContent(octokit, OWNER, REPO, file.filename, null, 'head');
+          console.log(`Modified file: comparing base vs head versions of ${file.filename}`);
+        } else if (file.status === 'renamed') {
+          // Renamed file: try to get content from old filename for Thread A
+          if (file.previousFilename) {
+            oldContent = await getFileContent(octokit, OWNER, REPO, file.previousFilename, PR_NUMBER, 'base');
+          } else {
+            oldContent = `You are a helpful assistant. Please help with the user's request.`;
+          }
+          newContent = await getFileContent(octokit, OWNER, REPO, file.filename, null, 'head');
+          console.log(`Renamed file: ${file.previousFilename || 'new'} -> ${file.filename}`);
+        } else if (file.status === 'added') {
+          // Added file: use generic baseline for Thread A, new content for Thread B
+          oldContent = `You are a helpful assistant. Please help with the user's request.`;
+          newContent = await getFileContent(octokit, OWNER, REPO, file.filename, null, 'head');
+          console.log(`Added file: using generic baseline vs ${file.filename}`);
+        } else if (file.status === 'removed') {
+          // Removed file: get base version for Thread A, use generic for Thread B
+          oldContent = await getFileContent(octokit, OWNER, REPO, file.filename, PR_NUMBER, 'base');
+          newContent = `You are a helpful assistant. Please help with the user's request.`;
+          console.log(`Removed file: ${file.filename} vs generic`);
         } else {
+          // Fallback: try to get both versions
           oldContent = await getFileContent(octokit, OWNER, REPO, file.filename, PR_NUMBER, 'base');
           newContent = await getFileContent(octokit, OWNER, REPO, file.filename, null, 'head');
         }
