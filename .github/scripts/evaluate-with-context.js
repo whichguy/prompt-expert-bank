@@ -316,6 +316,12 @@ When responding to requests:
         } else {
           oldContent = await getFileContent(octokit, OWNER, REPO, file.filename, PR_NUMBER, 'base');
           newContent = await getFileContent(octokit, OWNER, REPO, file.filename, null, 'head');
+          
+          // Handle new files that don't exist in base branch
+          if (!oldContent || oldContent.trim() === '') {
+            oldContent = `You are a helpful assistant. Please help with the user's request in a clear and concise manner.`;
+            console.log(`[EVALUATE] No baseline content found for ${file.filename}, using default prompt`);
+          }
         }
         
         // Select a test scenario
@@ -626,7 +632,7 @@ ${expertResponse}
     
     // Post results as PR comment
     for (const result of results) {
-      let commentBody = `## 🤖 Prompt Expert Evaluation${repoContext ? ' (Context-Enhanced)' : ''}
+      let commentBody = `## 🤖 Prompt Expert Evaluation${repoContext ? ' (Context-Enhanced)' : ''} - ${domain.charAt(0).toUpperCase() + domain.slice(1)} Expert
 
 ### 📄 File: ${result.file}
 
@@ -674,6 +680,36 @@ ${result.report}`;
         issue_number: PR_NUMBER,
         body: commentBody
       });
+      
+      // Add appropriate labels based on evaluation result
+      const labels = [`prompt-expert:${domain}`];
+      
+      if (result.recommendation === 'MERGE') {
+        labels.push(`prompt-expert:approved:${domain}`);
+        labels.push('prompt-expert:approved');
+        labels.push('ready-to-merge');
+      } else if (result.recommendation === 'SUGGEST') {
+        labels.push(`prompt-expert:needs-improvement:${domain}`);
+        labels.push('prompt-expert:needs-improvement');
+        labels.push('needs-work');
+      } else {
+        labels.push(`prompt-expert:rejected:${domain}`);
+        labels.push('prompt-expert:rejected');
+        labels.push('do-not-merge');
+      }
+      
+      // Apply labels to the PR
+      try {
+        await octokit.issues.addLabels({
+          owner: OWNER,
+          repo: REPO,
+          issue_number: PR_NUMBER,
+          labels: labels
+        });
+        console.log(`Applied labels: ${labels.join(', ')}`);
+      } catch (labelError) {
+        console.error(`Failed to apply labels: ${labelError.message}`);
+      }
       
       // Auto-close if rejected (and configured to do so)
       if (result.recommendation === 'REJECT' && process.env.AUTO_CLOSE_ON_FAIL === 'true') {
