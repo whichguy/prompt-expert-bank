@@ -23,6 +23,46 @@ async function main() {
   console.log(`Processing @prompt-expert command for ${expert} expert`);
   console.log(`Instructions: ${instructions}`);
 
+  // Check if this is a repo-path evaluation request
+  if (instructions && instructions.includes('--repo-path=')) {
+    console.log('Detected --repo-path parameter, running evaluation with context...');
+    
+    // Extract repo path
+    const repoPathMatch = instructions.match(/--repo-path=["']?([^"'\s]+)["']?/);
+    const repoPath = repoPathMatch ? repoPathMatch[1] : null;
+    
+    if (repoPath) {
+      // Run evaluation with context
+      const { execSync } = require('child_process');
+      
+      try {
+        const output = execSync(`node .github/scripts/evaluate-with-context.js`, {
+          env: {
+            ...process.env,
+            REPO_PATH: repoPath,
+            CUSTOM_EXPERT: expert,
+            OWNER: owner,
+            REPO: repo,
+            PR_NUMBER: prNumber.toString()
+          },
+          stdio: 'inherit'
+        });
+        
+        console.log('Evaluation completed successfully');
+        return;
+      } catch (evalError) {
+        console.error('Error running evaluation:', evalError);
+        await octokit.issues.createComment({
+          owner,
+          repo,
+          issue_number: prNumber,
+          body: `❌ Error running evaluation with context: ${evalError.message}`
+        });
+        process.exit(1);
+      }
+    }
+  }
+
   try {
     // Load expert definition
     let expertContent;
