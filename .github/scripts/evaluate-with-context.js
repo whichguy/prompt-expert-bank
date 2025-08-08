@@ -63,9 +63,28 @@ async function evaluate() {
   
   console.log(`Evaluating PR #${PR_NUMBER} in ${OWNER}/${REPO}`);
   
-  // Load repository context if available
+  // Load repository context if REPO_PATH is specified
   let repoContext = null;
   let contextMessages = [];
+  
+  if (process.env.REPO_PATH) {
+    console.log(`Loading repository context from: ${process.env.REPO_PATH}`);
+    
+    // Run repo-context-v2.js to generate context
+    const { execSync } = require('child_process');
+    try {
+      const contextOutput = execSync(`node scripts/repo-context-v2.js --repo-path="${process.env.REPO_PATH}" --format=json`, {
+        encoding: 'utf8',
+        cwd: path.join(__dirname, '..', '..')
+      });
+      
+      // Write context to file for processing
+      fs.writeFileSync(REPO_CONTEXT_FILE, contextOutput);
+      console.log('Repository context generated successfully');
+    } catch (contextError) {
+      console.error('Error generating repository context:', contextError.message);
+    }
+  }
   
   if (fs.existsSync(REPO_CONTEXT_FILE)) {
     console.log('Loading repository context...');
