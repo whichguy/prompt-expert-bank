@@ -1,0 +1,27 @@
+{
+  "database": {
+    "type": "PostgreSQL",
+    "version": "15.2",
+    "tables": {
+      "users": {
+        "columns": ["id", "name", "email", "created_at"],
+        "row_count": 50000
+      },
+      "orders": {
+        "columns": ["id", "user_id", "total", "status", "created_at"],
+        "row_count": 250000
+      },
+      "products": {
+        "columns": ["id", "name", "price", "category", "stock"],
+        "row_count": 5000
+      }
+    }
+  },
+  "performance": {
+    "slow_queries": [
+      "SELECT * FROM orders WHERE status = 'pending'",
+      "SELECT u.*, COUNT(o.id) FROM users u LEFT JOIN orders o ON u.id = o.user_id GROUP BY u.id"
+    ],
+    "indexes": ["users_email_idx", "orders_user_id_idx"]
+  }
+}
