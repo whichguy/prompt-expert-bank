@@ -1,0 +1,12 @@
+{
+  "endpoints": {
+    "auth": "/api/v2/auth/login",
+    "users": "/api/v2/users",
+    "data": "/api/v2/data"
+  },
+  "rateLimit": {
+    "requests": 60,
+    "window": "1m"
+  },
+  "timeout": 5000
+}
