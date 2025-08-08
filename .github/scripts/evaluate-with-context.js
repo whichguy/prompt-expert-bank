@@ -60,9 +60,11 @@ function buildContextMessages(contextData) {
 
 async function evaluate() {
   const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
-  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   
   console.log(`Evaluating PR #${PR_NUMBER} in ${OWNER}/${REPO}`);
+  console.log(`Anthropic API Key present: ${!!process.env.ANTHROPIC_API_KEY}`);
+  
+  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   
   // Get PR details including branch
   const { data: pr } = await octokit.pulls.get({
@@ -71,6 +73,7 @@ async function evaluate() {
     pull_number: PR_NUMBER
   });
   const BRANCH = pr.head.ref;
+  const HEAD_SHA = pr.head.sha;
   
   // Load repository context if REPO_PATH is specified
   let repoContext = null;
@@ -243,7 +246,7 @@ async function evaluate() {
       console.log(`Found ${promptFiles.length} prompt files in PR`);
       
       for (const file of promptFiles) {
-        const fileContent = await getFileContent(octokit, OWNER, REPO, file.filename, null, 'head');
+        const fileContent = await getFileContent(octokit, OWNER, REPO, file.filename, null, HEAD_SHA);
         
         // Domain detection logic (handle null content)
         const contentText = fileContent?.content || fileContent || '';
@@ -422,12 +425,12 @@ When responding to requests:
           }
           
           // Thread B always gets the head version from the PR
-          newContent = await getFileContent(octokit, OWNER, REPO, file.filename, null, 'head');
+          newContent = await getFileContent(octokit, OWNER, REPO, file.filename, null, HEAD_SHA);
           console.log(`Comparing ${BASELINE_REPO}/${file.filename} vs PR head version`);
         } else if (file.status === 'modified') {
           // Modified file: get base version for Thread A, head version for Thread B
           oldContent = await getFileContent(octokit, OWNER, REPO, file.filename, PR_NUMBER, 'base');
-          newContent = await getFileContent(octokit, OWNER, REPO, file.filename, null, 'head');
+          newContent = await getFileContent(octokit, OWNER, REPO, file.filename, null, HEAD_SHA);
           console.log(`Modified file: comparing base vs head versions of ${file.filename}`);
         } else if (file.status === 'renamed') {
           // Renamed file: try to get content from old filename for Thread A
@@ -440,7 +443,7 @@ When responding to requests:
               filename: file.previousFilename || file.filename
             };
           }
-          newContent = await getFileContent(octokit, OWNER, REPO, file.filename, null, 'head');
+          newContent = await getFileContent(octokit, OWNER, REPO, file.filename, null, HEAD_SHA);
           console.log(`Renamed file: ${file.previousFilename || 'new'} -> ${file.filename}`);
         } else if (file.status === 'added') {
           // Added file: use generic baseline for Thread A, new content for Thread B
@@ -449,7 +452,7 @@ When responding to requests:
             content: `You are a helpful assistant. Please help with the user's request.`,
             filename: file.filename
           };
-          newContent = await getFileContent(octokit, OWNER, REPO, file.filename, null, 'head');
+          newContent = await getFileContent(octokit, OWNER, REPO, file.filename, null, HEAD_SHA);
           console.log(`Added file: using generic baseline vs ${file.filename}`);
         } else if (file.status === 'removed') {
           // Removed file: get base version for Thread A, use generic for Thread B
@@ -463,7 +466,7 @@ When responding to requests:
         } else {
           // Fallback: try to get both versions
           oldContent = await getFileContent(octokit, OWNER, REPO, file.filename, PR_NUMBER, 'base');
-          newContent = await getFileContent(octokit, OWNER, REPO, file.filename, null, 'head');
+          newContent = await getFileContent(octokit, OWNER, REPO, file.filename, null, HEAD_SHA);
         }
         
         // Select a test scenario
@@ -586,11 +589,21 @@ When responding to requests:
         
         // Thread A: Evaluate current prompt WITH repository context (same file IDs as Thread B)
         console.log(`[EVALUATE] Executing Thread A with ${contextMessages.length > 0 ? 'repository context' : 'no context'}`);
-        const threadA = await anthropic.messages.create({
-          model: 'claude-3-5-sonnet-20241022',
-          max_tokens: 4000,
-          messages: threadAMessages
-        });
+        console.log(`[EVALUATE] Anthropic client available: ${!!anthropic}`);
+        console.log(`[EVALUATE] API Key in env: ${!!process.env.ANTHROPIC_API_KEY}`);
+        
+        let threadA;
+        try {
+          threadA = await anthropic.messages.create({
+            model: 'claude-3-5-sonnet-20241022',
+            max_tokens: 4000,
+            messages: threadAMessages
+          });
+        } catch (apiError) {
+          console.error(`[EVALUATE] Thread A API Error: ${apiError.message}`);
+          console.error(`[EVALUATE] Error type: ${apiError.constructor.name}`);
+          throw apiError;
+        }
         
         // Log Thread B content
         console.log(`[THREAD B] Content being sent:`);
