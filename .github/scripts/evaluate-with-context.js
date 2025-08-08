@@ -391,10 +391,11 @@ When responding to requests:
           messages: threadBMessages
         });
         
-        // Thread C: Expert comparison (includes context awareness in evaluation)
+        // Thread C: Expert comparison with enhanced role definition and pairwise evaluation
         const contextNote = repoContext ? `
-Note: Both candidates were evaluated with the following repository context loaded:
-- Repository files and structure were provided to BOTH threads
+
+**Repository Context Available:**
+- Repository files and structure were provided to BOTH implementations
 - Both Thread A and Thread B had access to the SAME file IDs from ${repoContext.summary?.totalFiles || 0} files
 - The SAME context (file IDs) was injected into both evaluation threads
 - Evaluation should consider how well each prompt utilizes the available context
@@ -404,60 +405,180 @@ Note: Both candidates were evaluated with the following repository context loade
         const expertComparison = await anthropic.messages.create({
           model: 'claude-3-5-sonnet-20241022',
           max_tokens: 4000,
-          messages: [{
-            role: 'user',
-            content: `${expertPrompt}
+          messages: [
+            {
+              role: 'user', 
+              content: `## LLM ROLE DEFINITION
+You are now assuming the role of a ${domain} domain expert evaluator. Your specific responsibilities are:
+
+**Primary Role:** ${domain} Domain Expert Evaluator
+**Core Function:** Conduct pairwise evaluation of prompt implementations using domain expertise
+**Authority Level:** Senior expert with deep knowledge in ${domain} field
+**Evaluation Approach:** Systematic, criteria-driven, evidence-based assessment
+
+**Domain Expertise Context:**
+${expertPrompt}
+
+**Evaluation Mandate:** 
+- Develop domain-specific evaluation criteria
+- Conduct rigorous pairwise comparison
+- Provide actionable recommendations based on ${domain} best practices
+- Maintain objectivity while leveraging deep domain knowledge
+
+Do you understand your role as a ${domain} domain expert evaluator?`
+            },
+            {
+              role: 'assistant',
+              content: `Yes, I understand. I am now functioning as a ${domain} domain expert evaluator with the mandate to:
+
+1. Apply my deep ${domain} expertise to develop relevant evaluation criteria
+2. Conduct systematic pairwise comparison of prompt implementations  
+3. Provide evidence-based recommendations grounded in ${domain} best practices
+4. Maintain objectivity while leveraging specialized domain knowledge
+
+I am ready to evaluate the prompt implementations using rigorous ${domain} expert methodology.`
+            },
+            {
+              role: 'user',
+              content: `## EVALUATION TASK
+
+**Methodology:** Pairwise evaluation using 2025 LLM evaluation best practices
+**Approach:** Expert-developed criteria followed by systematic comparison
+
+## TEST SCENARIO
+"${testScenario}"
+
+## PROMPT IMPLEMENTATIONS & RESPONSES
+
+### Implementation A (Proposed - PR Candidate)
+**Prompt Definition:**
+${newContent}
+
+**Response to Test Scenario:**
+${threadB.content[0].text}
+
+### Implementation B (Current - Baseline)
+**Prompt Definition:**
+${oldContent}  
+
+**Response to Test Scenario:**
+${threadA.content[0].text}
 
 ${contextNote}
 
-Compare these two prompt implementations based on how well they handled the test scenario:
+## EXPERT EVALUATION PROCESS
 
-**Test Scenario:** "${testScenario}"
+**Phase 1: Criteria Development**
+As a ${domain} expert, develop 4-6 specific evaluation criteria tailored to:
+- The nature of this test scenario
+- ${domain} domain standards and best practices  
+- Practical value and real-world applicability
+- Quality indicators specific to this task type
 
-**Candidate A (Current Implementation's Response):**
-${threadA.content[0].text}
+**Phase 2: Pairwise Comparison**
+Systematically compare Implementation A vs Implementation B using your expert-developed criteria.
 
-**Candidate B (Proposed Implementation's Response):**
-${threadB.content[0].text}
+**Phase 3: Expert Recommendation**
+Provide final recommendation based on your domain expertise and evaluation findings.
 
 ## REQUIRED OUTPUT FORMAT
 
-1. Provide detailed analysis comparing both candidates
-2. Include specific examples and reasoning
-3. End your response with this structured format:
+### Expert Role Confirmation
+**Acting as:** ${domain} Domain Expert Evaluator
+**Evaluation Focus:** [Brief statement of what you'll prioritize as a ${domain} expert]
+
+### Domain-Expert Developed Criteria
+1. **[Criterion 1]:** [Description + Why critical for ${domain}]
+2. **[Criterion 2]:** [Description + Why critical for ${domain}]  
+3. **[Criterion 3]:** [Description + Why critical for ${domain}]
+4. **[Criterion 4]:** [Description + Why critical for ${domain}]
+[Additional criteria as needed]
+
+### Systematic Pairwise Analysis
+**Implementation A (Proposed) Assessment:**
+- Criterion 1: [Score/Assessment + Evidence]
+- Criterion 2: [Score/Assessment + Evidence]
+- Criterion 3: [Score/Assessment + Evidence]
+- Criterion 4: [Score/Assessment + Evidence]
+
+**Implementation B (Current) Assessment:**  
+- Criterion 1: [Score/Assessment + Evidence]
+- Criterion 2: [Score/Assessment + Evidence]
+- Criterion 3: [Score/Assessment + Evidence]
+- Criterion 4: [Score/Assessment + Evidence]
 
 ### Expert Decision
-**Recommendation:** [MERGE/REJECT/SUGGEST]
-**Overall Score:** X/10
-**Key Reasons:** [List 2-3 main reasons]
+**Pairwise Winner:** [Implementation A/Implementation B/TIE]
+**Confidence Level:** [High/Medium/Low]
+**Decisive Factor:** [Most important criterion that determined outcome]
+**Expert Rationale:** [Your reasoning as a ${domain} expert]
 
-If SUGGEST, also include:
-### Specific Improvements Needed
-1. [Specific improvement 1]
-2. [Specific improvement 2]
-3. [Specific improvement 3]`
-          }]
+**Final Recommendation:** [MERGE/REJECT/SUGGEST]
+- MERGE: Implementation A (Proposed) is demonstrably superior
+- REJECT: Implementation B (Current) is demonstrably superior
+- SUGGEST: Implementation A shows promise but needs specific improvements
+
+[If SUGGEST - Expert Improvement Recommendations:]
+### ${domain} Expert Improvement Plan
+1. **[Improvement 1]:** [Specific actionable change based on ${domain} expertise]
+2. **[Improvement 2]:** [Specific actionable change based on ${domain} expertise]  
+3. **[Improvement 3]:** [Specific actionable change based on ${domain} expertise]`
+            }
+          ]
         });
         
         const expertResponse = expertComparison.content[0].text;
         
-        // Parse expert recommendation
+        // Parse expert recommendation - Enhanced parsing for new format
         let recommendation = 'REJECT';
-        if (expertResponse.includes('MERGE')) {
-          recommendation = 'MERGE';
-        } else if (expertResponse.includes('SUGGEST')) {
-          recommendation = 'SUGGEST';
+        
+        // First try to parse the new structured format
+        const finalRecommendationMatch = expertResponse.match(/\*\*Final Recommendation:\*\*\s*(MERGE|REJECT|SUGGEST)/);
+        if (finalRecommendationMatch) {
+          recommendation = finalRecommendationMatch[1];
+        } else {
+          // Fallback: try pairwise winner format
+          const pairwiseWinnerMatch = expertResponse.match(/\*\*Pairwise Winner:\*\*\s*(Implementation A|Implementation B|TIE)/);
+          if (pairwiseWinnerMatch) {
+            if (pairwiseWinnerMatch[1] === 'Implementation A') {
+              // Implementation A is PR - merge it
+              recommendation = 'MERGE';
+            } else if (pairwiseWinnerMatch[1] === 'Implementation B') {
+              // Implementation B is baseline - reject PR
+              recommendation = 'REJECT';
+            } else {
+              // TIE - suggest improvements
+              recommendation = 'SUGGEST';
+            }
+          } else {
+            // Legacy fallback
+            if (expertResponse.includes('MERGE')) {
+              recommendation = 'MERGE';
+            } else if (expertResponse.includes('SUGGEST')) {
+              recommendation = 'SUGGEST';
+            }
+          }
         }
         
         // Parse improvements if SUGGEST
         let improvements = [];
         if (recommendation === 'SUGGEST') {
-          const improvementsMatch = expertResponse.match(/### Specific Improvements Needed\n([\s\S]*?)(?:###|$)/);
-          if (improvementsMatch) {
-            improvements = improvementsMatch[1]
+          // Try new format first
+          const newImprovementsMatch = expertResponse.match(/### .+ Expert Improvement Plan\n([\s\S]*?)(?:###|$)/);
+          if (newImprovementsMatch) {
+            improvements = newImprovementsMatch[1]
               .split('\n')
-              .filter(line => line.trim())
-              .map(line => line.replace(/^\d+\.\s*/, '').trim());
+              .filter(line => line.trim() && line.includes('**'))
+              .map(line => line.replace(/^\d+\.\s*\*\*.*?\*\*:\s*/, '').trim());
+          } else {
+            // Fallback to old format
+            const oldImprovementsMatch = expertResponse.match(/### Specific Improvements Needed\n([\s\S]*?)(?:###|$)/);
+            if (oldImprovementsMatch) {
+              improvements = oldImprovementsMatch[1]
+                .split('\n')
+                .filter(line => line.trim())
+                .map(line => line.replace(/^\d+\.\s*/, '').trim());
+            }
           }
         }
         
@@ -483,11 +604,11 @@ ${contextNotification}
 **Test Scenario (${domain} domain):**
 "${testScenario}"
 
-**Thread A (Current Prompt + Repository Context):**
-${threadA.content[0].text}
-
-**Thread B (Proposed Prompt + Repository Context):**
+**Thread A (Proposed Prompt + Repository Context):**
 ${threadB.content[0].text}
+
+**Thread B (Current Prompt + Repository Context):**
+${threadA.content[0].text}
 
 **Thread C (Expert Analysis):**
 ${expertResponse}
@@ -507,15 +628,42 @@ ${expertResponse}
     for (const result of results) {
       let commentBody = `## 🤖 Prompt Expert Evaluation${repoContext ? ' (Context-Enhanced)' : ''}
 
+### 📄 File: ${result.file}
+
 ${result.report}`;
       
       if (result.recommendation === 'MERGE') {
         commentBody += `\n### ✅ APPROVED - Ready to Merge`;
+        
+        // Auto-merge approved PRs
+        console.log('Expert decision: MERGE - Auto-merging PR...');
+        try {
+          await octokit.pulls.merge({
+            owner: OWNER,
+            repo: REPO,
+            pull_number: PR_NUMBER,
+            commit_title: `Prompt Expert: MERGE approved for ${result.file}`,
+            commit_message: `Automatically merged after expert evaluation.\n\n✅ Expert decision: MERGE\n📄 File: ${result.file}\n📊 The new prompt implementation is superior and ready for production\n🤖 Merged by Prompt Expert system at ${new Date().toISOString()}`,
+            merge_method: 'squash'
+          });
+          
+          commentBody += `\n\n🎉 **PR automatically merged!**\n\n✅ Expert decision: **MERGE**\n🚀 The improved prompt is now live in the main branch.`;
+        } catch (mergeError) {
+          console.error('Failed to merge PR:', mergeError.message);
+          commentBody += `\n\n⚠️ **Auto-merge failed**: ${mergeError.message}\n\nPlease merge manually - the evaluation was successful!`;
+        }
       } else if (result.recommendation === 'SUGGEST') {
         commentBody += `\n### 💡 IMPROVEMENTS NEEDED\n\n`;
         result.improvements.forEach((imp, i) => {
           commentBody += `${i + 1}. ${imp}\n`;
         });
+        
+        // Auto-invoke @prompt-expert for improvements
+        const suggestionText = result.improvements.length > 0 
+          ? result.improvements.join(' ') 
+          : 'Please review the expert analysis and implement the suggested improvements.';
+          
+        commentBody += `\n\n@prompt-expert ${domain} --suggest:"${suggestionText}"`;
       } else {
         commentBody += `\n### ❌ REJECTED - Does Not Meet Standards`;
       }
