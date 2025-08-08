@@ -317,43 +317,105 @@ When responding to requests:
           oldContent = await getFileContent(octokit, OWNER, REPO, file.filename, PR_NUMBER, 'base');
           newContent = await getFileContent(octokit, OWNER, REPO, file.filename, null, 'head');
           
-          // Skip evaluation for new files - no meaningful A/B comparison possible
+          // Handle new files - run Thread A analysis only, no comparison
           if (!oldContent || oldContent.trim() === '') {
-            console.log(`[EVALUATE] Skipping ${file.filename} - new file with no baseline for comparison`);
+            console.log(`[EVALUATE] New file ${file.filename} - running Thread A analysis only`);
             
-            // Post informational comment instead of evaluation
-            const newFileComment = `## 📝 New Prompt File Added - ${domain.charAt(0).toUpperCase() + domain.slice(1)} Expert
+            // Thread A: Analyze the new prompt
+            const threadAMessages = [];
+            
+            // Add context messages if available
+            if (contextMessages.length > 0) {
+              threadAMessages.push({
+                role: 'user',
+                content: [
+                  ...contextMessages,
+                  {
+                    type: 'text',
+                    text: `\n\nYou are primed with this prompt definition:\n\n${newContent}\n\nNow respond to this test scenario: "${testScenario}"`
+                  }
+                ]
+              });
+            } else {
+              threadAMessages.push({
+                role: 'user',
+                content: `You are primed with this prompt definition:\n\n${newContent}\n\nNow respond to this test scenario: "${testScenario}"`
+              });
+            }
+            
+            console.log(`[EVALUATE] Executing Thread A for new prompt analysis`);
+            const threadA = await anthropic.messages.create({
+              model: 'claude-3-5-sonnet-20241022',
+              max_tokens: 4000,
+              messages: threadAMessages
+            });
+            
+            // Expert analysis of the single prompt (no comparison)
+            const expertAnalysis = await anthropic.messages.create({
+              model: 'claude-3-5-sonnet-20241022',
+              max_tokens: 4000,
+              messages: [{
+                role: 'user',
+                content: `${expertPrompt}
+                
+Analyze this new prompt implementation for the ${domain} domain:
+
+**Prompt Definition:**
+${newContent}
+
+**Test Response:**
+${threadA.content[0].text}
+
+Please provide:
+1. **Prompt Strengths**: What aspects of this prompt are well-designed?
+2. **Potential Improvements**: What could be enhanced in future iterations?
+3. **Domain Alignment**: How well does this align with ${domain} best practices?
+4. **Coverage Assessment**: What key areas are covered vs potentially missing?
+
+Note: This is a new prompt file with no baseline for comparison. Provide constructive analysis only.`
+              }]
+            });
+            
+            // Post analysis comment
+            const analysisComment = `## 📝 New Prompt Analysis - ${domain.charAt(0).toUpperCase() + domain.slice(1)} Expert
 
 ### 📄 File: ${file.filename}
 
-This is a **new prompt file** with no previous version for comparison. The prompt expert evaluation system requires an existing baseline to perform meaningful A/B comparisons between implementations.
+This is a **new prompt file** being added to the repository. Since there's no baseline for A/B comparison, we're providing an initial analysis of the prompt's capabilities.
 
-### 📊 File Status
-- **Status**: New file added
-- **Domain**: ${domain}  
+### 🧪 Test Scenario
+"${testScenario}"
+
+### 📊 Thread A Response (New Prompt)
+${threadA.content[0].text}
+
+### 🔍 Expert Analysis
+${expertAnalysis.content[0].text}
+
+### ℹ️ Status
+- **Type**: New prompt addition
+- **Domain**: ${domain}
 - **Lines**: +${newContent.split('\n').length}
-- **Evaluation**: Skipped (no baseline for comparison)
+- **Decision**: No action required (informational only)
 
-### ✅ Next Steps
-The prompt will be evaluated in future PRs when modifications are made, allowing for proper A/B comparison between the current version and proposed changes.
-
-**Note**: Expert evaluation is designed for comparing prompt improvements, not validating new prompts from scratch.`;
+**Note**: Full A/B evaluation will be available when this prompt is modified in future PRs.`;
 
             await octokit.issues.createComment({
               owner: OWNER,
               repo: REPO,
               issue_number: PR_NUMBER,
-              body: newFileComment
+              body: analysisComment
             });
             
-            // Add informational label
+            // Add informational labels
             try {
               await octokit.issues.addLabels({
                 owner: OWNER,
                 repo: REPO,
                 issue_number: PR_NUMBER,
-                labels: [`prompt-expert:${domain}`, `new-prompt-file`]
+                labels: [`prompt-expert:${domain}`, `new-prompt-file`, `analysis-only`]
               });
+              console.log(`Applied labels for new file: prompt-expert:${domain}, new-prompt-file, analysis-only`);
             } catch (labelError) {
               console.error(`Failed to apply labels: ${labelError.message}`);
             }
