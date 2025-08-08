@@ -53,6 +53,11 @@ class RepoContextV2 {
     // Get file list with git hashes if available
     if (isGitRepo) {
       files.push(...await this.getGitFiles());
+      // If git returns no files (e.g., no tracked files), fall back to scanning
+      if (files.length === 0) {
+        console.error('[REPO-CONTEXT] Git returned no tracked files, falling back to directory scan');
+        files.push(...await this.scanDirectory());
+      }
     } else {
       files.push(...await this.scanDirectory());
     }
