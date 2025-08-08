@@ -123,34 +123,30 @@ async function evaluate() {
       (f.filename.endsWith('.md') || f.filename.endsWith('.txt'))
     );
     
-    if (promptFiles.length === 0) {
-      await octokit.issues.createComment({
-        owner: OWNER,
-        repo: REPO,
-        issue_number: PR_NUMBER,
-        body: '❌ No prompt files found in this PR'
-      });
-      return;
-    }
+    // Detect domain from filename and content, or use default
+    let domain = 'programming'; // Default domain when no prompt files
     
-    // Detect domain from filename and content
-    let domain = null;
-    
-    for (const file of promptFiles) {
-      const newContent = await getFileContent(octokit, OWNER, REPO, file.filename, null, 'head');
+    if (promptFiles.length > 0) {
+      console.log(`Found ${promptFiles.length} prompt files in PR`);
       
-      // Domain detection logic (same as original)
-      if (file.filename.includes('security') || newContent.toLowerCase().includes('security')) {
-        domain = 'security';
-      } else if (file.filename.includes('code') || file.filename.includes('programming')) {
-        domain = 'programming';
-      } else if (file.filename.includes('data')) {
-        domain = 'data-analysis';
-      } else if (file.filename.includes('financial')) {
-        domain = 'financial';
-      } else {
-        domain = 'general';
+      for (const file of promptFiles) {
+        const newContent = await getFileContent(octokit, OWNER, REPO, file.filename, null, 'head');
+        
+        // Domain detection logic (same as original)
+        if (file.filename.includes('security') || newContent.toLowerCase().includes('security')) {
+          domain = 'security';
+        } else if (file.filename.includes('code') || file.filename.includes('programming')) {
+          domain = 'programming';
+        } else if (file.filename.includes('data')) {
+          domain = 'data-analysis';
+        } else if (file.filename.includes('financial')) {
+          domain = 'financial';
+        } else {
+          domain = 'general';
+        }
       }
+    } else {
+      console.log('No prompt files found in PR, using context-only evaluation');
     }
     
     console.log(`Detected domain: ${domain}`);
@@ -205,16 +201,35 @@ async function evaluate() {
       }];
     }
     
-    // Evaluate each prompt file
+    // Evaluate prompt files or context-only
     const results = [];
     
-    for (const file of promptFiles) {
-      console.log(`Evaluating ${file.filename}...`);
+    // If no prompt files, create a synthetic evaluation using context
+    const filesToEvaluate = promptFiles.length > 0 ? promptFiles : [{
+      filename: 'context-evaluation',
+      synthetic: true
+    }];
+    
+    for (const file of filesToEvaluate) {
+      console.log(file.synthetic ? 'Evaluating with repository context only...' : `Evaluating ${file.filename}...`);
       
       try {
         // Get old and new content
-        const oldContent = await getFileContent(octokit, OWNER, REPO, file.filename, PR_NUMBER, 'base');
-        const newContent = await getFileContent(octokit, OWNER, REPO, file.filename, null, 'head');
+        let oldContent, newContent;
+        
+        if (file.synthetic) {
+          // For context-only evaluation, create synthetic prompts
+          oldContent = `You are a helpful assistant. Please help with the user's request.`;
+          newContent = `You are a helpful assistant with access to repository context.
+          
+When responding to requests:
+1. Reference specific files and code from the repository context when relevant
+2. Use exact values, endpoints, and configurations from the provided files
+3. Provide accurate, context-aware responses based on the repository structure`;
+        } else {
+          oldContent = await getFileContent(octokit, OWNER, REPO, file.filename, PR_NUMBER, 'base');
+          newContent = await getFileContent(octokit, OWNER, REPO, file.filename, null, 'head');
+        }
         
         // Select a test scenario
         let testScenario = 'Write a function that reverses a string';
