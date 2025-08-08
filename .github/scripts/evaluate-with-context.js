@@ -128,7 +128,7 @@ async function evaluate() {
       }
       
       // Run repo-context-v2.js to generate context
-      const contextOutput = execSync(`node scripts/repo-context-v2.js --repo-path="${actualRepoPath}" --format=json`, {
+      const contextOutput = execSync(`node scripts/repo-context-v2.js "${actualRepoPath}" --format=json`, {
         encoding: 'utf8',
         cwd: path.join(__dirname, '..', '..')
       });
