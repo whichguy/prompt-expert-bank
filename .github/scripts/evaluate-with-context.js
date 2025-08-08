@@ -243,10 +243,13 @@ async function evaluate() {
       console.log(`Found ${promptFiles.length} prompt files in PR`);
       
       for (const file of promptFiles) {
-        const newContent = await getFileContent(octokit, OWNER, REPO, file.filename, null, 'head');
+        const fileContent = await getFileContent(octokit, OWNER, REPO, file.filename, null, 'head');
         
-        // Domain detection logic (same as original)
-        if (file.filename.includes('security') || newContent.toLowerCase().includes('security')) {
+        // Domain detection logic (handle null content)
+        const contentText = fileContent?.content || fileContent || '';
+        const contentLower = typeof contentText === 'string' ? contentText.toLowerCase() : '';
+        
+        if (file.filename.includes('security') || contentLower.includes('security')) {
           domain = 'security';
         } else if (file.filename.includes('code') || file.filename.includes('programming')) {
           domain = 'programming';
