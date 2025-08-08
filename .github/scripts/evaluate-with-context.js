@@ -9,6 +9,7 @@ const REPO = process.env.REPO;
 const PR_NUMBER = parseInt(process.env.PR_NUMBER);
 const REPO_CONTEXT_FILE = process.env.REPO_CONTEXT_FILE || 'repo_context.json';
 const CUSTOM_EXPERT = process.env.CUSTOM_EXPERT; // New: custom expert specification
+const BASELINE_REPO = process.env.BASELINE_REPO; // Optional: GitHub repo for Thread A baseline (e.g., "owner/repo")
 
 /**
  * Build context messages for Anthropic API with cache control
@@ -355,6 +356,9 @@ async function evaluate() {
         // Get old and new content based on file status
         let oldContent, newContent;
         
+        // Check if we should use an external baseline repo for Thread A
+        const useExternalBaseline = BASELINE_REPO && !file.synthetic;
+        
         if (file.synthetic) {
           // For context-only evaluation, create synthetic prompts
           oldContent = `You are a helpful assistant. Please help with the user's request.`;
@@ -364,6 +368,26 @@ When responding to requests:
 1. Reference specific files and code from the repository context when relevant
 2. Use exact values, endpoints, and configurations from the provided files
 3. Provide accurate, context-aware responses based on the repository structure`;
+        } else if (useExternalBaseline) {
+          // Use external baseline repo for Thread A
+          console.log(`Using external baseline repo ${BASELINE_REPO} for Thread A`);
+          oldContent = await getExternalFileContent(octokit, BASELINE_REPO, file.filename);
+          
+          // If file not found in external repo, fall back to default behavior
+          if (!oldContent) {
+            console.log(`File not found in external repo, falling back to default baseline`);
+            if (file.status === 'modified') {
+              oldContent = await getFileContent(octokit, OWNER, REPO, file.filename, PR_NUMBER, 'base');
+            } else if (file.status === 'renamed' && file.previousFilename) {
+              oldContent = await getFileContent(octokit, OWNER, REPO, file.previousFilename, PR_NUMBER, 'base');
+            } else {
+              oldContent = `You are a helpful assistant. Please help with the user's request.`;
+            }
+          }
+          
+          // Thread B always gets the head version from the PR
+          newContent = await getFileContent(octokit, OWNER, REPO, file.filename, null, 'head');
+          console.log(`Comparing ${BASELINE_REPO}/${file.filename} vs PR head version`);
         } else if (file.status === 'modified') {
           // Modified file: get base version for Thread A, head version for Thread B
           oldContent = await getFileContent(octokit, OWNER, REPO, file.filename, PR_NUMBER, 'base');
@@ -572,12 +596,21 @@ This context was used to enhance the evaluation accuracy with cache control for 
 - **Expert Used**: ${expertSpec || domain}
 - **Location**: [\`${expertLocation}\`](https://github.com/${OWNER}/${REPO}/blob/${BRANCH}/${expertLocation})
 ` : '';
+
+        // Build baseline info section if using external baseline
+        const baselineInfo = BASELINE_REPO ? `
+### 🔄 Baseline Source
+- **External Repository**: [\`${BASELINE_REPO}\`](https://github.com/${BASELINE_REPO})
+- **Description**: Thread A uses prompts from this external repository as baseline
+- **Thread B Source**: Current PR changes
+` : '';
         
         results.push({
           file: file.filename,
           report: `### 🔍 Context-Enhanced Evaluation Results
 
 ${expertInfo}
+${baselineInfo}
 ${contextNotification}
 
 **Test Scenario (${domain} domain):**
@@ -647,6 +680,33 @@ ${result.report}`;
       issue_number: PR_NUMBER,
       body: `❌ Evaluation failed: ${error.message}`
     });
+  }
+}
+
+/**
+ * Get file content from an external GitHub repository
+ */
+async function getExternalFileContent(octokit, repoPath, filePath) {
+  try {
+    const [owner, repo] = repoPath.split('/');
+    
+    // Try to get the file from the default branch
+    const { data } = await octokit.repos.getContent({
+      owner,
+      repo,
+      path: filePath
+    });
+    
+    if (data.content) {
+      const content = Buffer.from(data.content, 'base64').toString('utf-8');
+      console.log(`Loaded ${filePath} from external repo ${repoPath} (${content.length} chars)`);
+      return content;
+    }
+    
+    return '';
+  } catch (error) {
+    console.log(`File ${filePath} not found in external repo ${repoPath}: ${error.message}`);
+    return '';
   }
 }
 

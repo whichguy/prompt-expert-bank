@@ -31,20 +31,35 @@ async function main() {
     const repoPathMatch = instructions.match(/--repo-path=["']?([^"'\s]+)["']?/);
     const repoPath = repoPathMatch ? repoPathMatch[1] : null;
     
+    // Extract baseline repo if specified
+    const baselineRepoMatch = instructions.match(/--baseline-repo=["']?([^"'\s]+)["']?/);
+    const baselineRepo = baselineRepoMatch ? baselineRepoMatch[1] : null;
+    
+    if (baselineRepo) {
+      console.log(`Using external baseline repository: ${baselineRepo}`);
+    }
+    
     if (repoPath) {
       // Run evaluation with context
       const { execSync } = require('child_process');
       
       try {
+        const envVars = {
+          ...process.env,
+          REPO_PATH: repoPath,
+          CUSTOM_EXPERT: expert,
+          OWNER: owner,
+          REPO: repo,
+          PR_NUMBER: prNumber.toString()
+        };
+        
+        // Add baseline repo if specified
+        if (baselineRepo) {
+          envVars.BASELINE_REPO = baselineRepo;
+        }
+        
         const output = execSync(`node .github/scripts/evaluate-with-context.js`, {
-          env: {
-            ...process.env,
-            REPO_PATH: repoPath,
-            CUSTOM_EXPERT: expert,
-            OWNER: owner,
-            REPO: repo,
-            PR_NUMBER: prNumber.toString()
-          },
+          env: envVars,
           stdio: 'inherit'
         });
         
