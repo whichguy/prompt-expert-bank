@@ -356,8 +356,15 @@ async function evaluate() {
         // Get old and new content based on file status
         let oldContent, newContent;
         
+        console.log(`[FILE] Processing: ${file.filename || 'synthetic'}`);
+        console.log(`[FILE] Status: ${file.status || 'N/A'}`);
+        console.log(`[FILE] Previous filename: ${file.previousFilename || 'N/A'}`);
+        
         // Check if we should use an external baseline repo for Thread A
         const useExternalBaseline = BASELINE_REPO && !file.synthetic;
+        if (useExternalBaseline) {
+          console.log(`[FILE] Using external baseline repo: ${BASELINE_REPO}`);
+        }
         
         if (file.synthetic) {
           // For context-only evaluation, create synthetic prompts
@@ -475,6 +482,15 @@ When responding to requests:
           });
         }
         
+        // Log Thread A content
+        console.log(`[THREAD A] Content being sent:`);
+        console.log(`[THREAD A] - Prompt content length: ${oldContent.length} chars`);
+        console.log(`[THREAD A] - First 200 chars of prompt: ${oldContent.substring(0, 200)}...`);
+        console.log(`[THREAD A] - Context messages: ${contextMessages.length}`);
+        if (contextMessages.length > 0) {
+          console.log(`[THREAD A] - Context includes: ${repoContext?.summary?.totalFiles || 0} files, ${Math.round((repoContext?.summary?.totalSize || 0) / 1024)}KB`);
+        }
+        
         // Thread A: Evaluate current prompt WITH repository context (same file IDs as Thread B)
         console.log(`[EVALUATE] Executing Thread A with ${contextMessages.length > 0 ? 'repository context' : 'no context'}`);
         const threadA = await anthropic.messages.create({
@@ -482,6 +498,15 @@ When responding to requests:
           max_tokens: 4000,
           messages: threadAMessages
         });
+        
+        // Log Thread B content
+        console.log(`[THREAD B] Content being sent:`);
+        console.log(`[THREAD B] - Prompt content length: ${newContent.length} chars`);
+        console.log(`[THREAD B] - First 200 chars of prompt: ${newContent.substring(0, 200)}...`);
+        console.log(`[THREAD B] - Context messages: ${contextMessages.length}`);
+        if (contextMessages.length > 0) {
+          console.log(`[THREAD B] - Context includes: ${repoContext?.summary?.totalFiles || 0} files, ${Math.round((repoContext?.summary?.totalSize || 0) / 1024)}KB`);
+        }
         
         // Thread B: Evaluate new prompt WITH repository context (same file IDs as Thread A)
         console.log(`[EVALUATE] Executing Thread B with ${contextMessages.length > 0 ? 'repository context' : 'no context'}`);
