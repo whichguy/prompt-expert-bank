@@ -380,7 +380,7 @@ Note: IMPROVEMENTS NEEDED section is only required for SUGGEST decisions.`
       }
       
       fullReport += `### 🤖 Automated Implementation\n\n`;
-      fullReport += `@promptexpert will now automatically implement these improvements.\n\n`;
+      fullReport += `@prompt-expert will now automatically implement these improvements.\n\n`;
       fullReport += `**Status:** Implementation in progress... 🔄\n\n`;
       fullReport += `**Note**: The improvements will be implemented using the ${domain} domain expert.`;
     } else {
@@ -410,8 +410,8 @@ Note: IMPROVEMENTS NEEDED section is only required for SUGGEST decisions.`
           owner: OWNER,
           repo: REPO,
           pull_number: PR_NUMBER,
-          commit_title: `PromptExpert: MERGE approved`,
-          commit_message: `Automatically merged after expert evaluation.\n\n✅ Expert decision: MERGE\n📊 The new prompt implementation is superior and ready for production\n🤖 Merged by PromptExpert system at ${new Date().toISOString()}`,
+          commit_title: `Prompt Expert: MERGE approved`,
+          commit_message: `Automatically merged after expert evaluation.\n\n✅ Expert decision: MERGE\n📊 The new prompt implementation is superior and ready for production\n🤖 Merged by Prompt Expert system at ${new Date().toISOString()}`,
           merge_method: 'squash'
         });
         
@@ -466,11 +466,11 @@ Note: IMPROVEMENTS NEEDED section is only required for SUGGEST decisions.`
           owner: OWNER,
           repo: REPO,
           issue_number: PR_NUMBER,
-          body: `@promptexpert ${domain} ${suggestionText}${iterationNote}`
+          body: `@prompt-expert ${domain} ${suggestionText}${iterationNote}`
         });
       }
       
-      // Do not close the PR - let @promptexpert work on it
+      // Do not close the PR - let @prompt-expert work on it
       console.log('PR remains open for improvements');
     } else if (autoCloseOnFail) {
       // REJECT case - Close the PR

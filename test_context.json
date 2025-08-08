@@ -1,0 +1,71 @@
+{
+  "systemContext": "============================================================\nREPOSITORY CONTEXT\n============================================================\n\nRepository: context-test-demo\nFiles Loaded: 2 text files\nGit Branch: main (abde4c3)\n\nFILES:\n------------------------------------------------------------\n\nFILE: config/api-config.json [Hash: d4d1b463]\n----------------------------------------\n{\n  \"apiEndpoints\": {\n    \"userAuth\": \"/api/v2/auth/login\",\n    \"dataFetch\": \"/api/v2/data/fetch\",\n    \"secretKey\": \"DEMO_API_KEY_12345\"\n  },\n  \"rateLimits\": {\n    \"requestsPerMinute\": 60,\n    \"burstLimit\": 100\n  },\n  \"features\": {\n    \"enableCache\": true,\n    \"cacheTimeout\": 3600,\n    \"useCompression\": true\n  }\n}\n\n\n\nFILE: data/processor.js [Hash: 803e6323]\n----------------------------------------\nclass DataProcessor {\n  constructor() {\n    this.processingKey = \"UNIQUE_PROCESSING_KEY_789\";\n    this.maxBatchSize = 1000;\n  }\n\n  processUserData(data) {\n    if (!data || data.length > this.maxBatchSize) {\n      throw new Error(`Data batch exceeds maximum size of ${this.maxBatchSize}`);\n    }\n    \n    return {\n      processed: data.map(item => ({\n        ...item,\n        processedAt: new Date().toISOString(),\n        signature: this.generateSignature(item)\n      })),\n      metadata: {\n        count: data.length,\n        processingKey: this.processingKey,\n        maxBatchSize: this.maxBatchSize\n      }\n    };\n  }\n\n  generateSignature(item) {\n    return `SIG_${this.processingKey}_${JSON.stringify(item).length}`;\n  }\n}\n\nmodule.exports = DataProcessor;\n\n\n============================================================\nEND REPOSITORY CONTEXT\n============================================================",
+  "textFiles": [
+    {
+      "hash": "d4d1b4635aee993be5d44be1fdc070ef589070dd",
+      "paths": [
+        "config/api-config.json"
+      ],
+      "content": "{\n  \"apiEndpoints\": {\n    \"userAuth\": \"/api/v2/auth/login\",\n    \"dataFetch\": \"/api/v2/data/fetch\",\n    \"secretKey\": \"DEMO_API_KEY_12345\"\n  },\n  \"rateLimits\": {\n    \"requestsPerMinute\": 60,\n    \"burstLimit\": 100\n  },\n  \"features\": {\n    \"enableCache\": true,\n    \"cacheTimeout\": 3600,\n    \"useCompression\": true\n  }\n}\n",
+      "type": "text"
+    },
+    {
+      "hash": "803e632302d86982f1ef600f8ec60c4d76a3103c",
+      "paths": [
+        "data/processor.js"
+      ],
+      "content": "class DataProcessor {\n  constructor() {\n    this.processingKey = \"UNIQUE_PROCESSING_KEY_789\";\n    this.maxBatchSize = 1000;\n  }\n\n  processUserData(data) {\n    if (!data || data.length > this.maxBatchSize) {\n      throw new Error(`Data batch exceeds maximum size of ${this.maxBatchSize}`);\n    }\n    \n    return {\n      processed: data.map(item => ({\n        ...item,\n        processedAt: new Date().toISOString(),\n        signature: this.generateSignature(item)\n      })),\n      metadata: {\n        count: data.length,\n        processingKey: this.processingKey,\n        maxBatchSize: this.maxBatchSize\n      }\n    };\n  }\n\n  generateSignature(item) {\n    return `SIG_${this.processingKey}_${JSON.stringify(item).length}`;\n  }\n}\n\nmodule.exports = DataProcessor;\n",
+      "type": "text"
+    }
+  ],
+  "mediaFiles": [
+    {
+      "hash": "2f1f7be4dcc84c4ef924fe2dd2baf3988d5bb634",
+      "paths": [
+        "architecture.svg"
+      ],
+      "data": "PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB4PSIxMCIgeT0iMTAiIHdpZHRoPSIxMDAiIGhlaWdodD0iNTAiIGZpbGw9ImxpZ2h0Ymx1ZSIgc3Ryb2tlPSJibGFjayIvPgogIDx0ZXh0IHg9IjYwIiB5PSI0MCIgdGV4dC1hbmNob3I9Im1pZGRsZSI+Q2xpZW50PC90ZXh0PgogIDxyZWN0IHg9IjE1MCIgeT0iMTAiIHdpZHRoPSIxMDAiIGhlaWdodD0iNTAiIGZpbGw9ImxpZ2h0Z3JlZW4iIHN0cm9rZT0iYmxhY2siLz4KICA8dGV4dCB4PSIyMDAiIHk9IjQwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5BUEkgR2F0ZXdheTwvdGV4dD4KICA8cmVjdCB4PSIyOTAiIHk9IjEwIiB3aWR0aD0iMTAwIiBoZWlnaHQ9IjUwIiBmaWxsPSJsaWdodHllbGxvdyIgc3Ryb2tlPSJibGFjayIvPgogIDx0ZXh0IHg9IjM0MCIgeT0iNDAiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkRhdGFiYXNlPC90ZXh0Pgo8L3N2Zz4K",
+      "mediaType": "image/svg+xml",
+      "type": "image"
+    }
+  ],
+  "cacheControl": {
+    "cacheKeys": [
+      "2f1f7be4dcc84c4ef924fe2dd2baf3988d5bb634",
+      "d4d1b4635aee993be5d44be1fdc070ef589070dd",
+      "803e632302d86982f1ef600f8ec60c4d76a3103c"
+    ],
+    "ttl": 3600
+  },
+  "summary": {
+    "totalFiles": 3,
+    "textFiles": 2,
+    "imageFiles": 1,
+    "pdfFiles": 0,
+    "uniqueHashes": 3,
+    "totalSize": 1574
+  },
+  "files": [
+    {
+      "hash": "d4d1b4635aee993be5d44be1fdc070ef589070dd",
+      "path": "config/api-config.json",
+      "type": "text",
+      "size": 316,
+      "content": "{\n  \"apiEndpoints\": {\n    \"userAuth\": \"/api/v2/auth/login\",\n    \"dataFetch\": \"/api/v2/data/fetch\",\n    \"secretKey\": \"DEMO_API_KEY_12345\"\n  },\n  \"rateLimits\": {\n    \"requestsPerMinute\": 60,\n    \"burstLimit\": 100\n  },\n  \"features\": {\n    \"enableCache\": true,\n    \"cacheTimeout\": 3600,\n    \"useCompression\": true\n  }\n}\n"
+    },
+    {
+      "hash": "803e632302d86982f1ef600f8ec60c4d76a3103c",
+      "path": "data/processor.js",
+      "type": "text",
+      "size": 760,
+      "content": "class DataProcessor {\n  constructor() {\n    this.processingKey = \"UNIQUE_PROCESSING_KEY_789\";\n    this.maxBatchSize = 1000;\n  }\n\n  processUserData(data) {\n    if (!data || data.length > this.maxBatchSize) {\n      throw new Error(`Data batch exceeds maximum size of ${this.maxBatchSize}`);\n    }\n    \n    return {\n      processed: data.map(item => ({\n        ...item,\n        processedAt: new Date().toISOString(),\n        signature: this.generateSignature(item)\n      })),\n      metadata: {\n        count: data.length,\n        processingKey: this.processingKey,\n        maxBatchSize: this.maxBatchSize\n      }\n    };\n  }\n\n  generateSignature(item) {\n    return `SIG_${this.processingKey}_${JSON.stringify(item).length}`;\n  }\n}\n\nmodule.exports = DataProcessor;\n"
+    },
+    {
+      "hash": "2f1f7be4dcc84c4ef924fe2dd2baf3988d5bb634",
+      "path": "architecture.svg",
+      "type": "image",
+      "size": 498,
+      "content": "PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB4PSIxMCIgeT0iMTAiIHdpZHRoPSIxMDAiIGhlaWdodD0iNTAiIGZpbGw9ImxpZ2h0Ymx1ZSIgc3Ryb2tlPSJibGFjayIvPgogIDx0ZXh0IHg9IjYwIiB5PSI0MCIgdGV4dC1hbmNob3I9Im1pZGRsZSI+Q2xpZW50PC90ZXh0PgogIDxyZWN0IHg9IjE1MCIgeT0iMTAiIHdpZHRoPSIxMDAiIGhlaWdodD0iNTAiIGZpbGw9ImxpZ2h0Z3JlZW4iIHN0cm9rZT0iYmxhY2siLz4KICA8dGV4dCB4PSIyMDAiIHk9IjQwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5BUEkgR2F0ZXdheTwvdGV4dD4KICA8cmVjdCB4PSIyOTAiIHk9IjEwIiB3aWR0aD0iMTAwIiBoZWlnaHQ9IjUwIiBmaWxsPSJsaWdodHllbGxvdyIgc3Ryb2tlPSJibGFjayIvPgogIDx0ZXh0IHg9IjM0MCIgeT0iNDAiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkRhdGFiYXNlPC90ZXh0Pgo8L3N2Zz4K"
+    }
+  ]
+}

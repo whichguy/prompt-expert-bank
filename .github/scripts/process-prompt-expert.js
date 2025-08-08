@@ -3,12 +3,15 @@ const { Octokit } = require('@octokit/rest');
 const fs = require('fs').promises;
 const path = require('path');
 const { execSync } = require('child_process');
+const ExpertLoader = require('../../scripts/expert-loader');
 
 async function processCommand() {
   const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   
+  // Support both domain and expert-path parameters
   const domain = process.env.DOMAIN;
+  const expertPath = process.env.EXPERT_PATH; // New: custom expert path
   const suggestion = process.env.SUGGESTION;
   const issueNumber = parseInt(process.env.ISSUE_NUMBER);
   const [owner, repo] = process.env.GITHUB_REPOSITORY.split('/');
@@ -44,13 +47,34 @@ async function processCommand() {
     const targetFile = promptFiles[0];
     const currentContent = await fs.readFile(targetFile.filename, 'utf-8');
     
-    // Load expert definition if available
+    // Load expert definition using the ExpertLoader
     let expertContext = '';
+    let expertName = domain;
+    const expertLoader = new ExpertLoader({
+      baseDir: path.join(__dirname, '..', '..')
+    });
+    
     try {
-      const expertPath = path.join(__dirname, '..', 'expert-definitions', `${domain}-expert.md`);
-      expertContext = await fs.readFile(expertPath, 'utf-8');
-      console.log(`Loaded ${domain} expert definition`);
+      await expertLoader.initialize();
+      
+      // Try to load expert by path or alias
+      let expertSpec = expertPath || domain;
+      console.log(`Loading expert: ${expertSpec}`);
+      
+      const expert = await expertLoader.loadExpert(expertSpec);
+      expertContext = expert.content;
+      
+      // Log expert source
+      if (expert.source === 'github') {
+        console.log(`Loaded expert from GitHub: ${expert.repo}/${expert.path}`);
+        expertName = `${expert.repo.split('/')[1]}-${domain}`;
+      } else if (expert.source === 'alias') {
+        console.log(`Loaded expert from alias: ${expertSpec}`);
+      } else {
+        console.log(`Loaded expert from: ${expert.source}`);
+      }
     } catch (err) {
+      console.log(`Error loading expert: ${err.message}`);
       console.log(`Using generic ${domain} expert context`);
       expertContext = `You are a ${domain} expert focused on improving prompts in this domain.`;
     }
@@ -87,10 +111,10 @@ Return ONLY the complete updated prompt content, no explanations.`
     await fs.writeFile(targetFile.filename, updatedContent);
     
     // Commit and push changes
-    execSync('git config user.name "PromptExpert Bot"');
-    execSync('git config user.email "promptexpert[bot]@users.noreply.github.com"');
+    execSync('git config user.name "Prompt Expert Bot"');
+    execSync('git config user.email "prompt-expert[bot]@users.noreply.github.com"');
     execSync(`git add ${targetFile.filename}`);
-    execSync(`git commit -m "PromptExpert: Implement ${domain} improvements
+    execSync(`git commit -m "Prompt Expert: Implement ${domain} improvements
 
 Suggestion: ${suggestion}
 
@@ -102,7 +126,7 @@ Requested by: @${author}"`);
       owner,
       repo,
       issue_number: issueNumber,
-      body: `✅ **PromptExpert Implementation Complete**
+      body: `✅ **Prompt Expert Implementation Complete**
 
 **Domain**: ${domain}
 **File Updated**: \`${targetFile.filename}\`
@@ -119,7 +143,7 @@ Requested by: @${author}`
       owner,
       repo,
       issue_number: issueNumber,
-      body: `❌ PromptExpert encountered an error: ${error.message}`
+      body: `❌ Prompt Expert encountered an error: ${error.message}`
     });
     process.exit(1);
   }

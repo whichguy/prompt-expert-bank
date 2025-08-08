@@ -9,8 +9,17 @@ Prompt Expert is an automated system that evaluates prompt changes in GitHub PRs
 ```
 prompt-expert/
 ├── .github/
-│   └── workflows/
-│       └── evaluate-prompts.yml    # Main reusable workflow for prompt evaluation
+│   ├── workflows/
+│   │   ├── evaluate-prompts.yml         # Main reusable workflow for prompt evaluation
+│   │   ├── prompt-expert-on-demand.yml   # On-demand expert evaluation via PR comments
+│   │   ├── prompt-expert.yml            # Prompt Expert v2 workflow
+│   │   ├── prompt-expert-issue.yml      # Issue handler for @prompt-expert commands
+│   │   └── claude-pr-action.yml        # Claude integration for PR improvements
+│   └── scripts/
+│       ├── evaluate-prompts.js         # Standard evaluation script
+│       ├── evaluate-with-context.js    # Context-enhanced evaluation
+│       ├── prompt-expert-handler.js     # Handler for @prompt-expert commands
+│       └── process-prompt-expert.js     # Process expert suggestions
 │
 ├── expert-definitions/             # Expert system prompts with scoring (Markdown)
 │   ├── programming-expert.md       # Programming & code review expert
@@ -26,6 +35,13 @@ prompt-expert/
 │   ├── general-tests.json          # General purpose test scenarios
 │   └── security-tests.json         # Security domain test scenarios
 │
+├── scripts/                        # Utility scripts
+│   ├── repo-context-v2.js         # Repository context loader with multimodal support
+│   └── claude-cache-manager.js    # Cache management for Claude API
+│
+├── docs/                          # Documentation
+│   ├── CACHE_MANAGEMENT.md        # Cache management documentation
+│   └── prompt-expert-v2-usage.md   # Usage guide for v2 features
 │
 ├── examples/                      # Example implementations
 │   ├── sample-security-prompt-v1.md # "Before" prompt example

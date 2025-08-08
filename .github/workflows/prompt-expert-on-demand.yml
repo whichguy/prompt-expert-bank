@@ -1,4 +1,4 @@
-name: PromptExpert On-Demand Evaluation
+name: Prompt Expert On-Demand Evaluation
 
 on:
   issue_comment:
@@ -6,8 +6,8 @@ on:
 
 jobs:
   expert-on-demand:
-    # Only run on PR comments that mention @promptexpert
-    if: github.event.issue.pull_request && contains(github.event.comment.body, '@promptexpert')
+    # Only run on PR comments that mention @prompt-expert
+    if: github.event.issue.pull_request && contains(github.event.comment.body, '@prompt-expert')
     runs-on: ubuntu-latest
     
     permissions:
@@ -26,19 +26,57 @@ jobs:
           echo "Full comment: $COMMENT"
           
           # Extract expert name and parameters from formats like:
-          # @promptexpert programming --scenario="test code" --focus=security
-          # @promptexpert:financial --test="ROI calc" --criteria=accuracy,risk
-          # @promptexpert all --custom-weight="quality:50,speed:30,clarity:20"
+          # @prompt-expert programming --scenario="test code" --focus=security
+          # @prompt-expert:financial --test="ROI calc" --criteria=accuracy,risk
+          # @prompt-expert all --custom-weight="quality:50,speed:30,clarity:20"
           
-          # Extract expert name
-          if [[ $COMMENT =~ @promptexpert[[:space:]]+([a-zA-Z-]+) ]]; then
+          # Extract expert name or path
+          # Supports formats like:
+          # @prompt-expert security
+          # @prompt-expert myorg/myrepo:prompts/expert.md
+          # @prompt-expert --expert=myorg/myrepo:prompts/expert.md
+          # @prompt-expert --expert-repo=myorg/myrepo --expert-path=prompts/expert.md
+          
+          EXPERT=""
+          EXPERT_REPO=""
+          EXPERT_PATH=""
+          
+          # Check for --expert parameter first
+          if [[ $COMMENT =~ --expert=["\'](.*?)["\'] ]]; then
             EXPERT="${BASH_REMATCH[1]}"
-          elif [[ $COMMENT =~ @promptexpert:([a-zA-Z-]+) ]]; then
+          elif [[ $COMMENT =~ --expert=([^[:space:]]+) ]]; then
             EXPERT="${BASH_REMATCH[1]}"
-          elif [[ $COMMENT =~ @promptexpert[[:space:]]*$ ]] || [[ $COMMENT =~ @promptexpert[[:space:]]+-- ]]; then
-            EXPERT="general"
-          else
-            EXPERT="general"
+          fi
+          
+          # Check for --expert-repo and --expert-path parameters
+          if [[ $COMMENT =~ --expert-repo=["\'](.*?)["\'] ]]; then
+            EXPERT_REPO="${BASH_REMATCH[1]}"
+          elif [[ $COMMENT =~ --expert-repo=([^[:space:]]+) ]]; then
+            EXPERT_REPO="${BASH_REMATCH[1]}"
+          fi
+          
+          if [[ $COMMENT =~ --expert-path=["\'](.*?)["\'] ]]; then
+            EXPERT_PATH="${BASH_REMATCH[1]}"
+          elif [[ $COMMENT =~ --expert-path=([^[:space:]]+) ]]; then
+            EXPERT_PATH="${BASH_REMATCH[1]}"
+          fi
+          
+          # If repo and path are specified, combine them
+          if [[ -n "$EXPERT_REPO" && -n "$EXPERT_PATH" ]]; then
+            EXPERT="${EXPERT_REPO}:${EXPERT_PATH}"
+          fi
+          
+          # If no expert parameter, check for positional argument
+          if [[ -z "$EXPERT" ]]; then
+            if [[ $COMMENT =~ @prompt-expert[[:space:]]+([a-zA-Z0-9/_:-]+) ]]; then
+              EXPERT="${BASH_REMATCH[1]}"
+            elif [[ $COMMENT =~ @prompt-expert:([a-zA-Z0-9/_:-]+) ]]; then
+              EXPERT="${BASH_REMATCH[1]}"
+            elif [[ $COMMENT =~ @prompt-expert[[:space:]]*$ ]] || [[ $COMMENT =~ @prompt-expert[[:space:]]+-- ]]; then
+              EXPERT="general"
+            else
+              EXPERT="general"
+            fi
           fi
           
           echo "Detected expert: $EXPERT"
@@ -83,8 +121,21 @@ jobs:
             SCORE_WEIGHTS="${BASH_REMATCH[1]}"
           fi
           
+          # Extract --repo-path or --context parameter for repository context
+          REPO_PATH=""
+          if [[ $COMMENT =~ --repo-path=[\"\'](.*?)[\"\'] ]]; then
+            REPO_PATH="${BASH_REMATCH[1]}"
+          elif [[ $COMMENT =~ --repo-path=([^[:space:]]+) ]]; then
+            REPO_PATH="${BASH_REMATCH[1]}"
+          elif [[ $COMMENT =~ --context=[\"\'](.*?)[\"\'] ]]; then
+            REPO_PATH="${BASH_REMATCH[1]}"
+          elif [[ $COMMENT =~ --context=([^[:space:]]+) ]]; then
+            REPO_PATH="${BASH_REMATCH[1]}"
+          fi
+          
           # Store all parameters
           echo "scenario=$SCENARIO" >> $GITHUB_OUTPUT
+          echo "repo_path=$REPO_PATH" >> $GITHUB_OUTPUT
           echo "custom_test=$CUSTOM_TEST" >> $GITHUB_OUTPUT
           echo "focus=$FOCUS" >> $GITHUB_OUTPUT
           echo "criteria=$CRITERIA" >> $GITHUB_OUTPUT
@@ -100,16 +151,22 @@ jobs:
           fi
           echo "custom_params=$CUSTOM_PARAMS" >> $GITHUB_OUTPUT
           
-          # Check if expert exists
+          # Check expert mode
           if [[ "$EXPERT" == "all" ]]; then
             echo "mode=all" >> $GITHUB_OUTPUT
           elif [[ "$EXPERT" == "help" ]]; then
             echo "mode=help" >> $GITHUB_OUTPUT
-          elif [[ -f "expert-definitions/${EXPERT}-expert.md" ]]; then
+          elif [[ "$EXPERT" == *":"* ]]; then
+            # Custom expert from repo:path format
+            echo "mode=custom" >> $GITHUB_OUTPUT
+            echo "custom_expert=$EXPERT" >> $GITHUB_OUTPUT
+          elif [[ -f "expert-definitions/${EXPERT}-expert.md" ]] || [[ -f "expert-aliases.json" ]]; then
+            # Local expert or alias
             echo "mode=single" >> $GITHUB_OUTPUT
           else
             echo "mode=error" >> $GITHUB_OUTPUT
             echo "Available experts: programming, financial, data-analysis, general, security"
+            echo "Or use custom: @prompt-expert myorg/myrepo:path/to/expert.md"
           fi
           
       - name: Acknowledge Request
@@ -133,7 +190,7 @@ jobs:
             PARAMS_SUMMARY="**Mode**: Standard evaluation"
           fi
           
-          gh pr comment ${{ github.event.issue.number }} --body "🤖 **PromptExpert Evaluation Requested**
+          gh pr comment ${{ github.event.issue.number }} --body "🤖 **Prompt Expert Evaluation Requested**
           
           **Expert**: \`${{ steps.parse.outputs.expert }}\`
           **Requested by**: @${{ github.event.comment.user.login }}
@@ -142,7 +199,7 @@ jobs:
           Running evaluation... ⏳
           
           ---
-          *Use \`@promptexpert help\` for advanced usage examples*"
+          *Use \`@prompt-expert help\` for advanced usage examples*"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           
@@ -194,12 +251,75 @@ jobs:
           
           @${{ github.event.comment.user.login }} This PR doesn't contain any prompt files (*.md, *.txt, *.prompt).
           
-          PromptExpert can only evaluate changes to prompt files. Please ensure your PR includes prompt modifications.
+          Prompt Expert can only evaluate changes to prompt files. Please ensure your PR includes prompt modifications.
           
           ---
           *Supported file types: .md, .txt, .prompt*"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Cache Cleanup
+        if: steps.parse.outputs.repo_path != ''
+        id: cache_cleanup
+        run: |
+          echo "Cleaning up stale cached files..."
+          
+          # Run cache cleanup for the repository
+          if [ -d "${{ steps.parse.outputs.repo_path }}" ]; then
+            # Clean up files older than 14 days using Claude cache manager
+            node scripts/claude-cache-manager.js cleanup "${{ steps.parse.outputs.repo_path }}" > cleanup_report.json
+            
+            # Display cleanup summary
+            echo "Cache cleanup completed:"
+            cat cleanup_report.json | jq '.summary'
+            
+            # Store cleanup results
+            echo "cleanup_completed=true" >> $GITHUB_OUTPUT
+            echo "stale_files=$(cat cleanup_report.json | jq '.summary.staleFilesFound')" >> $GITHUB_OUTPUT
+            echo "files_cleaned=$(cat cleanup_report.json | jq '.summary.filesMarkedForCleanup')" >> $GITHUB_OUTPUT
+            
+            # Show type breakdown
+            echo "Files by type:"
+            cat cleanup_report.json | jq '.summary.typeBreakdown'
+            
+            # Clean old sessions (older than 30 days)
+            node scripts/claude-cache-manager.js clean-sessions "${{ steps.parse.outputs.repo_path }}" 30
+          else
+            echo "cleanup_completed=false" >> $GITHUB_OUTPUT
+          fi
+          
+      - name: Load Repository Context
+        if: steps.parse.outputs.repo_path != ''
+        id: repo_context
+        run: |
+          echo "Loading repository context from: ${{ steps.parse.outputs.repo_path }}"
+          
+          # Check if path exists
+          if [ -d "${{ steps.parse.outputs.repo_path }}" ]; then
+            # Load context using v2 script with image/PDF support
+            node scripts/repo-context-v2.js "${{ steps.parse.outputs.repo_path }}" --include-images > repo_context.json
+            
+            # Track files being sent to Claude
+            echo "Tracking files in Claude cache..."
+            cat repo_context.json | node scripts/claude-cache-manager.js track "${{ steps.parse.outputs.repo_path }}" > track_result.json
+            
+            # Show tracking result
+            echo "Files tracked in session: $(cat track_result.json | jq '.sessionId')"
+            
+            echo "context_loaded=true" >> $GITHUB_OUTPUT
+            echo "Repository context loaded successfully"
+            
+            # Show summary
+            echo "Context summary:"
+            cat repo_context.json | jq '.summary'
+            
+            # Show cache stats
+            echo "Cache statistics:"
+            node scripts/claude-cache-manager.js stats "${{ steps.parse.outputs.repo_path }}" | jq '.cacheSavings'
+          else
+            echo "Repository path not found: ${{ steps.parse.outputs.repo_path }}"
+            echo "context_loaded=false" >> $GITHUB_OUTPUT
+          fi
           
       - name: Run Single Expert Evaluation
         if: steps.parse.outputs.mode == 'single' && steps.files.outputs.has_prompts == 'true'
@@ -332,10 +452,10 @@ jobs:
           - \`all\` - Run all applicable experts
           
           **Usage examples:**
-          - \`@promptexpert programming\`
-          - \`@promptexpert:financial\`  
-          - \`@promptexpert all\`
-          - \`@promptexpert\` (uses general expert)
+          - \`@prompt-expert programming\`
+          - \`@prompt-expert:financial\`  
+          - \`@prompt-expert all\`
+          - \`@prompt-expert\` (uses general expert)
           
           ---
           *Please try again with a valid expert name*"
@@ -353,16 +473,16 @@ jobs:
           **File evaluated**: \`${{ steps.files.outputs.first_prompt }}\`
           **Timestamp**: $(date -u '+%Y-%m-%d %H:%M:%S UTC')
           
-          💡 *Use \`@promptexpert help\` to see all available commands*"
+          💡 *Use \`@prompt-expert help\` to see all available commands*"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           
       - name: Handle Help Request
-        if: contains(github.event.comment.body, '@promptexpert help') || steps.parse.outputs.mode == 'help'
+        if: contains(github.event.comment.body, '@prompt-expert help') || steps.parse.outputs.mode == 'help'
         run: |
-          gh pr comment ${{ github.event.issue.number }} --body "## 🤖 PromptExpert Help
+          gh pr comment ${{ github.event.issue.number }} --body "## 🤖 Prompt Expert Help
           
-          **Usage:** Comment \`@promptexpert [expert] [parameters]\` on any PR to trigger expert evaluation
+          **Usage:** Comment \`@prompt-expert [expert] [parameters]\` on any PR to trigger expert evaluation
           
           ### Available Experts
           | Expert | Domain | Best For |
@@ -376,42 +496,49 @@ jobs:
           
           ### Basic Commands
           \`\`\`
-          @promptexpert programming        # Run programming expert
-          @promptexpert:financial         # Alternative syntax
-          @promptexpert all               # Run all applicable experts  
-          @promptexpert                   # Use general expert (default)
-          @promptexpert help              # Show this help message
+          @prompt-expert programming        # Run programming expert
+          @prompt-expert:financial         # Alternative syntax
+          @prompt-expert all               # Run all applicable experts  
+          @prompt-expert                   # Use general expert (default)
+          @prompt-expert help              # Show this help message
           \`\`\`
           
           ### Advanced Parameters
           
           #### Custom Test Scenarios
           \`\`\`
-          @promptexpert programming --scenario=\"Review this code: function login(user) { return user; }\"
-          @promptexpert financial --test=\"Calculate ROI for \$10k investment at 7% annual return\"
+          @prompt-expert programming --scenario=\"Review this code: function login(user) { return user; }\"
+          @prompt-expert financial --test=\"Calculate ROI for \$10k investment at 7% annual return\"
           \`\`\`
           
           #### Focus Areas
           \`\`\`
-          @promptexpert programming --focus=security,performance
-          @promptexpert general --focus=clarity,engagement
+          @prompt-expert programming --focus=security,performance
+          @prompt-expert general --focus=clarity,engagement
           \`\`\`
           
           #### Custom Evaluation Criteria
           \`\`\`
-          @promptexpert financial --criteria=accuracy,risk-awareness,compliance
-          @promptexpert data-analysis --criteria=statistical-rigor,privacy
+          @prompt-expert financial --criteria=accuracy,risk-awareness,compliance
+          @prompt-expert data-analysis --criteria=statistical-rigor,privacy
           \`\`\`
           
           #### Custom Scoring Weights
           \`\`\`
-          @promptexpert programming --score-weight=\"security:40,performance:30,readability:30\"
-          @promptexpert general --score-weight=\"clarity:50,completeness:30,engagement:20\"
+          @prompt-expert programming --score-weight=\"security:40,performance:30,readability:30\"
+          @prompt-expert general --score-weight=\"clarity:50,completeness:30,engagement:20\"
+          \`\`\`
+          
+          #### Repository Context
+          \`\`\`
+          @prompt-expert security --repo-path=\"./backend\" --test=\"API security audit\"
+          @prompt-expert programming --context=\"./src\" --scenario=\"Code review\"
           \`\`\`
           
           #### Combined Parameters
           \`\`\`
-          @promptexpert programming --scenario=\"Debug memory leak in Python\" --focus=performance,debugging --criteria=accuracy,completeness
+          @prompt-expert programming --scenario=\"Debug memory leak in Python\" --focus=performance,debugging --criteria=accuracy,completeness
+          @prompt-expert myorg/standards:prompts/api.md --repo-path=\"./api\" --test=\"REST compliance\"
           \`\`\`
           
           ### Parameter Reference
@@ -419,15 +546,18 @@ jobs:
           - \`--focus=area1,area2\` - Emphasize specific evaluation areas
           - \`--criteria=crit1,crit2\` - Use custom evaluation criteria
           - \`--score-weight=\"area:weight,...\"\` - Customize scoring weights (percentages)
+          - \`--repo-path=\"...\"\` or \`--context=\"...\"\` - Load repository context for evaluation
+          - \`--expert=repo:path\` - Use custom expert from GitHub repository
+          - \`--expert-repo=...\` + \`--expert-path=...\` - Alternative custom expert syntax
           
           ### What Gets Evaluated
-          - PromptExpert analyzes prompt files (*.md, *.txt, *.prompt) in your PR
+          - Prompt Expert analyzes prompt files (*.md, *.txt, *.prompt) in your PR
           - Compares old vs new prompt performance using real test scenarios
           - Incorporates your custom parameters into the evaluation
           - Provides detailed scoring and actionable recommendations
           - Makes APPROVE/REQUEST_CHANGES recommendations
           
           ---
-          *PromptExpert uses a 3-thread evaluation model with custom parameter support*"
+          *Prompt Expert uses a 3-thread evaluation model with custom parameter support*"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,72 @@
+{
+  "version": "2.0",
+  "sessions": {
+    "65ebb012060ec48c": {
+      "startTime": "2025-08-08T16:47:57.671Z",
+      "files": [
+        {
+          "fileId": "d4d1b4635aee993be5d44be1fdc070ef589070dd",
+          "path": "config/api-config.json",
+          "sentAt": "2025-08-08T16:47:57.671Z",
+          "cached": false
+        },
+        {
+          "fileId": "803e632302d86982f1ef600f8ec60c4d76a3103c",
+          "path": "data/processor.js",
+          "sentAt": "2025-08-08T16:47:57.671Z",
+          "cached": false
+        },
+        {
+          "fileId": "2f1f7be4dcc84c4ef924fe2dd2baf3988d5bb634",
+          "path": "architecture.svg",
+          "sentAt": "2025-08-08T16:47:57.671Z",
+          "cached": false
+        }
+      ],
+      "stats": {
+        "filesSent": 3,
+        "bytesSent": 1574,
+        "cacheHits": 0
+      }
+    }
+  },
+  "files": {
+    "d4d1b4635aee993be5d44be1fdc070ef589070dd": {
+      "path": "config/api-config.json",
+      "type": "text",
+      "firstSent": "2025-08-08T16:47:57.671Z",
+      "sentCount": 1,
+      "claudeId": "d4d1b4635aee993be5d44be1fdc070ef589070dd",
+      "size": 316,
+      "lastSent": "2025-08-08T16:47:57.671Z"
+    },
+    "803e632302d86982f1ef600f8ec60c4d76a3103c": {
+      "path": "data/processor.js",
+      "type": "text",
+      "firstSent": "2025-08-08T16:47:57.671Z",
+      "sentCount": 1,
+      "claudeId": "803e632302d86982f1ef600f8ec60c4d76a3103c",
+      "size": 760,
+      "lastSent": "2025-08-08T16:47:57.671Z",
+      "deletedAt": "2025-08-08T16:48:45.993Z",
+      "deleteReason": "manual_deletion"
+    },
+    "2f1f7be4dcc84c4ef924fe2dd2baf3988d5bb634": {
+      "path": "architecture.svg",
+      "type": "image",
+      "firstSent": "2025-08-08T16:47:57.671Z",
+      "sentCount": 1,
+      "claudeId": "2f1f7be4dcc84c4ef924fe2dd2baf3988d5bb634",
+      "size": 498,
+      "lastSent": "2025-08-08T16:47:57.671Z",
+      "deletedAt": "2025-08-08T16:48:39.948Z",
+      "deleteReason": "manual_deletion"
+    }
+  },
+  "lastCleanup": "2025-08-08T16:47:57.669Z",
+  "stats": {
+    "totalFilesSent": 3,
+    "totalBytesSent": 1574,
+    "cacheSavings": 0
+  }
+}

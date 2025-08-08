@@ -20,7 +20,7 @@ async function main() {
   const expert = process.env.EXPERT;
   const instructions = process.env.INSTRUCTIONS;
 
-  console.log(`Processing @promptexpert command for ${expert} expert`);
+  console.log(`Processing @prompt-expert command for ${expert} expert`);
   console.log(`Instructions: ${instructions}`);
 
   try {
@@ -129,7 +129,7 @@ Make sure to maintain the existing structure and intent of the prompt while impl
       execSync('git config user.name "github-actions[bot]"');
       execSync('git config user.email "github-actions[bot]@users.noreply.github.com"');
       execSync(`git add ${filename}`);
-      execSync(`git commit -m "Apply @promptexpert improvements from ${expert} expert"`);
+      execSync(`git commit -m "Apply @prompt-expert improvements from ${expert} expert"`);
       execSync('git push');
       
       console.log('Changes committed and pushed');
@@ -139,7 +139,7 @@ Make sure to maintain the existing structure and intent of the prompt while impl
         owner,
         repo,
         issue_number: prNumber,
-        body: `✅ @promptexpert improvements applied successfully!
+        body: `✅ @prompt-expert improvements applied successfully!
 
 **Expert:** ${expert}
 **File updated:** ${filename}
@@ -154,7 +154,7 @@ The changes have been committed to this PR. Please review the updated prompt.`
         owner,
         repo,
         issue_number: prNumber,
-        body: `❌ Failed to apply @promptexpert improvements. Could not parse the response format.`
+        body: `❌ Failed to apply @prompt-expert improvements. Could not parse the response format.`
       });
     }
   } catch (error) {
@@ -165,7 +165,7 @@ The changes have been committed to this PR. Please review the updated prompt.`
       owner,
       repo,
       issue_number: prNumber,
-      body: `❌ Error applying @promptexpert improvements: ${error.message}`
+      body: `❌ Error applying @prompt-expert improvements: ${error.message}`
     });
     
     process.exit(1);

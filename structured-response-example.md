@@ -1,4 +1,4 @@
-# Structured Response Options for PromptExpert
+# Structured Response Options for Prompt Expert
 
 ## Option 1: Keep Current Natural Language (Current Implementation)
 **Pros:**

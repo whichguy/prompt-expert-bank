@@ -1,17 +1,17 @@
-# PromptExpert v2 Usage Guide
+# Prompt Expert v2 Usage Guide
 
 ## New Command Syntax
 
-The new PromptExpert v2 workflow uses a flexible command syntax:
+The new Prompt Expert v2 workflow uses a flexible command syntax:
 
 ```
-@promptexpert <expert> <instructions>
+@prompt-expert <expert> <instructions>
 ```
 
 ## Usage Contexts
 
 ### Pull Requests
-When used in PR comments, PromptExpert receives:
+When used in PR comments, Prompt Expert receives:
 - Full PR metadata (title, author, branches)
 - Git diff patches showing exact changes
 - Current file contents after changes
@@ -19,7 +19,7 @@ When used in PR comments, PromptExpert receives:
 - Can take actions: update files, approve/reject PR, post comments
 
 ### Regular Issues
-When used in issue comments, PromptExpert receives:
+When used in issue comments, Prompt Expert receives:
 - Issue metadata (title, author, labels, state)
 - Full issue description
 - Recent issue comments (last 5)
@@ -29,32 +29,32 @@ When used in issue comments, PromptExpert receives:
 
 ### Review a PR for Security Issues
 ```
-@promptexpert security analyze this PR for potential vulnerabilities and suggest fixes
+@prompt-expert security analyze this PR for potential vulnerabilities and suggest fixes
 ```
 
 ### Improve Code Quality
 ```
-@promptexpert programming review the code structure and suggest refactoring improvements
+@prompt-expert programming review the code structure and suggest refactoring improvements
 ```
 
 ### Check Financial Compliance
 ```
-@promptexpert financial ensure all financial advice includes proper disclaimers
+@prompt-expert financial ensure all financial advice includes proper disclaimers
 ```
 
 ### Update Documentation
 ```
-@promptexpert general update the README to reflect the latest changes
+@prompt-expert general update the README to reflect the latest changes
 ```
 
 ### Request Changes
 ```
-@promptexpert security this code has SQL injection risks, please fix before merging
+@prompt-expert security this code has SQL injection risks, please fix before merging
 ```
 
 ## Available Actions
 
-Based on the expert's analysis and your instructions, PromptExpert v2 can:
+Based on the expert's analysis and your instructions, Prompt Expert v2 can:
 
 1. **Post Comments** - Provide feedback and suggestions
 2. **Update Files** - Make direct improvements to code/docs
@@ -75,7 +75,7 @@ Based on the expert's analysis and your instructions, PromptExpert v2 can:
 
 ## Response Format
 
-PromptExpert v2 uses a structured JSON response format:
+Prompt Expert v2 uses a structured JSON response format:
 
 ```json
 {

@@ -1,4 +1,4 @@
-name: PromptExpert Issue Handler
+name: Prompt Expert Issue Handler
 
 on:
   issue_comment:
@@ -12,8 +12,8 @@ permissions:
 
 jobs:
   process-issue-expert:
-    # Trigger on issues (not PRs) when @promptexpert is mentioned
-    if: ${{ !github.event.issue.pull_request && contains(github.event.comment.body || github.event.issue.body, '@promptexpert') }}
+    # Trigger on issues (not PRs) when @prompt-expert is mentioned
+    if: ${{ !github.event.issue.pull_request && contains(github.event.comment.body || github.event.issue.body, '@prompt-expert') }}
     runs-on: ubuntu-latest
     steps:
       - name: Parse command
@@ -27,8 +27,8 @@ jobs:
           fi
           
           # Extract expert name and instructions
-          # Format: @promptexpert <expert> <instructions...>
-          if [[ "$TEXT" =~ @promptexpert[[:space:]]+([a-zA-Z-]+)[[:space:]]+(.*) ]]; then
+          # Format: @prompt-expert <expert> <instructions...>
+          if [[ "$TEXT" =~ @prompt-expert[[:space:]]+([a-zA-Z-]+)[[:space:]]+(.*) ]]; then
             EXPERT="${BASH_REMATCH[1]}"
             INSTRUCTIONS="${BASH_REMATCH[2]}"
             
@@ -191,7 +191,7 @@ Return ONLY the JSON object, no other text.`
             }
             
             commentBody += `---\n`;
-            commentBody += `*Requested by @${process.env.AUTHOR} • Powered by PromptExpert*`;
+            commentBody += `*Requested by @${process.env.AUTHOR} • Powered by Prompt Expert*`;
             
             // Post the comment
             await octokit.issues.createComment({
@@ -224,7 +224,7 @@ Return ONLY the JSON object, no other text.`
               owner,
               repo,
               issue_number: process.env.ISSUE_NUMBER,
-              body: `❌ PromptExpert encountered an error: ${err.message}`
+              body: `❌ Prompt Expert encountered an error: ${err.message}`
             });
             process.exit(1);
           });
@@ -239,18 +239,18 @@ Return ONLY the JSON object, no other text.`
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `❌ **Invalid PromptExpert command format**
+              body: `❌ **Invalid Prompt Expert command format**
               
 **Expected format:**
 \`\`\`
-@promptexpert <expert> <instructions>
+@prompt-expert <expert> <instructions>
 \`\`\`
 
 **Examples for issues:**
 \`\`\`
-@promptexpert security help me understand this vulnerability
-@promptexpert programming suggest a solution for this bug
-@promptexpert financial analyze the ROI of this feature
+@prompt-expert security help me understand this vulnerability
+@prompt-expert programming suggest a solution for this bug
+@prompt-expert financial analyze the ROI of this feature
 \`\`\`
 
 **Available experts:** security, programming, financial, data-analysis, general`

@@ -1,4 +1,4 @@
-name: PromptExpert v2
+name: Prompt Expert v2
 
 on:
   issue_comment:
@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   process-expert-command:
-    if: github.event.issue.pull_request && contains(github.event.comment.body, '@promptexpert')
+    if: github.event.issue.pull_request && contains(github.event.comment.body, '@prompt-expert')
     runs-on: ubuntu-latest
     steps:
       - name: Parse command
@@ -20,8 +20,8 @@ jobs:
           COMMENT='${{ github.event.comment.body }}'
           
           # Extract expert name and instructions
-          # Format: @promptexpert <expert> <instructions...>
-          if [[ "$COMMENT" =~ @promptexpert[[:space:]]+([a-zA-Z-]+)[[:space:]]+(.*) ]]; then
+          # Format: @prompt-expert <expert> <instructions...>
+          if [[ "$COMMENT" =~ @prompt-expert[[:space:]]+([a-zA-Z-]+)[[:space:]]+(.*) ]]; then
             EXPERT="${BASH_REMATCH[1]}"
             INSTRUCTIONS="${BASH_REMATCH[2]}"
             
@@ -45,7 +45,7 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
-              body: '❌ Invalid command format. Use: `@promptexpert <domain> --suggest:"your suggestion"`'
+              body: '❌ Invalid command format. Use: `@prompt-expert <domain> --suggest:"your suggestion"`'
             });
             
       - name: Checkout PR
@@ -139,7 +139,7 @@ jobs:
             fs.writeFileSync('pr-context.json', JSON.stringify(context_data, null, 2));
             console.log('PR context saved');
             
-      - name: Run PromptExpert handler
+      - name: Run Prompt Expert handler
         if: steps.parse.outputs.valid == 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -148,4 +148,4 @@ jobs:
           INSTRUCTIONS: ${{ steps.parse.outputs.instructions }}
           PR_NUMBER: ${{ github.event.issue.number }}
         run: |
-          node .github/scripts/promptexpert-handler.js
+          node .github/scripts/prompt-expert-handler.js

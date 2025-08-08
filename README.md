@@ -1,6 +1,6 @@
 # Prompt Expert 🤖
 
-Automated LLM prompt evaluation using domain experts. Get detailed A/B testing feedback on every pull request.
+Automated LLM prompt evaluation using domain experts with repository context support. Get detailed A/B testing feedback on every pull request with multimodal file analysis.
 
 ## 🚀 Quick Start (2 minutes)
 
@@ -18,20 +18,163 @@ gh secret set ANTHROPIC_API_KEY
 
 ## 📋 How It Works
 
-1. **You**: Create a PR with prompt changes
-2. **Expert**: Detects domain, runs A/B tests
-3. **You**: Get detailed evaluation report as PR comment
-4. **Result**: Merge with confidence or iterate based on feedback
+### Three-Thread Evaluation Model
 
-## 🎯 What You Get
+1. **Thread A**: Tests current/baseline prompt against test scenarios
+2. **Thread B**: Tests PR's new prompt against same scenarios  
+3. **Thread C**: Expert compares both results and makes decision
 
-Example evaluation on your PR:
+The expert sees actual LLM responses, not just prompt text, enabling real performance comparison.
+
+## 🎯 Key Features
+
+### 1. Flexible Expert System
+
+#### Built-in Experts
+- **Programming**: Code generation, review, debugging
+- **Security**: Command analysis, risk assessment
+- **Financial**: Investment, budgeting, analysis
+- **Data Analysis**: Statistics, visualization, ML
+- **General**: Fallback for other domains
+
+#### Custom Experts
+Load expert definitions from any GitHub repository:
+
+```bash
+# Use expert from another repository
+@prompt-expert myorg/expert-repo:prompts/api-expert.md
+
+# Or use parameters
+@prompt-expert --expert=kubernetes/kubernetes:docs/prompts/k8s-expert.md
+
+# Or split repo and path
+@prompt-expert --expert-repo=aws/aws-cli --expert-path=prompts/aws-expert.md
+```
+
+#### Expert Aliases
+Define shortcuts for frequently used experts in `expert-aliases.json`:
+
+```json
+{
+  "aliases": {
+    "api-design": {
+      "description": "API design expert",
+      "repo": "myorg/api-standards",
+      "path": "prompts/api-expert.md"
+    }
+  }
+}
+```
+
+Then use: `@prompt-expert api-design`
+
+### 2. Repository Context Support (NEW!)
+Load your codebase as context for more accurate evaluations:
+
+```bash
+# Evaluate with repository context
+@prompt-expert security --repo-path="./src"
+
+# Or use --context as an alias
+@prompt-expert programming --context="./backend" --focus="api-security"
+```
+
+#### Supported File Types:
+- **Text**: All code files, configs, markdown
+- **Images**: .jpg, .png, .gif, .svg (architecture diagrams, screenshots)
+- **PDFs**: Documentation, specifications
+
+#### Cache Management:
+- Tracks files sent to Claude with reference counting
+- Cleans stale files older than 14 days automatically
+- Uses git blob hashes for deduplication
+- Provides usage statistics and cache savings
+
+### 3. On-Demand Evaluation
+Comment on any PR to trigger expert evaluation:
+
+```bash
+# Basic evaluation
+@prompt-expert programming
+
+# With custom parameters
+@prompt-expert security --scenario="SQL injection test" --focus="detection"
+
+# With repository context
+@prompt-expert programming --repo-path="./src" --test="API validation"
+```
+
+### 4. Automatic Improvements
+Three possible outcomes:
+- **✅ MERGE** (Score ≥ 8.5/10) - Ready to merge
+- **💡 SUGGEST** (Score 6-8.5/10) - Auto-invokes improvements
+- **❌ REJECT** (Score < 6/10) - Needs significant rework
+
+## 🛠️ Installation
+
+### Basic Setup
+Use the quick start above for standard evaluation.
+
+### Advanced Setup with Context
+```yaml
+name: Prompt Evaluation
+on:
+  pull_request:
+    paths:
+      - '**/*prompt*.md'
+      
+jobs:
+  evaluate-prompts:
+    uses: whichguy/prompt-expert/.github/workflows/evaluate-prompts.yml@main
+    with:
+      pr-number: ${{ github.event.pull_request.number }}
+      repository: ${{ github.repository }}
+      repo-path: "./src"  # Optional: Add repository context
+    secrets:
+      github-token: ${{ secrets.GITHUB_TOKEN }}
+      anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+```
+
+## 💬 Manual Commands
+
+### Basic Commands
+```bash
+@prompt-expert help                    # Show help
+@prompt-expert programming             # Run specific expert
+@prompt-expert all                    # Run all applicable experts
+```
+
+### Advanced Parameters
+```bash
+# Custom test scenarios
+@prompt-expert programming --scenario="Debug memory leak" --test="Python profiling"
+
+# Focus areas
+@prompt-expert security --focus="authentication,encryption"
+
+# Custom evaluation criteria
+@prompt-expert financial --criteria="accuracy,compliance,risk"
+
+# Custom scoring weights
+@prompt-expert programming --score-weight="security:40,performance:30,readability:30"
+
+# Repository context
+@prompt-expert security --repo-path="./backend" --scenario="API security audit"
+
+# Custom expert from GitHub
+@prompt-expert --expert=myorg/standards:prompts/api-expert.md --test="REST API design"
+
+# Expert alias with context
+@prompt-expert api-design --repo-path="./src/api" --focus="RESTful principles"
+```
+
+## 📊 Evaluation Report Example
 
 ```
 🏦 Prompt Expert - Evaluation Report
 
 Security Command Analysis Expert
-Timestamp: 2024-01-20T15:30:00Z
+Repository Context: 45 files loaded (240KB)
 
 Previous Performance:        New Performance:
 - Detection Rate: 33.3%     - Detection Rate: 100.0% ✅
@@ -43,117 +186,102 @@ Previous Performance:        New Performance:
 Ready to merge ✅
 ```
 
-### Automatic Improvement Workflow
-
-The system now includes three possible outcomes:
-
-1. **✅ MERGE** (Score ≥ 8.5/10) - Your prompt is ready to merge
-2. **💡 SUGGEST** (Score 6-8.5/10) - Automatically invokes @claude to implement improvements
-3. **❌ REJECT** (Score < 6/10) - PR is closed, significant rework needed
-
-When your prompt receives a SUGGEST outcome, the system will:
-- Automatically invoke @claude with specific improvements
-- Track iteration count (max 5 iterations)
-- Become more lenient with each iteration
-- Re-evaluate after improvements are made
-
-## 🛠️ Setup Options
-
-### Basic Setup
-Use the quick start above - it's all you need!
-
-### Advanced Setup
-For custom paths or multiple environments:
-
-```yaml
-name: Prompt Evaluation
-on:
-  pull_request:
-    paths:
-      - '**/*prompt*.md'
-      - 'agents/**'      # Your custom paths
-      
-jobs:
-  evaluate-prompts:
-    uses: whichguy/prompt-expert/.github/workflows/evaluate-prompts.yml@main
-    with:
-      pr-number: ${{ github.event.pull_request.number }}
-      repository: ${{ github.repository }}
-    secrets:
-      github-token: ${{ secrets.GITHUB_TOKEN }}
-      anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
-```
-
-## 📊 Available Experts
-
-| Domain | Detection Keywords | Status |
-|--------|-------------------|---------|
-| Security | `security`, `risk`, `safety` | ✅ Ready |
-| Programming & Code Review | `code`, `programming`, `javascript`, `python`, `java`, `api`, `function`, `algorithm`, `debug` | ✅ Ready |
-| Data Analysis | `data`, `analysis`, `analytics`, `visualization` | ✅ Ready |
-| Financial | `financial`, `finance`, `budget`, `investment` | ✅ Ready |
-| General Purpose | All other prompts (fallback expert) | ✅ Ready |
-
-## 💬 Manual Improvements with @promptexpert
-
-You can request targeted improvements to your prompts using the `@promptexpert` command in PR comments:
-
-```bash
-@promptexpert <domain> --suggest:"your improvement request"
-```
-
-### Examples:
-```bash
-# Add risk severity levels to a security prompt
-@promptexpert security --suggest:"Add risk severity levels with color coding"
-
-# Enhance financial analysis structure
-@promptexpert financial --suggest:"Add sections for ROI calculation and risk assessment"
-
-# Improve code review prompt
-@promptexpert programming --suggest:"Add examples of common code smells to detect"
-```
-
-### How it works:
-1. **You**: Comment on any PR with `@promptexpert` command
-2. **Expert**: Analyzes your prompt and implements the improvements
-3. **Bot**: Commits the changes directly to your PR
-4. **You**: Review the improvements and continue iterating
-
 ## 🏗️ Architecture
 
-The Prompt Expert uses a modular architecture:
-
+### Directory Structure
 ```
 prompt-expert/
-├── expert-definitions/    # Markdown files with expert system prompts
-├── test-scenarios/       # JSON files with test cases
-├── lib/                  # Core implementation
-│   ├── base-expert.js   # Base class for all experts
-│   └── [domain]-expert.js # Domain-specific implementations
-└── experts/              # Legacy experts (being phased out)
+├── .github/
+│   ├── workflows/           # GitHub Actions workflows
+│   └── scripts/             # Evaluation scripts
+├── expert-definitions/      # Domain expert prompts (Markdown)
+├── test-scenarios/          # Test cases per domain (JSON)
+├── scripts/                 # Utility scripts
+│   ├── repo-context-v2.js  # Context loader with multimodal support
+│   └── claude-cache-manager.js # Cache management
+├── docs/                    # Additional documentation
+└── examples/                # Sample prompts and workflows
 ```
+
+### How Context Works
+1. **Loads** relevant files (text, images, PDFs)
+2. **Uses git hashes** for efficient caching
+3. **Tracks** what's sent to Claude API
+4. **Cleans** old versions automatically
+5. **Optimizes** with cache control headers
 
 ## 🤝 Contributing
 
-To add a new expert:
+### Adding a New Expert
+1. Create `expert-definitions/[domain]-expert.md`
+2. Create `test-scenarios/[domain]-tests.json`
+3. Submit PR - system auto-detects new domains
 
-1. Create an expert definition: `expert-definitions/[domain]-expert.md`
-2. Create test scenarios: `test-scenarios/[domain]-tests.json`
-3. Create expert implementation: `lib/[domain]-expert.js` (extends BaseExpert)
-4. Submit a PR
+### Expert Definition Format
+```markdown
+# [Domain] Expert
 
-See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed information.
+You are an expert in [domain]...
 
-## 📝 License
+## Evaluation Criteria
+1. [Criterion] (weight%)
+2. [Criterion] (weight%)
 
-MIT License
+## Scoring Instructions
+Rate 0-10 for each criterion...
+
+## Response Format
+Structured output format...
+```
+
+## 📝 Documentation
+
+- [Architecture Overview](ARCHITECTURE.md)
+- [Cache Management](docs/CACHE_MANAGEMENT.md)
+- [Usage Examples](examples/prompt-expert-usage-examples.md)
+
+## 🔧 Configuration
+
+### Environment Variables
+- `ANTHROPIC_API_KEY`: Required for Claude API
+- `GITHUB_TOKEN`: Automatically provided by GitHub Actions
+
+### Cache Settings
+- Max file age: 14 days (auto-cleanup)
+- Max file size: 5MB (images/PDFs), 100KB (text)
+- Max files per context: 50
+- Cache TTL: 1 hour
+
+## 🚀 Features
+
+- ✅ **Three-thread evaluation** - Real performance comparison
+- ✅ **Domain experts** - Specialized evaluation criteria
+- ✅ **Repository context** - Code-aware assessments
+- ✅ **Multimodal support** - Text, images, PDFs
+- ✅ **Cache management** - Efficient API usage
+- ✅ **On-demand evaluation** - PR comment triggers
+- ✅ **Auto-improvements** - Iterative enhancement
+- ✅ **Detailed reports** - Actionable feedback
+
+## 📊 Supported Domains
+
+| Domain | Keywords | Test Scenarios |
+|--------|----------|----------------|
+| Security | `security`, `risk`, `safety` | 10 scenarios |
+| Programming | `code`, `programming`, `debug` | 5 scenarios |
+| Financial | `finance`, `investment`, `budget` | 5 scenarios |
+| Data Analysis | `data`, `analytics`, `ML` | 5 scenarios |
+| General | All others (fallback) | 5 scenarios |
 
 ## 🆘 Support
 
 - [Issues](https://github.com/whichguy/prompt-expert/issues)
 - [Example Implementation](https://github.com/whichguy/security-prompt-test)
 
+## 📄 License
+
+MIT License
+
 ---
 
-*Better outputs, not better prompts.*
+*Better outputs through expert evaluation and repository context.*

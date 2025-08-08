@@ -1,0 +1,51 @@
+{
+  "aliases": {
+    "security": {
+      "description": "Security command analysis expert",
+      "path": "expert-definitions/security-expert.md"
+    },
+    "programming": {
+      "description": "Programming and code generation expert",
+      "path": "expert-definitions/programming-expert.md"
+    },
+    "financial": {
+      "description": "Financial analysis and investment expert",
+      "path": "expert-definitions/financial-expert.md"
+    },
+    "data": {
+      "description": "Data analysis and ML expert",
+      "path": "expert-definitions/data-analysis-expert.md"
+    },
+    "general": {
+      "description": "General purpose expert",
+      "path": "expert-definitions/general-expert.md"
+    },
+    "api-design": {
+      "description": "API design and REST principles expert",
+      "repo": "myorg/api-standards",
+      "path": "prompts/api-expert.md"
+    },
+    "react": {
+      "description": "React and frontend development expert",
+      "repo": "facebook/react",
+      "path": "docs/experts/react-expert.md"
+    },
+    "devops": {
+      "description": "DevOps and infrastructure expert",
+      "repo": "kubernetes/kubernetes",
+      "path": "docs/prompts/k8s-expert.md"
+    },
+    "aws": {
+      "description": "AWS cloud services expert",
+      "repo": "aws/aws-cli",
+      "path": "prompts/aws-expert.md",
+      "branch": "v2"
+    }
+  },
+  "customPaths": {
+    "allowRemoteRepos": true,
+    "allowLocalPaths": true,
+    "cacheDuration": 3600,
+    "maxFileSize": 100000
+  }
+}
