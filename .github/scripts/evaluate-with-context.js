@@ -70,10 +70,47 @@ async function evaluate() {
   if (process.env.REPO_PATH) {
     console.log(`Loading repository context from: ${process.env.REPO_PATH}`);
     
-    // Run repo-context-v2.js to generate context
+    // Check if REPO_PATH is a GitHub URL or local path
     const { execSync } = require('child_process');
+    let actualRepoPath = process.env.REPO_PATH;
+    let tempDir = null;
+    
     try {
-      const contextOutput = execSync(`node scripts/repo-context-v2.js --repo-path="${process.env.REPO_PATH}" --format=json`, {
+      // Check if it's a GitHub URL (e.g., github.com/user/repo or https://github.com/user/repo)
+      if (actualRepoPath.includes('github.com')) {
+        console.log('Detected GitHub repository URL, cloning...');
+        
+        // Extract owner and repo from URL
+        const match = actualRepoPath.match(/github\.com[:/]([^/]+)\/([^/.]+)/);
+        if (match) {
+          const [, owner, repo] = match;
+          tempDir = `/tmp/repo-context-${Date.now()}`;
+          
+          // Clone the repository (shallow clone for speed)
+          console.log(`Cloning ${owner}/${repo} to temporary directory...`);
+          execSync(`git clone --depth 1 https://github.com/${owner}/${repo}.git ${tempDir}`, {
+            stdio: 'inherit'
+          });
+          
+          actualRepoPath = tempDir;
+          console.log(`Repository cloned to: ${tempDir}`);
+        }
+      } else if (actualRepoPath.match(/^[^/]+\/[^/]+$/)) {
+        // Handle shorthand format: owner/repo
+        const [owner, repo] = actualRepoPath.split('/');
+        tempDir = `/tmp/repo-context-${Date.now()}`;
+        
+        console.log(`Cloning ${owner}/${repo} from GitHub...`);
+        execSync(`git clone --depth 1 https://github.com/${owner}/${repo}.git ${tempDir}`, {
+          stdio: 'inherit'
+        });
+        
+        actualRepoPath = tempDir;
+        console.log(`Repository cloned to: ${tempDir}`);
+      }
+      
+      // Run repo-context-v2.js to generate context
+      const contextOutput = execSync(`node scripts/repo-context-v2.js --repo-path="${actualRepoPath}" --format=json`, {
         encoding: 'utf8',
         cwd: path.join(__dirname, '..', '..')
       });
@@ -81,8 +118,21 @@ async function evaluate() {
       // Write context to file for processing
       fs.writeFileSync(REPO_CONTEXT_FILE, contextOutput);
       console.log('Repository context generated successfully');
+      
+      // Clean up temp directory if we created one
+      if (tempDir) {
+        console.log('Cleaning up temporary directory...');
+        execSync(`rm -rf ${tempDir}`, { stdio: 'ignore' });
+      }
     } catch (contextError) {
       console.error('Error generating repository context:', contextError.message);
+      
+      // Clean up on error
+      if (tempDir) {
+        try {
+          execSync(`rm -rf ${tempDir}`, { stdio: 'ignore' });
+        } catch {}
+      }
     }
   }
   
