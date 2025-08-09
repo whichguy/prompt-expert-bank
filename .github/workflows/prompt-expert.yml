@@ -15,17 +15,14 @@ permissions:
 
 jobs:
   claude-respond:
-    # Only run if comment contains @claude-code or @prompt-expert
+    # Only run if comment contains @promptexpert
     if: |
       (github.event_name == 'issue_comment' && 
-       (contains(github.event.comment.body, '@claude-code') || 
-        contains(github.event.comment.body, '@prompt-expert'))) ||
+       contains(github.event.comment.body, '@promptexpert')) ||
       (github.event_name == 'pull_request_review_comment' && 
-       (contains(github.event.comment.body, '@claude-code') || 
-        contains(github.event.comment.body, '@prompt-expert'))) ||
+       contains(github.event.comment.body, '@promptexpert')) ||
       (github.event_name == 'pull_request' && 
-       (contains(github.event.pull_request.body, '@claude-code') || 
-        contains(github.event.pull_request.body, '@prompt-expert')))
+       contains(github.event.pull_request.body, '@promptexpert'))
     
     runs-on: ubuntu-latest
     
