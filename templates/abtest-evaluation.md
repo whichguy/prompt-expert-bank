@@ -28,19 +28,31 @@ You are evaluating two prompt responses using LLM-as-Judge methodology. Your tas
 
 ## Responses to Evaluate
 
-### Baseline (A)
-<baseline>
-{{BASELINE_CONTENT}}
-</baseline>
+Below are two responses generated using different prompt engineering approaches for the same task. Each response shows how the LLM interpreted and executed the given instructions based on the prompt structure, context framing, and guidance provided.
 
-### Variant (B)
-<variant>
+### Response A: Baseline
+**Prompt Approach**: This response was generated using the baseline prompt - the current production version.
+**Instructions Summary**: The baseline prompt provided standard instructions for the task.
+**Expected Behavior**: This represents the current system's approach to handling this type of request.
+
+<response-a-baseline>
+{{BASELINE_CONTENT}}
+</response-a-baseline>
+
+### Response B: Variant  
+**Prompt Approach**: This response was generated using the variant prompt - the proposed improvement.
+**Instructions Summary**: The variant prompt provided modified instructions intended to improve upon the baseline.
+**Expected Behavior**: This represents the proposed new approach to handling this type of request.
+
+<response-b-variant>
 {{VARIANT_CONTENT}}
-</variant>
+</response-b-variant>
+
+**Evaluation Note**: Compare how each response interpreted the task, the completeness of execution, accuracy of information, and overall quality of the output. Pay attention to any differences in approach, style, or comprehension between the two responses.
 
 ## Performance Metrics
-- **Baseline (A)**: {{BASELINE_LATENCY}}ms | {{BASELINE_TOKENS}} tokens ({{BASELINE_INPUT_TOKENS}} in, {{BASELINE_OUTPUT_TOKENS}} out)
-- **Variant (B)**: {{VARIANT_LATENCY}}ms | {{VARIANT_TOKENS}} tokens ({{VARIANT_INPUT_TOKENS}} in, {{VARIANT_OUTPUT_TOKENS}} out)
+- **Response A (Baseline)**: {{BASELINE_LATENCY}}ms | {{BASELINE_TOKENS}} tokens ({{BASELINE_INPUT_TOKENS}} in, {{BASELINE_OUTPUT_TOKENS}} out)
+- **Response B (Variant)**: {{VARIANT_LATENCY}}ms | {{VARIANT_TOKENS}} tokens ({{VARIANT_INPUT_TOKENS}} in, {{VARIANT_OUTPUT_TOKENS}} out)
 
 **Performance Delta**: 
 - Speed: [State exact difference, e.g., "B is 23% faster" or "A is 150ms slower"]
@@ -84,8 +96,8 @@ Using the expert definition above, generate specific evaluation criteria for thi
 
 First, verify neither response contains disqualifying issues:
 
-**Baseline (A)**: Pass ✓ or Fail ✗ - [If fail, quote the specific problematic content]
-**Variant (B)**: Pass ✓ or Fail ✗ - [If fail, quote the specific problematic content]
+**Response A (Baseline)**: Pass ✓ or Fail ✗ - [If fail, quote the specific problematic content from <response-a-baseline>]
+**Response B (Variant)**: Pass ✓ or Fail ✗ - [If fail, quote the specific problematic content from <response-b-variant>]
 
 *Any disqualification typically results in automatic rejection unless both responses fail.*
 
@@ -100,17 +112,17 @@ Score each response on a 1-10 scale. First state the score, then provide specifi
 - 3-4: Poor - Fails multiple requirements or has significant issues
 - 1-2: Failing - Fundamentally flawed or potentially harmful
 
-**Baseline (A):**
-- Technical Accuracy: ___/10 - [Cite specific accurate/inaccurate statements]
+**Response A (Baseline):**
+- Technical Accuracy: ___/10 - [Cite specific accurate/inaccurate statements from the response]
 - Domain Excellence: ___/10 - [Which excellence indicators are present/missing?]
-- Clarity: ___/10 - [Specific examples of clear/unclear elements]
+- Clarity: ___/10 - [Quote specific clear/unclear passages]
 - Practical Use: ___/10 - [How would this work in real-world application?]
 - User Experience: ___/10 - [How easy/difficult to understand and implement?]
 
-**Variant (B):**
-- Technical Accuracy: ___/10 - [Cite specific accurate/inaccurate statements]
+**Response B (Variant):**
+- Technical Accuracy: ___/10 - [Cite specific accurate/inaccurate statements from the response]
 - Domain Excellence: ___/10 - [Which excellence indicators are present/missing?]
-- Clarity: ___/10 - [Specific examples of clear/unclear elements]
+- Clarity: ___/10 - [Quote specific clear/unclear passages]
 - Practical Use: ___/10 - [How would this work in real-world application?]
 - User Experience: ___/10 - [How easy/difficult to understand and implement?]
 
@@ -123,8 +135,8 @@ Apply these weights to calculate final scores:
 - Practical Use: 20%
 - User Experience: 15%
 
-**Baseline Weighted Total**: ___/10
-**Variant Weighted Total**: ___/10
+**Response A (Baseline) Weighted Total**: ___/10
+**Response B (Variant) Weighted Total**: ___/10
 
 ### Step 5: Apply Performance Adjustments
 
@@ -133,8 +145,8 @@ Performance bonuses for significant advantages:
 - 10%+ fewer tokens = +0.5 points
 - Both advantages combined = +1.0 points
 
-**Baseline Final Score**: ___/10
-**Variant Final Score**: ___/10
+**Response A (Baseline) Final Score**: ___/10
+**Response B (Variant) Final Score**: ___/10
 
 **Note**: Performance primarily matters when quality scores are close (≤1 point difference). For responses of comparable quality, prefer the one with superior performance metrics.
 
@@ -150,7 +162,7 @@ Quantify the practical impact of your choice:
 
 ### Winner Declaration
 
-**Winner:** [State clearly: "Baseline (A)" or "Variant (B)"]
+**Winner:** [State clearly: "Response A (Baseline)" or "Response B (Variant)"]
 **Confidence Level:** [Choose one: High (80-100%) | Medium (60-79%) | Low (<60%)]
 **Final Score Difference:** ___/10 points
 
