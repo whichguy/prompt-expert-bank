@@ -74,7 +74,11 @@ Purpose: This repository evaluates AI prompts using a 3-thread model. It also im
     return `Your ONLY job is to:
 1. UNDERSTAND the request
 2. EXECUTE the task using tools
-3. REPORT the results in text format
+3. REPORT with this EXACT structure:
+   - RESULTS: Clear answer with data
+   - INTENT: What was requested
+   - ACTION PLAN: Steps you took
+   - NOTES: Observations worth sharing
 
 DO NOT:
 - Say "Hello"
@@ -82,13 +86,14 @@ DO NOT:
 - Explain what you CAN do
 - Ask for permission
 - Provide meta-commentary
+- Skip any of the four sections
 
 ALWAYS:
 - Take immediate action
 - Use tools to gather information
-- RESPOND WITH THE TOOL RESULTS IN TEXT
+- Follow the RESULTS/INTENT/ACTION PLAN/NOTES format
 - Show concrete data from tool execution
-- Format tool output for readability`;
+- Be specific in each section`;
   }
 
   getExecutionRules() {
@@ -143,16 +148,23 @@ ALWAYS:
   getPRResponseTemplate() {
     return `For PR analysis, structure your response as:
 
-**Changes Summary** (use gh pr diff)
-- File X: [specific changes]
-- File Y: [specific changes]
+## RESULTS
+[Clear summary of what was found]
+[Specific changes identified]
 
-**Impact Analysis**
-- [Direct evidence from code]
-- [Metrics or measurements]
+## INTENT
+Request understood: [What user asked]
+Purpose: [Why this matters]
 
-**Recommendations**
-- [Specific, actionable items]
+## ACTION PLAN
+1. [What I did first]
+2. [What I did next]
+3. [Final steps taken]
+
+## NOTES
+- [Interesting findings]
+- [Potential issues spotted]
+- [Suggestions if relevant]
 
 Tools to use: gh pr diff, github_api /pulls/{number}/files, get_file`;
   }
@@ -160,15 +172,23 @@ Tools to use: gh pr diff, github_api /pulls/{number}/files, get_file`;
   getIssueResponseTemplate() {
     return `For issue responses, structure as:
 
-**Analysis**
-[Direct response with evidence]
+## RESULTS
+[Direct answer to the request]
+[Concrete data or output]
 
-**Actions Taken**
-- Tool used: [result]
-- Tool used: [result]
+## INTENT
+Request understood: [What user asked]
+Goal: [What outcome was needed]
 
-**Next Steps** (if applicable)
-- [Specific action items]
+## ACTION PLAN
+1. [First action taken]
+2. [Second action taken]
+3. [Additional steps if any]
+
+## NOTES
+- [Observations made]
+- [Patterns noticed]
+- [Recommendations if applicable]
 
 Tools to use: github_api /issues/{number}, run_command, get_file`;
   }
@@ -176,18 +196,23 @@ Tools to use: github_api /issues/{number}, run_command, get_file`;
   getDefaultResponseTemplate() {
     return `Structure your response as:
 
-**Result**
-[Direct answer]
-[Execution result if applicable]
+## RESULTS
+[Direct answer to request]
+[Actual output or data]
 
-**Evidence**
-[Code]
-[Data]
-[Command output]
+## INTENT
+Request understood: [What was asked]
+Objective: [What needed to be done]
 
-**Tools Used**
-- [List of tools]
-- [Why each was used]`;
+## ACTION PLAN
+1. [Step one executed]
+2. [Step two executed]
+3. [Further steps if taken]
+
+## NOTES
+- [Key observations]
+- [Interesting findings]
+- [Suggestions or warnings if relevant]`;
   }
 
   /**
@@ -255,7 +280,7 @@ RULES:
 
 ${this.getTaskInstructions(command.prompt)}
 
-REMEMBER: You execute tasks. You do not chat. First response must include tool usage. After using tools, ALWAYS provide a text response with the results.`;
+REMEMBER: You execute tasks. You do not chat. First response must include tool usage. After using tools, ALWAYS provide a text response using the four-section format: RESULTS, INTENT, ACTION PLAN, NOTES.`;
   }
 }
 
