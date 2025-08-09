@@ -560,27 +560,21 @@ Use your expert tools to examine the changed files and provide detailed analysis
    * Post results back to GitHub
    */
   async postResults(context, result, octokit) {
-    // Build enhanced response with better formatting
-    const duration = ((Date.now() - this.startTime) / 1000).toFixed(2);
+    // Build response with minimal stats footer
+    const duration = ((Date.now() - this.startTime) / 1000).toFixed(1);
     
-    // Add tools section if tools were used
-    const toolsSection = result.toolCalls.length > 0 ? `
-
-### 🔧 Tools Used
-${result.toolCalls.map(t => `- \`${t.name}\``).join('\n')}` : '';
-
-    // Add metrics if significant
-    const metricsSection = this.metrics.toolCalls > 1 ? `
-
-### 📊 Session Metrics
-- Tool calls: ${this.metrics.toolCalls}
-- Errors encountered: ${this.metrics.errors}
-- Processing time: ${duration}s` : '';
-
-    const body = `${result.response}${toolsSection}${metricsSection}
+    // Build minimal stats line
+    const tools = result.toolCalls.length > 0 
+      ? `tools: ${result.toolCalls.map(t => t.name).join(', ')} | ` 
+      : '';
+    const errors = this.metrics.errors > 0 
+      ? `errors: ${this.metrics.errors} | ` 
+      : '';
+    
+    const body = `${result.response}
 
 ---
-<sub>Session: \`${this.sessionId}\` | Duration: ${duration}s | [prompt-expert-bank](https://github.com/${this.repoOwner}/${this.repoName}) Claude v3.0 (Action-Oriented)</sub>`;
+<sub>${tools}${errors}${duration}s | session: ${this.sessionId.split('-').pop()}</sub>`;
 
     if (context.pr) {
       await octokit.issues.createComment({
