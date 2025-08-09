@@ -450,7 +450,7 @@ class ClaudeCodeSession {
     const standardTools = [
       {
         name: 'get_file',
-        description: 'Read the contents of a file',
+        description: 'Read file contents',
         input_schema: {
           type: 'object',
           properties: {
@@ -461,7 +461,7 @@ class ClaudeCodeSession {
       },
       {
         name: 'update_file',
-        description: 'Write or update a file',
+        description: 'Write file contents. Update existing files.',
         input_schema: {
           type: 'object',
           properties: {
@@ -483,24 +483,24 @@ class ClaudeCodeSession {
       },
       {
         name: 'run_command',
-        description: 'Run shell commands for repository analysis. IMPORTANT for PR/Issue analysis: Use "gh pr diff <number>" to see PR changes, "gh pr view <number>" for PR details, "gh issue view <number>" for issue details, "git log" for commit history, "git diff" for uncommitted changes.',
+        description: 'Run shell commands for repository analysis. IMPORTANT for PR analysis: Use "gh pr diff <number>" to see PR changes. Use "gh pr view <number>" for PR details. IMPORTANT for Issue analysis: Use "gh issue view <number>" for issue details. Use "git log" for commit history. Use "git diff" for uncommitted changes.',
         input_schema: {
           type: 'object',
           properties: {
-            command: { type: 'string', description: 'Command to run. Examples: "gh pr diff 19", "gh issue view 21", "git log --oneline -10"' }
+            command: { type: 'string', description: 'Command to run. Examples: "gh pr diff 19" for PR changes. "gh issue view 21" for issue details. "git log --oneline -10" for commit history.' }
           },
           required: ['command']
         }
       },
       {
         name: 'github_api',
-        description: 'Make GitHub API calls for detailed information. Key endpoints: /repos/{owner}/{repo}/pulls/{pr}/files (PR file changes), /repos/{owner}/{repo}/pulls/{pr}/commits (PR commits), /repos/{owner}/{repo}/issues/{issue}/comments (issue comments), /repos/{owner}/{repo}/pulls/{pr} (PR details)',
+        description: 'Make GitHub API calls for detailed information. Key endpoints: /repos/{owner}/{repo}/pulls/{pr}/files for PR file changes. /repos/{owner}/{repo}/pulls/{pr}/commits for PR commits. /repos/{owner}/{repo}/issues/{issue}/comments for issue comments. /repos/{owner}/{repo}/pulls/{pr} for PR details.',
         input_schema: {
           type: 'object',
           properties: {
             method: { type: 'string', description: 'HTTP method (default: GET)' },
             endpoint: { type: 'string', description: 'API endpoint path. Example: /repos/whichguy/prompt-expert-bank/pulls/19/files' },
-            data: { type: 'object', description: 'Request data for POST/PATCH' }
+            data: { type: 'object', description: 'Request data for POST. Request data for PATCH.' }
           },
           required: ['endpoint']
         }
