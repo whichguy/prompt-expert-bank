@@ -6,6 +6,7 @@
 
 const { Octokit } = require('@octokit/rest');
 const path = require('path');
+const fs = require('fs').promises;
 
 class ABTestTool {
   constructor(options) {
@@ -14,6 +15,9 @@ class ABTestTool {
     this.repoOwner = options.repoOwner;
     this.repoName = options.repoName;
     this.workspace = options.workspace;
+    
+    // Template paths
+    this.templateDir = path.join(__dirname, 'templates');
     
     // Cache for fetched content (24 hour TTL)
     this.contentCache = new Map();
@@ -444,19 +448,34 @@ class ABTestTool {
    * Evaluate structural aspects of the prompt
    */
   async evaluateStructure(expertPrompt, promptContent, testContext, iterationCount = 0) {
-    const contextInfo = testContext ? `\n\nTest context available: ${testContext.files.length} files, ${testContext.directories.length} directories` : '';
-    const iterationInfo = iterationCount > 0 ? `\n\nNote: This is iteration ${iterationCount + 1} of improvements. Be ${iterationCount >= 3 ? 'more lenient' : 'reasonably lenient'} in evaluation.` : '';
-    
-    const systemMessage = `You are an expert evaluator analyzing prompt structure.
-Expert perspective: ${expertPrompt.content.substring(0, 500)}...
-${contextInfo}${iterationInfo}
-
-Evaluate the prompt for:
-1. Clarity and organization
+    // Prepare template replacements
+    const replacements = {
+      EVALUATION_TYPE: 'Structural',
+      EVALUATION_TYPE_DESCRIPTION: 'Evaluating the organization, clarity, and logical structure of the prompt',
+      EXPERT_DEFINITION: expertPrompt.content.substring(0, 500) + '...',
+      ITERATION_CONTEXT: iterationCount > 0 
+        ? `This is iteration ${iterationCount + 1} of improvements. Be ${iterationCount >= 3 ? 'more lenient' : 'reasonably lenient'} in evaluation.`
+        : 'This is the first evaluation.',
+      TEST_CONTEXT: testContext 
+        ? `Test context available: ${testContext.files.length} files, ${testContext.directories.length} directories`
+        : 'No test context provided.',
+      EVALUATION_CRITERIA: `1. Clarity and organization
 2. Completeness of instructions
 3. Logical flow
 4. Appropriate level of detail
-5. Alignment with provided test context`;
+5. Alignment with provided test context`,
+      EVALUATION_FOCUS: 'structural quality and organization',
+      DOMAIN: 'structural analysis',
+      SPECIAL_INSTRUCTIONS: 'Pay attention to how well the prompt guides the user',
+      LENIENCY_NOTE: iterationCount >= 3 
+        ? 'Note: After 3+ iterations, focus on whether the prompt is reasonably good rather than perfect.'
+        : '',
+      PROMPT_CONTENT: promptContent.content,
+      TEST_SCENARIO: '',
+      TEST_MATERIALS: testContext ? testContext.summary.join('\n') : ''
+    };
+    
+    const systemMessage = await this.loadTemplate('abtest-evaluation', replacements);
 
     const userContent = testContext 
       ? `Evaluate this prompt's structure with the following test context:\n\n${promptContent.content}\n\nTest Context Summary:\n${testContext.summary.join('\n')}`
@@ -727,6 +746,160 @@ PROVIDE CLEAR VERDICT:
       recommendProduction: verdictText.toLowerCase().includes('recommend') && 
                           verdictText.toLowerCase().includes('production')
     };
+  }
+
+  /**
+   * Load and fill template with placeholders
+   */
+  async loadTemplate(templateName, replacements) {
+    try {
+      // First try to fetch from GitHub
+      let template = await this.fetchTemplateFromGitHub(templateName);
+      
+      if (!template) {
+        // Try local filesystem as fallback
+        try {
+          const templatePath = path.join(this.templateDir, `${templateName}.md`);
+          template = await fs.readFile(templatePath, 'utf8');
+        } catch (localError) {
+          // Use inline fallback
+          console.log(`Using inline template for ${templateName}`);
+          return this.getFallbackTemplate(templateName, replacements);
+        }
+      }
+      
+      // Replace all placeholders
+      for (const [key, value] of Object.entries(replacements)) {
+        const placeholder = `{{${key}}}`;
+        // Handle conditional sections
+        const conditionalRegex = new RegExp(`{{#if ${key}}}([\\s\\S]*?){{/if}}`, 'g');
+        if (value) {
+          template = template.replace(conditionalRegex, '$1');
+        } else {
+          template = template.replace(conditionalRegex, '');
+        }
+        // Replace simple placeholders
+        template = template.replace(new RegExp(placeholder, 'g'), value || '');
+      }
+      
+      // Clean up any remaining conditional blocks
+      template = template.replace(/{{#if \w+}}[\s\S]*?{{\/if}}/g, '');
+      
+      return template;
+    } catch (error) {
+      console.warn(`Failed to load template ${templateName}, using fallback: ${error.message}`);
+      return this.getFallbackTemplate(templateName, replacements);
+    }
+  }
+
+  /**
+   * Fetch template from GitHub
+   */
+  async fetchTemplateFromGitHub(templateName) {
+    try {
+      const templatePath = `.github/scripts/lib/templates/${templateName}.md`;
+      
+      // Check cache first
+      const cacheKey = `template:${templateName}`;
+      const cached = this.contentCache.get(cacheKey);
+      if (cached && (Date.now() - cached.timestamp < this.cacheTimeout)) {
+        return cached.data;
+      }
+      
+      // Fetch from GitHub
+      const { data } = await this.octokit.repos.getContent({
+        owner: this.repoOwner,
+        repo: this.repoName,
+        path: templatePath,
+        ref: 'main' // Always fetch templates from main branch
+      });
+      
+      const content = Buffer.from(data.content, 'base64').toString('utf-8');
+      
+      // Cache the template
+      this.contentCache.set(cacheKey, {
+        data: content,
+        timestamp: Date.now()
+      });
+      
+      return content;
+    } catch (error) {
+      // Template not found on GitHub, will use fallback
+      return null;
+    }
+  }
+
+  /**
+   * Get fallback template if file not found
+   */
+  getFallbackTemplate(templateName, replacements) {
+    // Return the original inline template as fallback
+    if (templateName === 'abtest-evaluation') {
+      return this.buildEvaluationPrompt(replacements);
+    }
+    if (templateName === 'abtest-comparison') {
+      return this.buildComparisonPrompt(replacements);
+    }
+    if (templateName === 'abtest-verdict') {
+      return this.buildVerdictPrompt(replacements);
+    }
+    return '';
+  }
+
+  /**
+   * Build evaluation prompt (fallback)
+   */
+  buildEvaluationPrompt(params) {
+    return `You are an expert evaluator analyzing prompt ${params.EVALUATION_TYPE}.
+Expert perspective: ${params.EXPERT_DEFINITION}
+${params.TEST_CONTEXT}
+${params.ITERATION_CONTEXT}
+
+Evaluate the prompt for:
+${params.EVALUATION_CRITERIA}
+
+${params.PROMPT_CONTENT}`;
+  }
+
+  /**
+   * Build comparison prompt (fallback)
+   */
+  buildComparisonPrompt(params) {
+    return `You are the expert defined by this prompt:
+${params.EXPERT_DEFINITION}
+
+Compare these two prompt evaluations:
+
+PROMPT A (${params.VERSION_A_IDENTIFIER}):
+Score: ${params.SCORE_A}
+Strengths: ${params.STRENGTHS_A}
+Weaknesses: ${params.WEAKNESSES_A}
+
+PROMPT B (${params.VERSION_B_IDENTIFIER}):
+Score: ${params.SCORE_B}
+Strengths: ${params.STRENGTHS_B}
+Weaknesses: ${params.WEAKNESSES_B}
+
+Provide detailed comparison and verdict.`;
+  }
+
+  /**
+   * Build verdict prompt (fallback)
+   */
+  buildVerdictPrompt(params) {
+    return `Based on this comparison, provide your expert verdict:
+
+${params.DETAILED_COMPARISON}
+
+Score difference: ${params.SCORE_DIFFERENCE}
+Improvements: ${params.IMPROVEMENTS_COUNT}
+Regressions: ${params.REGRESSIONS_COUNT}
+
+PROVIDE CLEAR VERDICT:
+1. Which version is better: A or B?
+2. Why is it better?
+3. Confidence level (high/medium/low)
+4. Recommendation for production use`;
   }
 
   /**
