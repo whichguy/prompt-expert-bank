@@ -36,6 +36,14 @@ Below are two responses generated using different prompt engineering approaches 
 **Instructions Summary**: The baseline prompt provided standard instructions for the task.
 **Expected Behavior**: This represents the current system's approach to handling this type of request.
 
+<details>
+<summary>📋 View Baseline Prompt Used</summary>
+
+```
+{{BASELINE_PROMPT}}
+```
+</details>
+
 <response-a-baseline>
 {{BASELINE_CONTENT}}
 </response-a-baseline>
@@ -44,6 +52,14 @@ Below are two responses generated using different prompt engineering approaches 
 **Prompt Approach**: This response was generated using the variant prompt - the proposed improvement.
 **Instructions Summary**: The variant prompt provided modified instructions intended to improve upon the baseline.
 **Expected Behavior**: This represents the proposed new approach to handling this type of request.
+
+<details>
+<summary>📋 View Variant Prompt Used</summary>
+
+```
+{{VARIANT_PROMPT}}
+```
+</details>
 
 <response-b-variant>
 {{VARIANT_CONTENT}}

@@ -131,6 +131,8 @@ class ABTest {
       EXPERT_NAME: this.extractExpertName(expert),
       EXPERT_DEFINITION: expert.content || '',
       TIMESTAMP: new Date().toISOString(),
+      BASELINE_PROMPT: baseline.content || '',  // The actual prompt text
+      VARIANT_PROMPT: variant.content || '',    // The actual prompt text
       BASELINE_CONTENT: baseline.content || '',
       VARIANT_CONTENT: variant.content || '',
       CONTEXT_FILES: context && context.length > 0,  // Boolean flag for conditionals
@@ -236,6 +238,8 @@ class ABTest {
       EXPERT_NAME: this.extractExpertName(expert),
       EXPERT_DEFINITION: expert.content || '',
       TIMESTAMP: new Date().toISOString(),
+      BASELINE_PROMPT: baseline.content || '',  // The original baseline prompt
+      VARIANT_PROMPT: variant.content || '',    // The original variant prompt
       BASELINE_CONTENT: threadA.content[0].text,
       VARIANT_CONTENT: threadB.content[0].text,
       CONTEXT_FILES: context && context.length > 0,  // Boolean flag for conditionals
