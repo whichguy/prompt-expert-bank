@@ -6,6 +6,25 @@ You are evaluating two prompt responses using LLM-as-Judge methodology to determ
 
 **Important**: Avoid positional bias - do not favor Response A or B based on their order. Focus on measurable quality differences and provide reasoning for each score to ensure consistency.
 
+## Domain-Specific Evaluation Criteria
+
+Based on your expertise and the domain context, identify:
+
+**Critical Requirements** (Must-haves for this domain):
+- [Identify 2-3 non-negotiable requirements specific to your domain]
+- [Example: For security domain - "Must not expose sensitive data"]
+- [Example: For medical domain - "Must include appropriate disclaimers"]
+
+**Disqualifying Factors** (Automatic failure conditions):
+- [List any factors that would immediately disqualify a response]
+- [Example: Factually incorrect information that could cause harm]
+- [Example: Violations of domain best practices or standards]
+
+**Domain Excellence Indicators** (What exceptional looks like):
+- [Define 2-3 characteristics of outstanding responses in your domain]
+- [Example: For programming - "Includes error handling and edge cases"]
+- [Example: For finance - "Addresses regulatory compliance"]
+
 ## Test Information
 - **Expert**: {{EXPERT_NAME}}
 - **Date**: {{TIMESTAMP}}
@@ -40,6 +59,14 @@ You are evaluating two prompt responses using LLM-as-Judge methodology to determ
 
 ## Evaluation
 
+### Step 0: Disqualification Check
+Before scoring, check for any disqualifying factors:
+
+**Baseline (A)**: [Pass/Fail] - [If fail, specify the disqualifying factor]
+**Variant (B)**: [Pass/Fail] - [If fail, specify the disqualifying factor]
+
+*If either response fails this check, it should automatically lose unless both fail.*
+
 ### Step 1: Individual Assessment
 Rate each response independently with reasoning (1-10 scale).
 
@@ -52,22 +79,25 @@ Rate each response independently with reasoning (1-10 scale).
 
 **Baseline (A):**
 - Clarity: ___/10 - [Why this score?]
-- Technical Accuracy: ___/10 - [Why this score?]
-- Practical Use: ___/10 - [Why this score?]
+- Technical Accuracy: ___/10 - [Why this score? Consider domain standards]
+- Practical Use: ___/10 - [Why this score? Consider domain context]
 - User Experience: ___/10 - [Why this score?]
+- Domain Excellence: ___/10 - [How well does it meet domain-specific excellence indicators?]
 
 **Variant (B):**
 - Clarity: ___/10 - [Why this score?]
-- Technical Accuracy: ___/10 - [Why this score?]
-- Practical Use: ___/10 - [Why this score?]
+- Technical Accuracy: ___/10 - [Why this score? Consider domain standards]
+- Practical Use: ___/10 - [Why this score? Consider domain context]
 - User Experience: ___/10 - [Why this score?]
+- Domain Excellence: ___/10 - [How well does it meet domain-specific excellence indicators?]
 
 ### Step 2: Weighted Scoring
 Calculate weighted totals using these weights:
-- Technical Accuracy: 30%
-- Clarity: 25%
-- Practical Use: 25%
-- User Experience: 20%
+- Technical Accuracy: 25%
+- Domain Excellence: 20%
+- Clarity: 20%
+- Practical Use: 20%
+- User Experience: 15%
 
 **Baseline Total**: ___/10
 **Variant Total**: ___/10
@@ -104,17 +134,24 @@ Evaluate the impact of choosing the winner:
 **Confidence Level:** [High 80-100% / Medium 60-79% / Low <60%]
 **Final Score Difference:** ___/10 points
 
-**Decision Rationale:** [Explain your decision in 2-3 sentences focusing on the most important factors]
+**Decision Rationale:** [Explain your decision in 2-3 sentences focusing on the most important factors, including domain considerations]
+
+**Critical Requirements Met:**
+- Winner: [Which critical requirements were satisfied?]
+- Loser: [Which critical requirements were missed, if any?]
 
 **Key Strengths of Winner:**
 - [Most important advantage]
-- [Second advantage]
+- [Domain-specific strength]
+- [Performance or quality advantage]
 
 **Key Strengths of Loser:**
 - [What it did better]
-- [Worth preserving]
+- [Worth preserving for future iterations]
 
-**Implementation Recommendation:** [Should this be deployed? Any conditions or caveats?]
+**Domain Risk Assessment:** [Any domain-specific risks or concerns with the winner?]
+
+**Implementation Recommendation:** [Should this be deployed? Any domain-specific conditions or caveats?]
 
 {{#if CONTEXT_FILES}}
 
@@ -123,4 +160,4 @@ Evaluate the impact of choosing the winner:
 {{/if}}
 
 ---
-*This evaluation uses research-backed methodologies: LLM-as-Judge with bias mitigation, weighted scoring system, PIE framework for decision impact, and chain-of-thought reasoning for consistency.*
+*This evaluation uses research-backed methodologies: LLM-as-Judge with bias mitigation, domain-specific criteria evaluation, weighted scoring system, PIE framework for decision impact, and chain-of-thought reasoning for consistency. Disqualifying factors and critical requirements ensure domain standards are maintained.*
