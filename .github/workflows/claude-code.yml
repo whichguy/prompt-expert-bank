@@ -51,20 +51,35 @@ jobs:
         run: |
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
             echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_ENV
-            echo "COMMENT_BODY=${{ github.event.pull_request.body }}" >> $GITHUB_ENV
             echo "COMMENT_ID=0" >> $GITHUB_ENV
             echo "IS_PR=true" >> $GITHUB_ENV
+            # Save body to file to handle multiline content
+            cat << 'EOF' > /tmp/comment_body.txt
+          ${{ github.event.pull_request.body }}
+          EOF
           elif [[ "${{ github.event.issue.pull_request }}" != "" ]]; then
             echo "PR_NUMBER=${{ github.event.issue.number }}" >> $GITHUB_ENV
-            echo "COMMENT_BODY=${{ github.event.comment.body }}" >> $GITHUB_ENV
             echo "COMMENT_ID=${{ github.event.comment.id }}" >> $GITHUB_ENV
             echo "IS_PR=true" >> $GITHUB_ENV
+            # Save body to file to handle multiline content
+            cat << 'EOF' > /tmp/comment_body.txt
+          ${{ github.event.comment.body }}
+          EOF
           else
             echo "ISSUE_NUMBER=${{ github.event.issue.number }}" >> $GITHUB_ENV
-            echo "COMMENT_BODY=${{ github.event.comment.body }}" >> $GITHUB_ENV
             echo "COMMENT_ID=${{ github.event.comment.id }}" >> $GITHUB_ENV
             echo "IS_PR=false" >> $GITHUB_ENV
+            # Save body to file to handle multiline content
+            cat << 'EOF' > /tmp/comment_body.txt
+          ${{ github.event.comment.body }}
+          EOF
           fi
+          
+          # Read comment body from file
+          COMMENT_BODY=$(cat /tmp/comment_body.txt)
+          echo "COMMENT_BODY<<EOF" >> $GITHUB_ENV
+          echo "$COMMENT_BODY" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
 
       - name: React to comment
         if: github.event_name != 'pull_request'
