@@ -109,9 +109,9 @@ jobs:
           } catch (e) {
             // Default configuration
             config = {
-              expert: 'experts/programming-expert.md',
-              promptA: 'prompts/code-reviewer-baseline.md',
-              promptB: 'prompts/code-reviewer-improved.md',
+              expert: 'experts/code-review-expert.md',
+              promptA: 'prompts/code-reviewer-baseline.md@main',
+              promptB: 'prompts/code-reviewer-improved.md@' + process.env.HEAD_REF,
               context: ['scripts/abtest.js', 'templates/abtest-evaluation.md'],
               testScenario: 'Review code for security, quality, and best practices'
             };
