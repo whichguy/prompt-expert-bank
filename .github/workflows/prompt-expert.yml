@@ -117,7 +117,7 @@ jobs:
       - name: Handle errors
         if: failure()
         run: |
-          ERROR_MSG="❌ Claude Code encountered an error. Please check the logs or try again."
+          ERROR_MSG="❌ Prompt Expert encountered an error. Please check the logs or try again."
           
           if [[ "$IS_PR" == "true" ]]; then
             gh pr comment $PR_NUMBER --body "$ERROR_MSG"
