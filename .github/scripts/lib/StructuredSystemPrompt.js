@@ -193,7 +193,7 @@ Tools to use: github_api /issues/{number}, run_command, get_file`;
       'fix': 'LOCATE AND FIX: Find the issue, show the problem, implement solution',
       'test': 'RUN TESTS: Execute test commands, show results',
       'review': 'DEEP DIVE: Get diffs, analyze changes, provide specific feedback',
-      'explain': 'SHOW DON'T TELL: Use actual code examples from the repository'
+      'explain': 'SHOW DON\'T TELL: Use actual code examples from the repository'
     };
 
     for (const [keyword, instruction] of Object.entries(taskMap)) {
