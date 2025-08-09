@@ -6,6 +6,10 @@ You are evaluating two prompt responses using LLM-as-Judge methodology to determ
 
 **Important**: Avoid positional bias - do not favor Response A or B based on their order. Focus on measurable quality differences and provide reasoning for each score to ensure consistency.
 
+## Expert Definition
+
+{{EXPERT_DEFINITION}}
+
 ## Domain-Specific Evaluation Criteria
 
 Based on your expertise and the domain context, identify:

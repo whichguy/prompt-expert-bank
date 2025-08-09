@@ -129,6 +129,7 @@ class ABTest {
     // Prepare template variables with enhanced metrics
     const variables = {
       EXPERT_NAME: this.extractExpertName(expert),
+      EXPERT_DEFINITION: expert.content || '',
       TIMESTAMP: new Date().toISOString(),
       BASELINE_CONTENT: baseline.content || '',
       VARIANT_CONTENT: variant.content || '',
@@ -233,6 +234,7 @@ class ABTest {
     // Prepare enhanced template variables with actual metrics
     const evaluationVariables = {
       EXPERT_NAME: this.extractExpertName(expert),
+      EXPERT_DEFINITION: expert.content || '',
       TIMESTAMP: new Date().toISOString(),
       BASELINE_CONTENT: threadA.content[0].text,
       VARIANT_CONTENT: threadB.content[0].text,
