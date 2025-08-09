@@ -49,9 +49,9 @@ Based on your expertise and the domain context, identify:
 - **Baseline (A)**: {{BASELINE_LATENCY}}ms | {{BASELINE_TOKENS}} tokens ({{BASELINE_INPUT_TOKENS}} in, {{BASELINE_OUTPUT_TOKENS}} out)
 - **Variant (B)**: {{VARIANT_LATENCY}}ms | {{VARIANT_TOKENS}} tokens ({{VARIANT_INPUT_TOKENS}} in, {{VARIANT_OUTPUT_TOKENS}} out)
 
-**Quick Analysis**: 
-- Speed difference: [Calculate which is faster and by what %]
-- Token efficiency: [Calculate which uses fewer tokens and by what %]
+**Performance Comparison**: 
+- Speed difference: [Calculate which response is faster and by what percentage]
+- Token efficiency: [Calculate which response uses fewer tokens and by what percentage]
 
 {{#if CONTEXT_FILES}}
 
