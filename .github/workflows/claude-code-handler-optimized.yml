@@ -1,0 +1,333 @@
+name: Claude Code Handler (Optimized)
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  actions: read
+  checks: write
+
+jobs:
+  claude-code:
+    if: |
+      contains(github.event.comment.body, '@prompt-expert') && 
+      (github.event.issue.pull_request || github.event.issue)
+    runs-on: ubuntu-latest
+    
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      
+    steps:
+      - name: Add reaction
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: context.payload.comment.id,
+              content: 'eyes'
+            });
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Checkout PR branch if applicable
+        if: github.event.issue.pull_request
+        run: |
+          PR_NUMBER=${{ github.event.issue.number }}
+          echo "Fetching PR #${PR_NUMBER} details..."
+          
+          # Use GitHub CLI for faster PR operations
+          PR_DATA=$(gh pr view ${PR_NUMBER} --json headRefName,headRepository,headRepositoryOwner)
+          BRANCH=$(echo $PR_DATA | jq -r '.headRefName')
+          
+          echo "Checking out branch: ${BRANCH}"
+          git fetch origin ${BRANCH}
+          git checkout ${BRANCH}
+          
+          # Configure git identity
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+
+      - name: Verify preinstalled tools
+        id: verify-tools
+        run: |
+          echo "## Tool Verification" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Node.js (preinstalled)
+          NODE_VERSION=$(node --version)
+          echo "✅ Node.js: $NODE_VERSION" >> $GITHUB_STEP_SUMMARY
+          echo "node_version=$NODE_VERSION" >> $GITHUB_OUTPUT
+          
+          # npm (preinstalled)
+          NPM_VERSION=$(npm --version)
+          echo "✅ npm: $NPM_VERSION" >> $GITHUB_STEP_SUMMARY
+          echo "npm_version=$NPM_VERSION" >> $GITHUB_OUTPUT
+          
+          # GitHub CLI (preinstalled)
+          GH_VERSION=$(gh --version | head -n1)
+          echo "✅ GitHub CLI: $GH_VERSION" >> $GITHUB_STEP_SUMMARY
+          echo "gh_version=$GH_VERSION" >> $GITHUB_OUTPUT
+          
+          # Git (preinstalled)
+          GIT_VERSION=$(git --version)
+          echo "✅ Git: $GIT_VERSION" >> $GITHUB_STEP_SUMMARY
+          
+          # Static analysis tools
+          if command -v shellcheck &> /dev/null; then
+            SHELLCHECK_VERSION=$(shellcheck --version | grep version: | awk '{print $2}')
+            echo "✅ ShellCheck: $SHELLCHECK_VERSION" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if command -v yamllint &> /dev/null; then
+            YAMLLINT_VERSION=$(yamllint --version)
+            echo "✅ yamllint: $YAMLLINT_VERSION" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if command -v rg &> /dev/null; then
+            RG_VERSION=$(rg --version | head -n1)
+            echo "✅ ripgrep: $RG_VERSION" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if command -v jq &> /dev/null; then
+            JQ_VERSION=$(jq --version)
+            echo "✅ jq: $JQ_VERSION" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Performance tracking
+          echo "start_time=$(date +%s)" >> $GITHUB_OUTPUT
+
+      - name: Setup repository cache
+        id: repo-cache
+        run: |
+          CACHE_DIR="/tmp/claude-cache"
+          mkdir -p $CACHE_DIR
+          echo "cache_dir=$CACHE_DIR" >> $GITHUB_OUTPUT
+          
+          # Generate cache key based on repository and SHA
+          REPO="${{ github.repository }}"
+          SHA="${{ github.event.pull_request.head.sha || github.sha }}"
+          CACHE_KEY=$(echo -n "${REPO}-${SHA}" | sha256sum | cut -d' ' -f1)
+          echo "cache_key=$CACHE_KEY" >> $GITHUB_OUTPUT
+          
+          # Check for existing cache
+          if [ -f "$CACHE_DIR/$CACHE_KEY.json" ]; then
+            echo "Cache hit for key: $CACHE_KEY"
+            echo "cache_hit=true" >> $GITHUB_OUTPUT
+          else
+            echo "Cache miss for key: $CACHE_KEY"
+            echo "cache_hit=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Install dependencies (optimized)
+        run: |
+          # Only install if package.json exists and cache miss
+          if [ -f "package.json" ]; then
+            # Check if .github/scripts has package.json
+            if [ -f ".github/scripts/package.json" ]; then
+              cd .github/scripts
+              
+              # Use npm ci for faster, deterministic installs
+              if [ -f "package-lock.json" ]; then
+                echo "Using npm ci for locked dependencies..."
+                npm ci --prefer-offline --no-audit
+              else
+                echo "No lock file, using npm install..."
+                npm install --prefer-offline --no-audit
+              fi
+              
+              cd ../..
+            fi
+          else
+            echo "No package.json found, skipping dependency installation"
+          fi
+
+      - name: Prepare environment
+        run: |
+          # Export necessary environment variables
+          if [[ "${{ github.event.issue.pull_request }}" != "" ]]; then
+            echo "PR_NUMBER=${{ github.event.issue.number }}" >> $GITHUB_ENV
+            echo "CONTEXT_TYPE=pr" >> $GITHUB_ENV
+          else
+            echo "ISSUE_NUMBER=${{ github.event.issue.number }}" >> $GITHUB_ENV
+            echo "CONTEXT_TYPE=issue" >> $GITHUB_ENV
+          fi
+          
+          echo "COMMENT_BODY<<EOF" >> $GITHUB_ENV
+          echo "${{ github.event.comment.body }}" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+          
+          echo "GITHUB_REPOSITORY=${{ github.repository }}" >> $GITHUB_ENV
+          echo "GITHUB_REPOSITORY_OWNER=${{ github.repository_owner }}" >> $GITHUB_ENV
+          echo "GITHUB_REPOSITORY_NAME=${{ github.event.repository.name }}" >> $GITHUB_ENV
+          echo "GITHUB_ACTOR=${{ github.event.comment.user.login }}" >> $GITHUB_ENV
+          echo "CACHE_DIR=${{ steps.repo-cache.outputs.cache_dir }}" >> $GITHUB_ENV
+          echo "CACHE_KEY=${{ steps.repo-cache.outputs.cache_key }}" >> $GITHUB_ENV
+
+      - name: Execute Claude Code session
+        id: claude-session
+        run: |
+          cd .github/scripts
+          
+          # Start performance tracking
+          START_TIME=$(date +%s%N)
+          
+          # Run the optimized session with error handling
+          if node claude-code-session.js; then
+            echo "session_status=success" >> $GITHUB_OUTPUT
+          else
+            echo "session_status=failure" >> $GITHUB_OUTPUT
+          fi
+          
+          # Calculate execution time
+          END_TIME=$(date +%s%N)
+          DURATION=$((($END_TIME - $START_TIME) / 1000000))
+          echo "execution_time=${DURATION}ms" >> $GITHUB_OUTPUT
+          
+          # Add to summary
+          echo "## Execution Performance" >> $GITHUB_STEP_SUMMARY
+          echo "- Duration: ${DURATION}ms" >> $GITHUB_STEP_SUMMARY
+          
+          cd ../..
+
+      - name: Update cache
+        if: success()
+        run: |
+          # Save repository state to cache
+          CACHE_FILE="${{ steps.repo-cache.outputs.cache_dir }}/${{ steps.repo-cache.outputs.cache_key }}.json"
+          
+          cat > $CACHE_FILE << EOF
+          {
+            "timestamp": $(date +%s),
+            "repository": "${{ github.repository }}",
+            "sha": "${{ github.event.pull_request.head.sha || github.sha }}",
+            "context_type": "${{ env.CONTEXT_TYPE }}",
+            "session_status": "${{ steps.claude-session.outputs.session_status }}"
+          }
+          EOF
+
+      - name: Push changes if on PR
+        if: |
+          github.event.issue.pull_request && 
+          steps.claude-session.outputs.session_status == 'success'
+        run: |
+          # Use GitHub CLI for faster operations
+          if git diff --quiet && git diff --staged --quiet; then
+            echo "No changes to push"
+          else
+            echo "Pushing changes..."
+            
+            # Stage all changes
+            git add -A
+            
+            # Create commit with performance metrics
+            DURATION="${{ steps.claude-session.outputs.execution_time }}"
+            git commit -m "Claude Code changes (optimized: ${DURATION})" \
+              -m "Session executed in ${DURATION} with optimized workflow" \
+              -m "Tools: Node.js ${{ steps.verify-tools.outputs.node_version }}, GitHub CLI"
+            
+            # Push to remote
+            git push origin HEAD
+            
+            # Add comment about performance
+            gh pr comment ${{ github.event.issue.number }} \
+              --body "✅ Changes pushed successfully (execution time: ${DURATION})"
+          fi
+
+      - name: Update reaction on success
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Remove eyes reaction
+            const reactions = await github.rest.reactions.listForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: context.payload.comment.id
+            });
+            
+            const eyesReaction = reactions.data.find(
+              r => r.content === 'eyes' && r.user.login === 'github-actions[bot]'
+            );
+            
+            if (eyesReaction) {
+              await github.rest.reactions.deleteForIssueComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: context.payload.comment.id,
+                reaction_id: eyesReaction.id
+              });
+            }
+            
+            // Add rocket reaction for success
+            await github.rest.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: context.payload.comment.id,
+              content: 'rocket'
+            });
+
+      - name: Update reaction on failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Remove eyes reaction
+            const reactions = await github.rest.reactions.listForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: context.payload.comment.id
+            });
+            
+            const eyesReaction = reactions.data.find(
+              r => r.content === 'eyes' && r.user.login === 'github-actions[bot]'
+            );
+            
+            if (eyesReaction) {
+              await github.rest.reactions.deleteForIssueComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: context.payload.comment.id,
+                reaction_id: eyesReaction.id
+              });
+            }
+            
+            // Add confused reaction for failure
+            await github.rest.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: context.payload.comment.id,
+              content: 'confused'
+            });
+
+      - name: Performance summary
+        if: always()
+        run: |
+          END_TIME=$(date +%s)
+          START_TIME=${{ steps.verify-tools.outputs.start_time }}
+          TOTAL_TIME=$((END_TIME - START_TIME))
+          
+          echo "## Overall Performance Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- Total workflow time: ${TOTAL_TIME}s" >> $GITHUB_STEP_SUMMARY
+          echo "- Claude session: ${{ steps.claude-session.outputs.execution_time }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Cache status: ${{ steps.repo-cache.outputs.cache_hit }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Compare with baseline (3 minutes for unoptimized)
+          BASELINE=180
+          IMPROVEMENT=$((100 * (BASELINE - TOTAL_TIME) / BASELINE))
+          
+          if [ $IMPROVEMENT -gt 0 ]; then
+            echo "🚀 **Performance improvement: ${IMPROVEMENT}% faster than baseline**" >> $GITHUB_STEP_SUMMARY
+          fi
