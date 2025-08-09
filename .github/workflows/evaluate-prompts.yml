@@ -41,6 +41,13 @@ jobs:
         with:
           repository: ${{ inputs.repository }}
           ref: ${{ github.head_ref || github.ref }}
+          sparse-checkout: |
+            scripts
+            templates
+            expert-definitions
+            prompts
+            package.json
+          sparse-checkout-cone-mode: false
           
       - name: Setup Node.js
         uses: actions/setup-node@v3
@@ -115,10 +122,10 @@ jobs:
           # Choose evaluation script based on context availability
           if [ -f "repo_context.json" ]; then
             echo "Using context-enhanced evaluation"
-            cp .github/scripts/evaluate-with-context.js evaluate.js
+            cp scripts/evaluate-with-context.js evaluate.js
           else
             echo "Using standard evaluation"
-            cp .github/scripts/evaluate-prompts.js evaluate.js
+            cp scripts/evaluate-prompts.js evaluate.js
           fi
           
           # Run evaluation with optional custom expert

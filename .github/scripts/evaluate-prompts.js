@@ -85,33 +85,42 @@ async function evaluate() {
     
     // Domain detection now always succeeds with 'general' as fallback
     
-    // Load MD-based expert definition
-    const expertPath = path.join(__dirname, 'expert-definitions', `${domain}-expert.md`);
-    
-    if (!fs.existsSync(expertPath)) {
+    // Load MD-based expert definition from GitHub
+    let expertDefinition;
+    try {
+      const { data } = await octokit.repos.getContent({
+        owner: OWNER,
+        repo: REPO,
+        path: `expert-definitions/${domain}-expert.md`,
+        ref: 'main' // Use main branch for stable expert definitions
+      });
+      expertDefinition = Buffer.from(data.content, 'base64').toString('utf-8');
+    } catch (error) {
       await octokit.issues.createComment({
         owner: OWNER,
         repo: REPO,
         issue_number: PR_NUMBER,
-        body: `⚠️ No expert definition found for domain: ${domain}. Please check available experts in expert-definitions/.`
+        body: `⚠️ No expert definition found for domain: ${domain}. Please check available experts in expert-definitions/ on GitHub.`
       });
       return;
     }
-    
-    // Read expert definition
-    const expertDefinition = fs.readFileSync(expertPath, 'utf-8');
     
     // Create MD-based expert module
     const expertModule = {
       name: `${domain.charAt(0).toUpperCase() + domain.slice(1)} Expert`,
       definition: expertDefinition,
       async evaluatePrompts(oldContent, newContent, anthropic) {
-        // Load domain-specific test scenario
-        const domainTestsPath = path.join(__dirname, '..', 'test-scenarios', 'domain-tests.json');
+        // Load domain-specific test scenario from GitHub
         let testScenario = "Please demonstrate your capabilities with a relevant example.";
         
         try {
-          const domainTests = JSON.parse(fs.readFileSync(domainTestsPath, 'utf-8'));
+          const { data } = await octokit.repos.getContent({
+            owner: OWNER,
+            repo: REPO,
+            path: 'test-scenarios/domain-tests.json',
+            ref: 'main'
+          });
+          const domainTests = JSON.parse(Buffer.from(data.content, 'base64').toString('utf-8'));
           if (domainTests[domain]) {
             testScenario = domainTests[domain].scenario;
             console.log(`Using ${domain} test scenario: ${testScenario}`);
@@ -119,7 +128,7 @@ async function evaluate() {
             console.log(`No specific test scenario for domain ${domain}, using default`);
           }
         } catch (error) {
-          console.log(`Could not load domain tests: ${error.message}, using default scenario`);
+          console.log(`Could not load domain tests from GitHub: ${error.message}, using default scenario`);
         }
         
         // Use 3-thread evaluation model as designed

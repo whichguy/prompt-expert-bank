@@ -1,0 +1,113 @@
+{
+  "limits": {
+    "runner": {
+      "maxMemoryMB": 7000,
+      "maxDiskMB": 14000,
+      "maxFilesOpen": 1024,
+      "maxAPICallsPerMinute": 60,
+      "warnMemoryMB": 5000,
+      "criticalMemoryMB": 6500,
+      "_comment": "GitHub Actions standard runner has 7GB RAM, 14GB disk"
+    },
+    "claude": {
+      "maxTokens": 200000,
+      "estimatedCharsPerToken": 4,
+      "maxCharacters": 800000,
+      "maxImagesCount": 20,
+      "maxImageSizeMB": 5,
+      "maxPDFSizeMB": 10,
+      "warnTokens": 150000,
+      "criticalTokens": 180000,
+      "_comment": "Claude 3 Opus/Sonnet context window limits"
+    },
+    "fileTypes": {
+      "text": {
+        "maxSizeMB": 1,
+        "warnSizeMB": 0.5
+      },
+      "code": {
+        "maxSizeMB": 1,
+        "warnSizeMB": 0.5
+      },
+      "image": {
+        "maxSizeMB": 5,
+        "warnSizeMB": 3
+      },
+      "pdf": {
+        "maxSizeMB": 10,
+        "warnSizeMB": 7
+      },
+      "config": {
+        "maxSizeMB": 0.5,
+        "warnSizeMB": 0.25
+      },
+      "default": {
+        "maxSizeMB": 0.5,
+        "warnSizeMB": 0.25
+      }
+    },
+    "aggregate": {
+      "maxTotalSizeMB": 50,
+      "maxTotalFiles": 100,
+      "maxFoldersDepth": 3,
+      "maxFilesPerFolder": 20,
+      "warnTotalSizeMB": 30,
+      "criticalTotalSizeMB": 45
+    }
+  },
+  "strategies": {
+    "progressive": {
+      "mode": "progressive",
+      "stopOnWarning": false,
+      "stopOnCritical": true,
+      "prioritizeByType": ["code", "text", "config", "image", "pdf"],
+      "skipLargeFiles": true,
+      "sampleLargeFolders": true,
+      "compressionEnabled": true
+    },
+    "strict": {
+      "mode": "strict",
+      "stopOnWarning": true,
+      "stopOnCritical": true,
+      "prioritizeByType": ["code", "text"],
+      "skipLargeFiles": true,
+      "sampleLargeFolders": false,
+      "compressionEnabled": false
+    },
+    "lenient": {
+      "mode": "lenient",
+      "stopOnWarning": false,
+      "stopOnCritical": false,
+      "prioritizeByType": ["code", "text", "config", "image", "pdf"],
+      "skipLargeFiles": false,
+      "sampleLargeFolders": true,
+      "compressionEnabled": true
+    }
+  },
+  "presets": {
+    "small": {
+      "description": "For quick tests with minimal context",
+      "maxTotalSizeMB": 10,
+      "maxTotalFiles": 20,
+      "maxTokens": 50000
+    },
+    "medium": {
+      "description": "Standard testing with moderate context",
+      "maxTotalSizeMB": 30,
+      "maxTotalFiles": 50,
+      "maxTokens": 100000
+    },
+    "large": {
+      "description": "Comprehensive testing with extensive context",
+      "maxTotalSizeMB": 50,
+      "maxTotalFiles": 100,
+      "maxTokens": 150000
+    },
+    "xlarge": {
+      "description": "Maximum context (use with caution)",
+      "maxTotalSizeMB": 75,
+      "maxTotalFiles": 150,
+      "maxTokens": 190000
+    }
+  }
+}

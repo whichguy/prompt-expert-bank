@@ -133,9 +133,9 @@ jobs:
         run: |
           # Only install if package.json exists and cache miss
           if [ -f "package.json" ]; then
-            # Check if .github/scripts has package.json
-            if [ -f ".github/scripts/package.json" ]; then
-              cd .github/scripts
+            # Check if scripts has package.json
+            if [ -f "scripts/package.json" ]; then
+              cd scripts
               
               # Use npm ci for faster, deterministic installs
               if [ -f "package-lock.json" ]; then
@@ -177,7 +177,7 @@ jobs:
       - name: Execute Claude Code session
         id: claude-session
         run: |
-          cd .github/scripts
+          cd scripts
           
           # Start performance tracking
           START_TIME=$(date +%s%N)

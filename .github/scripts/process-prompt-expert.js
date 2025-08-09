@@ -45,7 +45,21 @@ async function processCommand() {
     
     // Process the first prompt file
     const targetFile = promptFiles[0];
-    const currentContent = await fs.readFile(targetFile.filename, 'utf-8');
+    
+    // Fetch current content from GitHub PR branch instead of local filesystem
+    let currentContent;
+    try {
+      const { data } = await octokit.repos.getContent({
+        owner,
+        repo,
+        path: targetFile.filename,
+        ref: `refs/pull/${issueNumber}/head`
+      });
+      currentContent = Buffer.from(data.content, 'base64').toString('utf-8');
+    } catch (error) {
+      console.error(`Failed to fetch ${targetFile.filename} from GitHub: ${error.message}`);
+      throw new Error(`Could not read prompt file from GitHub: ${targetFile.filename}`);
+    }
     
     // Load expert definition using the ExpertLoader
     let expertContext = '';
@@ -107,19 +121,36 @@ Return ONLY the complete updated prompt content, no explanations.`
     
     const updatedContent = response.content[0].text;
     
-    // Write the updated content
-    await fs.writeFile(targetFile.filename, updatedContent);
-    
-    // Commit and push changes
-    execSync('git config user.name "Prompt Expert Bot"');
-    execSync('git config user.email "prompt-expert[bot]@users.noreply.github.com"');
-    execSync(`git add ${targetFile.filename}`);
-    execSync(`git commit -m "Prompt Expert: Implement ${domain} improvements
+    // Update file directly via GitHub API instead of local filesystem
+    try {
+      // First get the current file to get its SHA
+      const { data: currentFile } = await octokit.repos.getContent({
+        owner,
+        repo,
+        path: targetFile.filename,
+        ref: `refs/pull/${issueNumber}/head`
+      });
+      
+      // Update the file via GitHub API
+      await octokit.repos.createOrUpdateFileContents({
+        owner,
+        repo,
+        path: targetFile.filename,
+        message: `Prompt Expert: Implement ${domain} improvements
 
 Suggestion: ${suggestion}
 
-Requested by: @${author}"`);
-    execSync('git push');
+Requested by: @${author}`,
+        content: Buffer.from(updatedContent).toString('base64'),
+        sha: currentFile.sha,
+        branch: `refs/heads/${process.env.GITHUB_HEAD_REF || `pull/${issueNumber}/head`}`
+      });
+      
+      console.log(`Successfully updated ${targetFile.filename} via GitHub API`);
+    } catch (error) {
+      console.error(`Failed to update file via GitHub API: ${error.message}`);
+      throw error;
+    }
     
     // Post success comment
     await octokit.issues.createComment({

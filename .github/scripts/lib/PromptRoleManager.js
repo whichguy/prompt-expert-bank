@@ -51,11 +51,37 @@ class PromptRoleManager {
    * Load role from file path
    */
   async loadFromFile(filePath) {
+    // Always try GitHub first for consistency
+    if (this.octokit && this.repoOwner && this.repoName) {
+      try {
+        const { data } = await this.octokit.repos.getContent({
+          owner: this.repoOwner,
+          repo: this.repoName,
+          path: filePath,
+          ref: 'main' // Use main branch for stable roles
+        });
+
+        const content = Buffer.from(data.content, 'base64').toString('utf8');
+        
+        return {
+          name: path.basename(filePath, path.extname(filePath)),
+          source: 'github',
+          path: filePath,
+          sha: data.sha,
+          systemPrompt: this.extractSystemPrompt(content),
+          metadata: this.extractMetadata(content)
+        };
+      } catch (githubError) {
+        console.warn(`Could not load ${filePath} from GitHub:`, githubError.message);
+      }
+    }
+    
+    // Only try local as absolute last resort (for development)
     try {
-      // Try local file first
       const fullPath = path.resolve(this.workspace, filePath);
       const content = await fs.readFile(fullPath, 'utf8');
       
+      console.warn(`WARNING: Using local file ${filePath} - should fetch from GitHub in production`);
       return {
         name: path.basename(filePath, path.extname(filePath)),
         source: 'file',
@@ -64,29 +90,6 @@ class PromptRoleManager {
         metadata: this.extractMetadata(content)
       };
     } catch (localError) {
-      // Try GitHub repository
-      if (this.octokit && this.repoOwner && this.repoName) {
-        try {
-          const { data } = await this.octokit.repos.getContent({
-            owner: this.repoOwner,
-            repo: this.repoName,
-            path: filePath
-          });
-
-          const content = Buffer.from(data.content, 'base64').toString('utf8');
-          
-          return {
-            name: path.basename(filePath, path.extname(filePath)),
-            source: 'github',
-            path: filePath,
-            sha: data.sha,
-            systemPrompt: this.extractSystemPrompt(content),
-            metadata: this.extractMetadata(content)
-          };
-        } catch (githubError) {
-          console.warn(`Could not load ${filePath} from GitHub:`, githubError.message);
-        }
-      }
       return null;
     }
   }
@@ -166,48 +169,51 @@ class PromptRoleManager {
   async getAvailableRoles() {
     const roles = [];
 
-    try {
-      // Scan expert-definitions directory
-      const expertPath = path.join(this.workspace, 'expert-definitions');
-      
+    // Always fetch from GitHub first
+    if (this.octokit && this.repoOwner && this.repoName) {
       try {
-        const files = await fs.readdir(expertPath);
-        for (const file of files) {
-          if (file.endsWith('-expert.md')) {
-            const domain = file.replace('-expert.md', '');
+        const { data } = await this.octokit.repos.getContent({
+          owner: this.repoOwner,
+          repo: this.repoName,
+          path: 'expert-definitions',
+          ref: 'main' // Use main branch for stable definitions
+        });
+
+        for (const item of data) {
+          if (item.name.endsWith('-expert.md')) {
+            const domain = item.name.replace('-expert.md', '');
             roles.push({
               identifier: domain,
               name: `${domain.charAt(0).toUpperCase() + domain.slice(1)} Expert`,
-              source: 'local',
-              path: `expert-definitions/${file}`
+              source: 'github',
+              path: item.path,
+              sha: item.sha
             });
           }
         }
-      } catch (localError) {
-        // Try GitHub if local fails
-        if (this.octokit && this.repoOwner && this.repoName) {
-          try {
-            const { data } = await this.octokit.repos.getContent({
-              owner: this.repoOwner,
-              repo: this.repoName,
-              path: 'expert-definitions'
-            });
-
-            for (const item of data) {
-              if (item.name.endsWith('-expert.md')) {
-                const domain = item.name.replace('-expert.md', '');
-                roles.push({
-                  identifier: domain,
-                  name: `${domain.charAt(0).toUpperCase() + domain.slice(1)} Expert`,
-                  source: 'github',
-                  path: item.path,
-                  sha: item.sha
-                });
-              }
-            }
-          } catch (githubError) {
-            console.warn('Could not list roles from GitHub:', githubError.message);
-          }
+        
+        return roles; // Return early if GitHub succeeds
+      } catch (githubError) {
+        console.warn('Could not list roles from GitHub:', githubError.message);
+      }
+    }
+    
+    // Only try local as fallback for development
+    try {
+      const expertPath = path.join(this.workspace, 'expert-definitions');
+      const files = await fs.readdir(expertPath);
+      
+      console.warn('WARNING: Using local expert definitions - should fetch from GitHub in production');
+      
+      for (const file of files) {
+        if (file.endsWith('-expert.md')) {
+          const domain = file.replace('-expert.md', '');
+          roles.push({
+            identifier: domain,
+            name: `${domain.charAt(0).toUpperCase() + domain.slice(1)} Expert`,
+            source: 'local',
+            path: `expert-definitions/${file}`
+          });
         }
       }
     } catch (error) {

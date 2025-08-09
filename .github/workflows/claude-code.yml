@@ -35,6 +35,13 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
+          sparse-checkout: |
+            scripts
+            templates
+            expert-definitions
+            prompts
+            package.json
+          sparse-checkout-cone-mode: false
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -43,7 +50,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          cd .github/scripts
+          cd scripts
           npm install @anthropic-ai/sdk @octokit/rest
 
       - name: Get PR/Issue context
@@ -97,7 +104,7 @@ jobs:
       - name: Run Claude Code Session
         id: claude
         run: |
-          node .github/scripts/claude-code-session-simplified.js
+          node scripts/claude-code-session-simplified.js
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -137,6 +144,13 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.ref }}
+          sparse-checkout: |
+            scripts
+            templates
+            expert-definitions
+            prompts
+            package.json
+          sparse-checkout-cone-mode: false
 
       - name: Check for prompt changes
         id: check_prompts
@@ -162,7 +176,7 @@ jobs:
       - name: Install dependencies
         if: env.PROMPTS_CHANGED == 'true'
         run: |
-          cd .github/scripts
+          cd scripts
           npm install @anthropic-ai/sdk @octokit/rest
 
       - name: Run automatic prompt evaluation
@@ -170,7 +184,7 @@ jobs:
         run: |
           # Auto-invoke prompt expert evaluation
           export COMMENT_BODY="@prompt-expert programming evaluate all prompt changes in this PR"
-          node .github/scripts/claude-code-session-simplified.js
+          node scripts/claude-code-session-simplified.js
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

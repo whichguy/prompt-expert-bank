@@ -60,6 +60,13 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           ref: ${{ format('refs/pull/{0}/head', github.event.issue.number) }}
           fetch-depth: 0
+          sparse-checkout: |
+            scripts
+            expert-definitions
+            prompts
+            templates
+            package.json
+          sparse-checkout-cone-mode: false
           
       - name: Setup Node.js
         if: steps.parse.outputs.valid == 'true'
@@ -153,4 +160,4 @@ jobs:
           INSTRUCTIONS: ${{ steps.parse.outputs.instructions }}
           PR_NUMBER: ${{ github.event.issue.number }}
         run: |
-          node .github/scripts/prompt-expert-handler.js
+          node scripts/prompt-expert.js

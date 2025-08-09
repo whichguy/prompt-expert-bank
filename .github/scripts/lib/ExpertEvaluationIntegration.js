@@ -156,34 +156,37 @@ class ExpertEvaluationIntegration {
         return { error: 'No prompt files found to evaluate' };
       }
 
-      // Load expert definition
-      const expertPath = path.join(this.workspace, 'expert-definitions', `${domain}-expert.md`);
+      // Load expert definition from GitHub
       let expertDefinition;
       
       try {
-        expertDefinition = await fs.readFile(expertPath, 'utf8');
+        // Always fetch from GitHub, never from local filesystem
+        const { data } = await this.octokit.repos.getContent({
+          owner: this.repoOwner,
+          repo: this.repoName,
+          path: `expert-definitions/${domain}-expert.md`,
+          ref: 'main' // Use main branch for stable expert definitions
+        });
+        expertDefinition = Buffer.from(data.content, 'base64').toString('utf8');
       } catch (error) {
-        // Try GitHub
-        try {
-          const { data } = await this.octokit.repos.getContent({
-            owner: this.repoOwner,
-            repo: this.repoName,
-            path: `expert-definitions/${domain}-expert.md`
-          });
-          expertDefinition = Buffer.from(data.content, 'base64').toString('utf8');
-        } catch (githubError) {
-          return { error: `Expert definition not found for domain: ${domain}` };
-        }
+        return { error: `Expert definition not found for domain: ${domain} (fetching from GitHub)` };
       }
 
       // Get test scenario
       let scenario = test_scenario;
       if (!scenario) {
         try {
-          const domainTestsPath = path.join(this.workspace, 'test-scenarios', 'domain-tests.json');
-          const domainTests = JSON.parse(await fs.readFile(domainTestsPath, 'utf8'));
+          // Fetch domain tests from GitHub
+          const { data } = await this.octokit.repos.getContent({
+            owner: this.repoOwner,
+            repo: this.repoName,
+            path: 'test-scenarios/domain-tests.json',
+            ref: 'main'
+          });
+          const domainTests = JSON.parse(Buffer.from(data.content, 'base64').toString('utf8'));
           scenario = domainTests[domain]?.scenario || 'Please demonstrate your capabilities with a relevant example.';
         } catch (error) {
+          console.log('Could not fetch domain tests from GitHub, using default scenario');
           scenario = 'Please demonstrate your capabilities with a relevant example.';
         }
       }

@@ -58,6 +58,13 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           ref: ${{ steps.check.outputs.context_type == 'pr' && steps.pr_details.outputs.head_ref || github.ref }}
           fetch-depth: 0  # Full history for git operations
+          sparse-checkout: |
+            scripts
+            templates
+            expert-definitions
+            prompts
+            package.json
+          sparse-checkout-cone-mode: false
           
       - name: Setup Git Identity
         run: |
@@ -73,7 +80,7 @@ jobs:
       - name: Install Dependencies
         run: |
           # Install in the workflow scripts directory
-          cd .github/scripts
+          cd scripts
           npm init -y || true
           npm install @anthropic-ai/sdk@latest @octokit/rest@latest
           
@@ -110,7 +117,7 @@ jobs:
           GITHUB_BASE_REF: ${{ steps.pr_details.outputs.base_ref }}
         run: |
           echo "Starting Claude Code session..."
-          node .github/scripts/claude-code-session.js
+          node scripts/claude-code-session.js
           
       - name: Push Changes (if any)
         if: steps.check.outputs.context_type == 'pr'
