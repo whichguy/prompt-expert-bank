@@ -60,10 +60,23 @@ Calculate weighted totals using these weights:
 **Baseline Total**: ___/10
 **Variant Total**: ___/10
 
+### Step 3: Performance-Adjusted Scores
+Add performance bonuses if applicable (see Performance Considerations):
+**Baseline Final Score**: ___/10
+**Variant Final Score**: ___/10
+
 ## Performance Considerations
 
-If responses are close in quality (≤1 point difference), favor the one with better performance metrics:
-- 15%+ faster response time OR 10%+ fewer tokens = notable advantage
+Performance metrics should influence your evaluation in these scenarios:
+
+1. **Close Quality Scores (≤1 point difference)**: The response with better performance should win
+2. **Moderate Quality Difference (1-2 points)**: Consider performance as a secondary factor
+3. **Significant Performance Advantage**: 
+   - 15%+ faster response time = worth 0.5 bonus points
+   - 10%+ fewer tokens = worth 0.5 bonus points
+   - Both advantages combined = worth 1.0 bonus points
+
+**Efficiency Principle**: When two responses provide similar value, the more efficient one delivers better user experience through faster responses and lower costs.
 
 ## Decision Framework
 
