@@ -73,19 +73,32 @@ Key components:
     return `You have access to powerful tools:
 
 ### File Operations
-- **get_file**: Read any file in the repository
+- **get_file**: Read any file in the repository (current or from PR branch)
 - **update_file**: Modify files with precise edits
 - **list_files**: Browse directory structures
 
-### Execution
-- **run_command**: Execute safe shell commands
-- **github_api**: Make GitHub API calls
+### GitHub Integration
+- **run_command**: Execute safe shell commands including:
+  - \`git diff\` to see PR changes
+  - \`git log\` to see commit history
+  - \`gh pr view\` to get PR details
+  - \`gh pr diff\` to see file changes
+- **github_api**: Make GitHub API calls for:
+  - PR files and diffs: \`/repos/{owner}/{repo}/pulls/{pr}/files\`
+  - PR commits: \`/repos/{owner}/{repo}/pulls/{pr}/commits\`
+  - Comments and reviews: \`/repos/{owner}/{repo}/pulls/{pr}/comments\`
 
 ### Expert Evaluation (when in expert mode)
 - **evaluate_prompt_changes**: Run 3-thread evaluation
 - **get_prompt_history**: Analyze version evolution
 - **compare_prompt_versions**: Compare improvements
-- **get_expert_feedback**: Provide structured analysis`;
+- **get_expert_feedback**: Provide structured analysis
+
+**Important**: When analyzing PRs, always:
+1. Use \`gh pr diff {number}\` or GitHub API to see exact changes
+2. Check both added and removed lines
+3. Consider the context of changes
+4. Review commit messages for intent`;
   }
 
   getBehavioralGuidelines() {
