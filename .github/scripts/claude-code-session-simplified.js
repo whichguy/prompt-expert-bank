@@ -15,7 +15,7 @@ const execAsync = promisify(exec);
 const execFileAsync = promisify(execFile);
 const { PromptRoleManager } = require('./lib/PromptRoleManager');
 const { ExpertEvaluationIntegration } = require('./lib/ExpertEvaluationIntegration');
-const { EnhancedSystemPrompt } = require('./lib/EnhancedSystemPrompt');
+const { StructuredSystemPrompt } = require('./lib/StructuredSystemPrompt');
 
 class ClaudeCodeSession {
   constructor() {
@@ -48,7 +48,7 @@ class ClaudeCodeSession {
     this.roleManager = null;
     this.currentRole = null;
     this.expertIntegration = null;
-    this.promptBuilder = new EnhancedSystemPrompt();
+    this.promptBuilder = new StructuredSystemPrompt();
   }
 
   /**
@@ -402,8 +402,8 @@ class ClaudeCodeSession {
    * Tool: Run command
    */
   async runCommand(args, context) {
-    // Only allow safe commands - check the actual command, not user input
-    const allowedCommands = ['ls', 'pwd', 'echo', 'cat', 'grep', 'find'];
+    // Allow safe commands including gh and git for analysis
+    const allowedCommands = ['ls', 'pwd', 'echo', 'cat', 'grep', 'find', 'gh', 'git'];
     
     // Extract command more safely
     const cmdMatch = args.command.match(/^(\S+)/);
@@ -483,24 +483,24 @@ class ClaudeCodeSession {
       },
       {
         name: 'run_command',
-        description: 'Run a shell command (limited to safe commands)',
+        description: 'Run shell commands for repository analysis. IMPORTANT for PR/Issue analysis: Use "gh pr diff <number>" to see PR changes, "gh pr view <number>" for PR details, "gh issue view <number>" for issue details, "git log" for commit history, "git diff" for uncommitted changes.',
         input_schema: {
           type: 'object',
           properties: {
-            command: { type: 'string', description: 'Command to run' }
+            command: { type: 'string', description: 'Command to run. Examples: "gh pr diff 19", "gh issue view 21", "git log --oneline -10"' }
           },
           required: ['command']
         }
       },
       {
         name: 'github_api',
-        description: 'Make a GitHub API call',
+        description: 'Make GitHub API calls for detailed information. Key endpoints: /repos/{owner}/{repo}/pulls/{pr}/files (PR file changes), /repos/{owner}/{repo}/pulls/{pr}/commits (PR commits), /repos/{owner}/{repo}/issues/{issue}/comments (issue comments), /repos/{owner}/{repo}/pulls/{pr} (PR details)',
         input_schema: {
           type: 'object',
           properties: {
-            method: { type: 'string', description: 'HTTP method' },
-            endpoint: { type: 'string', description: 'API endpoint' },
-            data: { type: 'object', description: 'Request data' }
+            method: { type: 'string', description: 'HTTP method (default: GET)' },
+            endpoint: { type: 'string', description: 'API endpoint path. Example: /repos/whichguy/prompt-expert-bank/pulls/19/files' },
+            data: { type: 'object', description: 'Request data for POST/PATCH' }
           },
           required: ['endpoint']
         }
@@ -517,21 +517,21 @@ class ClaudeCodeSession {
   }
 
   /**
-   * Build system message (role-aware and enhanced)
+   * Build system message (action-oriented v3.0)
    */
   buildSystemMessage(context, command) {
-    // If we have a specific role, blend it with enhanced prompt
+    // If we have a specific role, blend it with structured prompt
     if (this.currentRole) {
       // Get role-based system message
       const roleMessage = this.roleManager.buildRoleSystemMessage(this.currentRole, context);
-      // Enhance it with repository context and guidelines
-      const enhancedBase = this.promptBuilder.buildEnhancedSystemMessage(context, command);
-      // Combine role specifics with enhanced context
-      return `${roleMessage}\n\n${enhancedBase.split('## Repository Context')[1]}`;
+      // Get concise structured prompt for efficiency
+      const structuredBase = this.promptBuilder.buildConcisePrompt(context, command);
+      // Combine role specifics with action-oriented instructions
+      return `${roleMessage}\n\n${structuredBase}`;
     }
 
-    // Use fully enhanced system message
-    return this.promptBuilder.buildEnhancedSystemMessage(context, command);
+    // Use concise action-oriented prompt for maximum efficiency
+    return this.promptBuilder.buildConcisePrompt(context, command);
   }
 
   /**
@@ -580,7 +580,7 @@ ${result.toolCalls.map(t => `- \`${t.name}\``).join('\n')}` : '';
     const body = `${result.response}${toolsSection}${metricsSection}
 
 ---
-<sub>Session: \`${this.sessionId}\` | Duration: ${duration}s | [prompt-expert-bank](https://github.com/${this.repoOwner}/${this.repoName}) Claude v2.0</sub>`;
+<sub>Session: \`${this.sessionId}\` | Duration: ${duration}s | [prompt-expert-bank](https://github.com/${this.repoOwner}/${this.repoName}) Claude v3.0 (Action-Oriented)</sub>`;
 
     if (context.pr) {
       await octokit.issues.createComment({
