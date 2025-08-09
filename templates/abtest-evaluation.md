@@ -1,6 +1,6 @@
 # A/B Test Evaluation
 
-## Purpose
+## Task Definition
 
 You are evaluating two prompt responses using LLM-as-Judge methodology. Your task is to determine which response performs better by applying the expertise defined below.
 
@@ -10,11 +10,47 @@ You are evaluating two prompt responses using LLM-as-Judge methodology. Your tas
 - The order (A vs B) must not influence your judgment
 - Provide explicit reasoning for every score to ensure consistency
 
-## Expert Definition
+## Expert Context
 
 {{EXPERT_DEFINITION}}
 
-## Domain-Specific Evaluation Criteria
+## Test Information
+- **Expert**: {{EXPERT_NAME}}
+- **Date**: {{TIMESTAMP}}
+- **Evaluation Focus**: Determine which response better serves the user's specific needs
+
+{{#if CONTEXT_FILES}}
+
+## Repository Context
+{{CONTEXT_FILE_COUNT}} repository files provided ({{CONTEXT_SIZE}} bytes total) - consider how well each response addresses the specific codebase.
+
+{{/if}}
+
+## Responses to Evaluate
+
+### Baseline (A)
+<baseline>
+{{BASELINE_CONTENT}}
+</baseline>
+
+### Variant (B)
+<variant>
+{{VARIANT_CONTENT}}
+</variant>
+
+## Performance Metrics
+- **Baseline (A)**: {{BASELINE_LATENCY}}ms | {{BASELINE_TOKENS}} tokens ({{BASELINE_INPUT_TOKENS}} in, {{BASELINE_OUTPUT_TOKENS}} out)
+- **Variant (B)**: {{VARIANT_LATENCY}}ms | {{VARIANT_TOKENS}} tokens ({{VARIANT_INPUT_TOKENS}} in, {{VARIANT_OUTPUT_TOKENS}} out)
+
+**Performance Delta**: 
+- Speed: [State exact difference, e.g., "B is 23% faster" or "A is 150ms slower"]
+- Tokens: [State exact difference, e.g., "A uses 30% fewer tokens" or "B uses 200 more tokens"]
+
+---
+
+## Evaluation Process
+
+### Step 1: Define Domain-Specific Criteria
 
 Using the expert definition above, generate specific evaluation criteria for this domain:
 
@@ -44,41 +80,8 @@ Using the expert definition above, generate specific evaluation criteria for thi
 - [Example: Clear documentation and examples]
 - [Continue listing excellence indicators]
 
-## Test Information
-- **Expert**: {{EXPERT_NAME}}
-- **Date**: {{TIMESTAMP}}
-- **Evaluation Focus**: Determine which response better serves the user's specific needs
+### Step 2: Disqualification Check
 
-## Performance Metrics
-- **Baseline (A)**: {{BASELINE_LATENCY}}ms | {{BASELINE_TOKENS}} tokens ({{BASELINE_INPUT_TOKENS}} in, {{BASELINE_OUTPUT_TOKENS}} out)
-- **Variant (B)**: {{VARIANT_LATENCY}}ms | {{VARIANT_TOKENS}} tokens ({{VARIANT_INPUT_TOKENS}} in, {{VARIANT_OUTPUT_TOKENS}} out)
-
-**Performance Delta**: 
-- Speed: [State exact difference, e.g., "B is 23% faster" or "A is 150ms slower"]
-- Tokens: [State exact difference, e.g., "A uses 30% fewer tokens" or "B uses 200 more tokens"]
-
-{{#if CONTEXT_FILES}}
-
-## Context
-{{CONTEXT_FILE_COUNT}} repository files provided ({{CONTEXT_SIZE}} bytes total) - consider how well each response addresses the specific codebase.
-
-{{/if}}
-
-## Responses to Evaluate
-
-### Baseline (A)
-<baseline>
-{{BASELINE_CONTENT}}
-</baseline>
-
-### Variant (B)
-<variant>
-{{VARIANT_CONTENT}}
-</variant>
-
-## Evaluation
-
-### Step 0: Disqualification Check
 First, verify neither response contains disqualifying issues:
 
 **Baseline (A)**: Pass ✓ or Fail ✗ - [If fail, quote the specific problematic content]
@@ -86,7 +89,8 @@ First, verify neither response contains disqualifying issues:
 
 *Any disqualification typically results in automatic rejection unless both responses fail.*
 
-### Step 1: Individual Assessment
+### Step 3: Individual Assessment
+
 Score each response on a 1-10 scale. First state the score, then provide specific evidence from the response that justifies it.
 
 **Scoring Calibration:**
@@ -97,20 +101,21 @@ Score each response on a 1-10 scale. First state the score, then provide specifi
 - 1-2: Failing - Fundamentally flawed or potentially harmful
 
 **Baseline (A):**
-- Clarity: ___/10 - [Specific examples of clear/unclear elements]
 - Technical Accuracy: ___/10 - [Cite specific accurate/inaccurate statements]
+- Domain Excellence: ___/10 - [Which excellence indicators are present/missing?]
+- Clarity: ___/10 - [Specific examples of clear/unclear elements]
 - Practical Use: ___/10 - [How would this work in real-world application?]
 - User Experience: ___/10 - [How easy/difficult to understand and implement?]
-- Domain Excellence: ___/10 - [Which excellence indicators are present/missing?]
 
 **Variant (B):**
-- Clarity: ___/10 - [Specific examples of clear/unclear elements]
 - Technical Accuracy: ___/10 - [Cite specific accurate/inaccurate statements]
+- Domain Excellence: ___/10 - [Which excellence indicators are present/missing?]
+- Clarity: ___/10 - [Specific examples of clear/unclear elements]
 - Practical Use: ___/10 - [How would this work in real-world application?]
 - User Experience: ___/10 - [How easy/difficult to understand and implement?]
-- Domain Excellence: ___/10 - [Which excellence indicators are present/missing?]
 
-### Step 2: Weighted Scoring
+### Step 4: Calculate Weighted Scores
+
 Apply these weights to calculate final scores:
 - Technical Accuracy: 25%
 - Domain Excellence: 20%
@@ -118,28 +123,24 @@ Apply these weights to calculate final scores:
 - Practical Use: 20%
 - User Experience: 15%
 
-**Baseline Total**: ___/10
-**Variant Total**: ___/10
+**Baseline Weighted Total**: ___/10
+**Variant Weighted Total**: ___/10
 
-### Step 3: Performance-Adjusted Scores
-Add performance bonuses if applicable (see Performance Considerations):
+### Step 5: Apply Performance Adjustments
+
+Performance bonuses for significant advantages:
+- 15%+ faster response time = +0.5 points
+- 10%+ fewer tokens = +0.5 points
+- Both advantages combined = +1.0 points
+
 **Baseline Final Score**: ___/10
 **Variant Final Score**: ___/10
 
-## Performance Considerations
+**Note**: Performance primarily matters when quality scores are close (≤1 point difference). For responses of comparable quality, prefer the one with superior performance metrics.
 
-Performance metrics should influence your evaluation in these scenarios:
+---
 
-1. **Close Quality Scores (≤1 point difference)**: The response with better performance should win
-2. **Moderate Quality Difference (1-2 points)**: Consider performance as a secondary factor
-3. **Significant Performance Advantage**: 
-   - 15%+ faster response time = worth 0.5 bonus points
-   - 10%+ fewer tokens = worth 0.5 bonus points
-   - Both advantages combined = worth 1.0 bonus points
-
-**Efficiency Tiebreaker**: For responses of comparable quality, prefer the one with superior performance metrics (speed and token efficiency).
-
-## Decision Framework
+## Final Decision
 
 ### Impact Assessment (PIE Framework)
 Quantify the practical impact of your choice:
@@ -147,11 +148,13 @@ Quantify the practical impact of your choice:
 - **Importance** (1-5): Criticality to user success
 - **Ease** (1-5): Implementation simplicity (5=trivial, 1=complex)
 
-### Final Decision
+### Winner Declaration
 
 **Winner:** [State clearly: "Baseline (A)" or "Variant (B)"]
 **Confidence Level:** [Choose one: High (80-100%) | Medium (60-79%) | Low (<60%)]
 **Final Score Difference:** ___/10 points
+
+### Decision Analysis
 
 **Decision Rationale:** [In 2-3 sentences, state the primary differentiator and how it impacts the specific use case]
 
