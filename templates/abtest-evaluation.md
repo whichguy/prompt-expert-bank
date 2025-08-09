@@ -15,19 +15,30 @@ You are evaluating two prompt responses using LLM-as-Judge methodology to determ
 Based on your expertise and the domain context, identify:
 
 **Critical Requirements** (Must-haves for this domain):
-- [Identify 2-3 non-negotiable requirements specific to your domain]
+- [Identify 3-10 non-negotiable requirements specific to your domain]
+- [Be comprehensive - list ALL critical standards that must be met]
 - [Example: For security domain - "Must not expose sensitive data"]
 - [Example: For medical domain - "Must include appropriate disclaimers"]
+- [Example: For programming - "Must handle null/undefined inputs"]
+- [Continue listing until all critical requirements are covered]
 
 **Disqualifying Factors** (Automatic failure conditions):
-- [List any factors that would immediately disqualify a response]
+- [List 3-10 factors that would immediately disqualify a response]
+- [Be thorough - any of these should result in automatic rejection]
 - [Example: Factually incorrect information that could cause harm]
 - [Example: Violations of domain best practices or standards]
+- [Example: Security vulnerabilities or data leaks]
+- [Example: Missing critical error handling]
+- [Continue listing all potential disqualifiers]
 
 **Domain Excellence Indicators** (What exceptional looks like):
-- [Define 2-3 characteristics of outstanding responses in your domain]
+- [Define 3-10 characteristics of outstanding responses in your domain]
+- [Comprehensive list of what makes a response truly excellent]
 - [Example: For programming - "Includes error handling and edge cases"]
 - [Example: For finance - "Addresses regulatory compliance"]
+- [Example: Optimization for performance and scalability]
+- [Example: Clear documentation and examples]
+- [Continue listing excellence indicators]
 
 ## Test Information
 - **Expert**: {{EXPERT_NAME}}
