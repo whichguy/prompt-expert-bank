@@ -234,7 +234,7 @@ jobs:
           } catch (error) {
             console.error('Test failed:', error.message);
             
-            const errorReport = `## ❌ A/B Test Failed\n\n`;
+            let errorReport = `## ❌ A/B Test Failed\n\n`;
             errorReport += `**Error:** ${error.message}\n\n`;
             errorReport += 'Please check:\n';
             errorReport += '- File paths are correct\n';
