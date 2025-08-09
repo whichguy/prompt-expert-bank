@@ -106,18 +106,23 @@ class ABTest {
   }
 
   async evaluate({ expert, baseline, variant, context }) {
-    const prompt = `You are: ${expert.content}
-
-Context: ${context.map(f => f.name).join(', ')}
-
-Compare:
-BASELINE: ${baseline.content}
-VARIANT: ${variant.content}
-
-Which is better? Respond with:
-- Winner: baseline or variant
-- Confidence: high/medium/low
-- Reason: brief explanation`;
+    // Load the template
+    const template = await this.loadTemplate('templates/abtest-prompt.md');
+    
+    // Build context names if available
+    const contextNames = context && context.length > 0 ? 
+      context.map(f => f.name).join(', ') : '';
+    
+    // Replace template variables
+    const prompt = template
+      .replace(/{{EXPERT_CONTENT}}/g, expert.content || '')
+      .replace(/{{CONTEXT_NAMES}}/g, contextNames)
+      .replace(/{{BASELINE_CONTENT}}/g, baseline.content || '')
+      .replace(/{{VARIANT_CONTENT}}/g, variant.content || '')
+      .replace(/{{#if CONTEXT_FILES}}[\s\S]*?{{else}}([\s\S]*?){{\/if}}/g, 
+        context && context.length > 0 ? 
+          `Context files provided: ${contextNames}` : 
+          'No additional context files provided.');
 
     const response = await this.anthropic.messages.create({
       model: 'claude-3-5-sonnet-20241022',
@@ -132,6 +137,28 @@ Which is better? Respond with:
       confidence: text.includes('high') ? 'high' : 
                   text.includes('low') ? 'low' : 'medium'
     };
+  }
+
+  async loadTemplate(templatePath) {
+    try {
+      // Try to load from GitHub first
+      const templateFile = await this.loadFile(templatePath);
+      return templateFile.content;
+    } catch (error) {
+      // Fallback to basic template if file not found
+      return `You are: {{EXPERT_CONTENT}}
+
+Context: {{CONTEXT_NAMES}}
+
+Compare:
+BASELINE: {{BASELINE_CONTENT}}
+VARIANT: {{VARIANT_CONTENT}}
+
+Which is better? Respond with:
+- Winner: baseline or variant
+- Confidence: high/medium/low
+- Reason: brief explanation`;
+    }
   }
 }
 
