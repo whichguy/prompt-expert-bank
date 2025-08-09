@@ -132,7 +132,7 @@ class ABTest {
       TIMESTAMP: new Date().toISOString(),
       BASELINE_CONTENT: baseline.content || '',
       VARIANT_CONTENT: variant.content || '',
-      CONTEXT_FILES: context || [],
+      CONTEXT_FILES: context && context.length > 0,  // Boolean flag for conditionals
       CONTEXT_FILE_COUNT: context ? context.length : 0,
       CONTEXT_SIZE: contextMetrics.totalSize,
       // Placeholder metrics - will be populated after API calls
@@ -236,7 +236,7 @@ class ABTest {
       TIMESTAMP: new Date().toISOString(),
       BASELINE_CONTENT: threadA.content[0].text,
       VARIANT_CONTENT: threadB.content[0].text,
-      CONTEXT_FILES: context || [],
+      CONTEXT_FILES: context && context.length > 0,  // Boolean flag for conditionals
       CONTEXT_FILE_COUNT: context ? context.length : 0,
       CONTEXT_SIZE: contextMetrics.totalSize,
       BASELINE_LATENCY: Math.round(threadAEndTime - threadAStartTime),

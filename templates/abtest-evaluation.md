@@ -13,8 +13,10 @@ You are evaluating two prompt responses to determine which performs better. Appl
 - **Variant Response**: {{VARIANT_LATENCY}}ms | {{VARIANT_TOKENS}} tokens ({{VARIANT_INPUT_TOKENS}} in, {{VARIANT_OUTPUT_TOKENS}} out)
 
 {{#if CONTEXT_FILES}}
+
 ## Context
 {{CONTEXT_FILE_COUNT}} repository files provided ({{CONTEXT_SIZE}} bytes total) - consider how well each response addresses the specific codebase.
+
 {{/if}}
 
 ## Responses
@@ -57,5 +59,7 @@ If responses are close in quality (≤1 point difference), favor the one with be
 **Reason:** [Why did this version win?]
 
 {{#if CONTEXT_FILES}}
+
 **Context Impact:** [How did the repository files influence your decision?]
+
 {{/if}}
