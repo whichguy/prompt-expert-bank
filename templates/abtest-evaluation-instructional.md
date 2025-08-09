@@ -52,7 +52,7 @@ Use the performance metrics as tie-breakers in these scenarios:
 
 1. **Close Evaluation (≤1 point difference)**: When content quality scores are very close, favor the response with **faster response time** and **fewer tokens** as it provides similar value more efficiently.
 
-2. **Drastically Better Performance**: If one response has significantly better performance metrics (>2x faster OR >50% fewer tokens) while maintaining comparable content quality, consider this as a notable advantage worth mentioning in your decision.
+2. **Notable Performance Advantage**: If one response has **15%+ faster response time** OR **10%+ fewer tokens** while maintaining comparable content quality, consider this as a notable advantage worth mentioning in your decision.
 
 ## Decision
 
