@@ -215,6 +215,33 @@ Objective: [What needed to be done]
 - [Suggestions or warnings if relevant]`;
   }
 
+  getABTestResponseTemplate() {
+    return `For ABTest results, structure your response as:
+
+## RESULTS
+Winner: [Version A or B with identifier]
+Action: [DEPLOY/IMPROVE/REJECT]
+Confidence: [high/medium/low]
+Score Difference: [+X.X or -X.X]
+
+## INTENT
+Comparison: [What versions were compared]
+Expert: [Which expert evaluated]
+Purpose: [Why comparison was needed]
+
+## ACTION PLAN
+1. Executed ABTest with [expert] evaluation
+2. Analyzed [number] evaluation threads
+3. Generated verdict with [confidence] confidence
+4. Interpreted results for actionable recommendation
+
+## NOTES
+- Strengths: [Key improvements found]
+- Weaknesses: [Issues identified]
+- Recommendation: [Specific next steps based on action]
+- [Additional insights from comparison]`;
+  }
+
   /**
    * Create task-specific enhancements
    */

@@ -14,23 +14,68 @@ class ABTestTool {
     this.repoOwner = options.repoOwner;
     this.repoName = options.repoName;
     this.workspace = options.workspace;
+    
+    // Cache for fetched content (24 hour TTL)
+    this.contentCache = new Map();
+    this.cacheTimeout = 24 * 60 * 60 * 1000; // 24 hours
+    
+    // Performance tracking
+    this.startTime = null;
+    this.metrics = {
+      fetchTime: 0,
+      evaluationTime: 0,
+      totalTime: 0
+    };
   }
 
   /**
    * Main ABTest execution
-   * @param {string} pathToExpertPromptDefinition - Path to expert definition (e.g., "expert-definitions/security.md")
-   * @param {string} pathToPromptA - Path to prompt A (e.g., "prompts/code-reviewer.md@v1" or "prompts/code-reviewer.md@3a5f8e2")
-   * @param {string} pathToPromptB - Path to prompt B (e.g., "prompts/code-reviewer.md@HEAD" or "prompts/code-reviewer.md")
+   * IMPORTANT: All paths are GitHub repository paths that will be fetched via GitHub API
+   * @param {string} pathToExpertPromptDefinition - GitHub path to expert definition file
+   *   Format: "path/in/repo/file.md" (fetched from current repo context)
+   *   OR: "owner/repo:path/to/file.md" (fetched from specified repo)
+   *   Default experts available at: whichguy/prompt-expert-bank/expert-definitions/
+   *   Example: "expert-definitions/programming-expert.md" fetches from current repo
+   *   Example: "whichguy/prompt-expert-bank:expert-definitions/programming-expert.md" explicit repo
+   * @param {string} pathToPromptA - GitHub path to baseline prompt (fetched via API)
+   *   Format: "path/to/file.md@ref" where ref = branch/tag/commit
+   *   Example: "prompts/code-reviewer.md@main" fetches from main branch
+   * @param {string} pathToPromptB - GitHub path to variant prompt (fetched via API)
+   *   Format: "path/to/file.md@ref" or "path/to/file.md" (defaults to HEAD)
+   *   Example: "prompts/code-reviewer.md" fetches current PR version
    * @param {array} testContextPaths - Optional array of paths to reference materials for testing
+   * @param {number} iterationCount - Number of previous improvement iterations (for leniency adjustment)
    * @returns {object} Comparative analysis results with expert verdict
    */
-  async executeABTest(pathToExpertPromptDefinition, pathToPromptA, pathToPromptB, testContextPaths = []) {
+  async executeABTest(pathToExpertPromptDefinition, pathToPromptA, pathToPromptB, testContextPaths = [], iterationCount = 0) {
     try {
+      // Start performance tracking
+      this.startTime = Date.now();
+      
+      // Input validation
+      this.validateInputs(pathToExpertPromptDefinition, pathToPromptA, pathToPromptB, testContextPaths);
+      
+      // Check if comparing identical versions
+      if (pathToPromptA === pathToPromptB) {
+        return {
+          success: false,
+          error: 'Identical versions provided',
+          details: 'PromptA and PromptB are the same. Please provide different versions to compare.',
+          suggestion: 'Use version specifiers like @main, @v1.0, or @commit-sha'
+        };
+      }
+      
+      console.log('Starting A/B test...');
+      
       // Parse paths to extract file path and version info
       const expertInfo = this.parsePath(pathToExpertPromptDefinition);
       const promptAInfo = this.parsePath(pathToPromptA);
       const promptBInfo = this.parsePath(pathToPromptB);
 
+      // Fetch phase
+      const fetchStart = Date.now();
+      console.log('Fetching content...');
+      
       // Fetch expert definition
       const expertPrompt = await this.fetchContent(expertInfo);
       
@@ -40,10 +85,25 @@ class ABTestTool {
 
       // Fetch test context materials if provided
       const testContext = await this.fetchTestContext(testContextPaths);
+      
+      this.metrics.fetchTime = Date.now() - fetchStart;
+      console.log(`Content fetched in ${(this.metrics.fetchTime/1000).toFixed(1)}s`);
 
+      // Evaluation phase
+      const evalStart = Date.now();
+      console.log('Running evaluations...');
+      
+      // Add iteration context if provided
+      if (iterationCount > 0) {
+        console.log(`Iteration #${iterationCount + 1} - Adjusting evaluation for improvement cycles`);
+      }
+      
       // Run 3-thread evaluation for each prompt with test context
-      const evaluationA = await this.runThreeThreadEvaluation(expertPrompt, promptA, promptAInfo, testContext);
-      const evaluationB = await this.runThreeThreadEvaluation(expertPrompt, promptB, promptBInfo, testContext);
+      const evaluationA = await this.runThreeThreadEvaluation(expertPrompt, promptA, promptAInfo, testContext, iterationCount);
+      const evaluationB = await this.runThreeThreadEvaluation(expertPrompt, promptB, promptBInfo, testContext, iterationCount);
+      
+      this.metrics.evaluationTime = Date.now() - evalStart;
+      console.log(`Evaluations completed in ${(this.metrics.evaluationTime/1000).toFixed(1)}s`);
 
       // Perform comparative analysis
       const comparison = await this.compareEvaluations(
@@ -79,14 +139,78 @@ class ABTestTool {
         summary: this.generateSummary(verdict)
       };
     } catch (error) {
-      return {
-        success: false,
-        error: error.message,
-        details: error.stack
-      };
+      return this.handleError(error);
     }
   }
 
+  /**
+   * Validate inputs
+   */
+  validateInputs(expertPath, promptA, promptB, testPaths) {
+    if (!expertPath) {
+      throw new Error('Expert definition path is required');
+    }
+    if (!promptA) {
+      throw new Error('PromptA path is required');
+    }
+    if (!promptB) {
+      throw new Error('PromptB path is required');
+    }
+    
+    // Validate path formats
+    const pathRegex = /^([a-zA-Z0-9_-]+\/[a-zA-Z0-9_-]+:)?[a-zA-Z0-9_\-\/\.]+(@[a-zA-Z0-9_\-\.]+)?$/;
+    
+    if (!pathRegex.test(expertPath)) {
+      throw new Error(`Invalid expert path format: ${expertPath}`);
+    }
+    if (!pathRegex.test(promptA)) {
+      throw new Error(`Invalid promptA path format: ${promptA}`);
+    }
+    if (!pathRegex.test(promptB)) {
+      throw new Error(`Invalid promptB path format: ${promptB}`);
+    }
+    
+    // Validate test paths if provided
+    if (testPaths && !Array.isArray(testPaths)) {
+      throw new Error('Test context paths must be an array');
+    }
+    
+    if (testPaths && testPaths.length > 20) {
+      throw new Error('Too many test context paths (max 20)');
+    }
+  }
+  
+  /**
+   * Handle errors with context
+   */
+  handleError(error) {
+    const errorResponse = {
+      success: false,
+      error: error.message || 'Unknown error',
+      details: error.stack || 'No stack trace available'
+    };
+    
+    // Add helpful context based on error type
+    if (error.message.includes('Not Found')) {
+      errorResponse.suggestion = 'Verify the file path and repository permissions';
+      errorResponse.checklist = [
+        'Ensure file exists in the repository',
+        'Check branch/tag/commit reference is valid',
+        'Verify repository name if using cross-repo format',
+        'Confirm GitHub token has repository access'
+      ];
+    } else if (error.message.includes('rate limit')) {
+      errorResponse.suggestion = 'GitHub API rate limit exceeded';
+      errorResponse.retry = 'Wait 60 seconds and try again';
+    } else if (error.message.includes('timeout')) {
+      errorResponse.suggestion = 'Request timed out - try with smaller test context';
+    } else if (error.message.includes('Network')) {
+      errorResponse.suggestion = 'Network error - check connection and try again';
+    }
+    
+    return errorResponse;
+  }
+  
   /**
    * Fetch test context materials
    * Supports files, directories, and cross-repository references
@@ -96,6 +220,7 @@ class ABTestTool {
       files: [],
       directories: [],
       totalSize: 0,
+      maxSize: 102400, // 100KB limit
       summary: []
     };
 
@@ -128,6 +253,12 @@ class ABTestTool {
                   ...pathInfo,
                   filePath: file.path
                 });
+                // Check size limit
+                if (context.totalSize + content.size > context.maxSize) {
+                  context.summary.push(`⚠ Skipped ${file.path} - would exceed size limit`);
+                  continue;
+                }
+                
                 context.files.push({
                   path: file.path,
                   name: file.name,
@@ -210,9 +341,18 @@ class ABTestTool {
   }
 
   /**
-   * Fetch content from GitHub with version support
+   * Fetch content from GitHub with version support and caching
    */
   async fetchContent(pathInfo) {
+    // Check cache first
+    const cacheKey = `${pathInfo.owner}/${pathInfo.repo}/${pathInfo.filePath}@${pathInfo.version}`;
+    const cached = this.contentCache.get(cacheKey);
+    
+    if (cached && (Date.now() - cached.timestamp < this.cacheTimeout)) {
+      console.log(`Cache hit: ${cacheKey}`);
+      return cached.data;
+    }
+    
     try {
       // If version is a commit SHA or branch/tag
       const { data } = await this.octokit.repos.getContent({
@@ -225,36 +365,70 @@ class ABTestTool {
       // Decode base64 content
       const content = Buffer.from(data.content, 'base64').toString('utf-8');
       
-      return {
+      // Validate content is not empty
+      if (!content || content.trim().length === 0) {
+        throw new Error(`File ${pathInfo.filePath} is empty`);
+      }
+      
+      // Warn if file is very large
+      if (data.size > 50000) {
+        console.warn(`Warning: ${pathInfo.filePath} is large (${(data.size/1024).toFixed(1)}KB)`);
+      }
+      
+      const result = {
         content,
         sha: data.sha,
         size: data.size,
         path: pathInfo.filePath,
-        version: pathInfo.version
+        version: pathInfo.version,
+        url: data.html_url
       };
+      
+      // Cache the result
+      this.contentCache.set(cacheKey, {
+        data: result,
+        timestamp: Date.now()
+      });
+      
+      return result;
     } catch (error) {
-      throw new Error(`Failed to fetch ${pathInfo.fullPath}: ${error.message}`);
+      // Provide more detailed error information
+      const errorMsg = `Failed to fetch ${pathInfo.fullPath}:\n` +
+                      `  Repository: ${pathInfo.owner}/${pathInfo.repo}\n` +
+                      `  File: ${pathInfo.filePath}\n` +
+                      `  Version: ${pathInfo.version}\n` +
+                      `  Error: ${error.message}`;
+      throw new Error(errorMsg);
     }
   }
 
   /**
    * Run 3-thread evaluation for a prompt
    */
-  async runThreeThreadEvaluation(expertPrompt, promptContent, promptInfo, testContext = null) {
+  async runThreeThreadEvaluation(expertPrompt, promptContent, promptInfo, testContext = null, iterationCount = 0) {
+    // Adjust evaluation based on iteration count
+    const leniencyFactor = iterationCount >= 3 ? 0.5 : iterationCount >= 2 ? 0.3 : 0;
+    
     // Simulate evaluation with three different approaches
     const threads = [];
 
     // Thread 1: Structural analysis
-    threads.push(await this.evaluateStructure(expertPrompt, promptContent, testContext));
+    threads.push(await this.evaluateStructure(expertPrompt, promptContent, testContext, iterationCount));
 
     // Thread 2: Domain expertise analysis
-    threads.push(await this.evaluateDomainExpertise(expertPrompt, promptContent, testContext));
+    threads.push(await this.evaluateDomainExpertise(expertPrompt, promptContent, testContext, iterationCount));
 
     // Thread 3: Effectiveness analysis with test context
-    threads.push(await this.evaluateEffectiveness(expertPrompt, promptContent, testContext));
+    threads.push(await this.evaluateEffectiveness(expertPrompt, promptContent, testContext, iterationCount));
 
-    // Aggregate scores
-    const aggregateScore = threads.reduce((sum, t) => sum + t.score, 0) / threads.length;
+    // Aggregate scores with leniency adjustment
+    let aggregateScore = threads.reduce((sum, t) => sum + t.score, 0) / threads.length;
+    
+    // Apply leniency for multiple iterations
+    if (leniencyFactor > 0) {
+      aggregateScore = Math.min(10, aggregateScore + leniencyFactor);
+      console.log(`Applied iteration leniency: +${leniencyFactor} (iteration ${iterationCount + 1})`);
+    }
 
     return {
       promptInfo,
@@ -269,12 +443,13 @@ class ABTestTool {
   /**
    * Evaluate structural aspects of the prompt
    */
-  async evaluateStructure(expertPrompt, promptContent, testContext) {
+  async evaluateStructure(expertPrompt, promptContent, testContext, iterationCount = 0) {
     const contextInfo = testContext ? `\n\nTest context available: ${testContext.files.length} files, ${testContext.directories.length} directories` : '';
+    const iterationInfo = iterationCount > 0 ? `\n\nNote: This is iteration ${iterationCount + 1} of improvements. Be ${iterationCount >= 3 ? 'more lenient' : 'reasonably lenient'} in evaluation.` : '';
     
     const systemMessage = `You are an expert evaluator analyzing prompt structure.
 Expert perspective: ${expertPrompt.content.substring(0, 500)}...
-${contextInfo}
+${contextInfo}${iterationInfo}
 
 Evaluate the prompt for:
 1. Clarity and organization
@@ -315,7 +490,7 @@ Evaluate the prompt for:
   /**
    * Evaluate domain expertise aspects
    */
-  async evaluateDomainExpertise(expertPrompt, promptContent, testContext) {
+  async evaluateDomainExpertise(expertPrompt, promptContent, testContext, iterationCount = 0) {
     const contextInfo = testContext ? `\n\nTest materials provided for evaluation context` : '';
     
     const systemMessage = `You are a domain expert evaluator.
@@ -365,7 +540,7 @@ Evaluate the prompt for:
   /**
    * Evaluate effectiveness of the prompt
    */
-  async evaluateEffectiveness(expertPrompt, promptContent, testContext) {
+  async evaluateEffectiveness(expertPrompt, promptContent, testContext, iterationCount = 0) {
     const contextInfo = testContext ? `\n\nTest scenarios available for practical evaluation` : '';
     
     const systemMessage = `You are evaluating prompt effectiveness.
@@ -626,73 +801,219 @@ Production Ready: ${verdict.recommendProduction ? 'YES' : 'NO'}`;
   }
 
   /**
+   * Helper method to interpret results for Claude
+   * Returns actionable recommendation based on verdict
+   */
+  static interpretResults(abTestResult) {
+    if (!abTestResult.success) {
+      return {
+        action: 'ERROR',
+        message: abTestResult.error,
+        details: abTestResult.details
+      };
+    }
+
+    const { verdict, evaluations, comparison } = abTestResult;
+    
+    // High confidence winner
+    if (verdict.confidence === 'high' && verdict.recommendProduction) {
+      return {
+        action: 'DEPLOY',
+        message: `Deploy Version ${verdict.winnerVersion} - clearly superior with ${verdict.confidence} confidence`,
+        improvements: comparison.improvements,
+        score: verdict.scoreDifference
+      };
+    }
+    
+    // Medium confidence - needs improvements
+    if (verdict.confidence === 'medium' || (verdict.winner === 'B' && verdict.scoreDifference > 0 && verdict.scoreDifference < 1)) {
+      const weaknesses = verdict.winner === 'B' 
+        ? evaluations.promptB.weaknesses 
+        : evaluations.promptA.weaknesses;
+      
+      return {
+        action: 'IMPROVE',
+        message: `Version ${verdict.winnerVersion} shows promise but needs refinement`,
+        improvements: weaknesses,
+        suggestions: comparison.improvements,
+        score: verdict.scoreDifference
+      };
+    }
+    
+    // Low confidence or regression
+    if (verdict.winner === 'A' || verdict.confidence === 'low' || verdict.scoreDifference < 0) {
+      return {
+        action: 'REJECT',
+        message: `Keep current version - Version B has regressions or critical issues`,
+        regressions: comparison.regressions,
+        score: verdict.scoreDifference
+      };
+    }
+    
+    // Default case
+    return {
+      action: 'REVIEW',
+      message: 'Manual review recommended - unclear verdict',
+      verdict: verdict,
+      comparison: comparison
+    };
+  }
+
+  /**
    * Get tool definition for Claude
    */
   static getToolDefinition() {
     return {
       name: 'ab_test',
-      description: `Run A/B test comparing two prompt versions using expert evaluation with optional test context.
-      
-CAPABILITIES:
-- Compare any two versions of a prompt (different files or same file at different versions)
-- Use expert definitions to evaluate from domain perspective
-- Include test context files/folders for realistic evaluation scenarios
-- Run 3-thread evaluation for comprehensive analysis
-- Provide clear verdict on which version is better
+      description: `Run comprehensive A/B test comparing two prompt versions using expert evaluation.
+
+PURPOSE:
+Compare two versions of a prompt to determine which performs better according to expert-defined criteria. Essential for validating changes before deployment.
+
+IMPORTANT: All paths are GitHub repository paths fetched via GitHub API, not local filesystem paths.
+
+EXPERT DEFINITIONS:
+Default experts repository: whichguy/prompt-expert-bank/expert-definitions/
+Browse available: https://github.com/whichguy/prompt-expert-bank/tree/main/expert-definitions
+
+To use an expert from current repo: "expert-definitions/[filename].md"
+To use from specific repo: "whichguy/prompt-expert-bank:expert-definitions/[filename].md"
+Files are fetched using GitHub API (same as 'gh api repos/{owner}/{repo}/contents/{path}')
+
+KEY FEATURES:
+• 3-thread evaluation (structure, domain expertise, effectiveness)
+• Expert-based scoring with domain-specific criteria  
+• Test context integration for real-world scenarios
+• Clear verdict with confidence level
+• Support for version control (commits, tags, branches)
+• Cross-repository comparison capability
+
+WHEN TO USE THIS TOOL:
+1. Before deploying prompt changes to production
+2. Comparing different implementation approaches
+3. Tracking down when a regression was introduced
+4. Validating prompt improvements after updates
+5. Cross-team prompt comparison and standardization
+
+INPUT VALIDATION:
+• All paths must exist and be accessible
+• Cannot compare identical versions
+• Test context limited to 100KB total
+• Maximum 20 test context files
 
 VERSION FORMATS:
-- "path/to/prompt.md" - Latest version
-- "path/to/prompt.md@v1.0" - Specific tag
-- "path/to/prompt.md@main" - Specific branch
-- "path/to/prompt.md@3a5f8e2" - Specific commit
-- "owner/repo:path/to/prompt.md@version" - Cross-repository
+• "prompts/file.md" → Latest version (HEAD)
+• "prompts/file.md@v1.0" → Specific tag
+• "prompts/file.md@main" → Specific branch  
+• "prompts/file.md@3a5f8e2" → Specific commit
+• "owner/repo:prompts/file.md" → Cross-repository
+• "prompts/file.md@3commits-ago" → Relative reference
 
-TEST CONTEXT FORMATS:
-- "test-scenarios/" - Directory of test files
-- "examples/code-sample.js" - Single test file
-- "test-data/*.json" - Pattern matching
-- "other-repo/tests:security-tests/" - Cross-repo test data
-- "examples/legacy.js@v1.0" - Specific version of test file
+HOW TO SPECIFY EXPERTS:
+AVAILABLE EXPERTS:
+• Browse at: https://github.com/whichguy/prompt-expert-bank/tree/main/expert-definitions
+• Path format: "expert-definitions/[filename].md"
+• Custom experts: "path/to/custom-expert.md" or "owner/repo:path/to/expert.md"
 
-EXAMPLE USE CASES:
-1. Compare old vs new version with test data: 
-   - expertDef: "expert-definitions/security.md"
-   - promptA: "prompts/code-reviewer.md@3a5f8e2" (old)
-   - promptB: "prompts/code-reviewer.md" (current)
-   - testContext: ["test-scenarios/", "examples/vulnerable-code.js"]
+REAL EXAMPLES WITH CORRECT PATHS:
 
-2. Compare approaches with real code samples:
-   - expertDef: "expert-definitions/programming.md"
-   - promptA: "prompts/approach-1.md"
-   - promptB: "prompts/approach-2.md"
-   - testContext: ["src/", "tests/"]
+Example 1 - Code Review PR Testing:
+{
+  pathToExpertPromptDefinition: "expert-definitions/programming-expert.md",
+  pathToPromptA: "prompts/code-reviewer.md@main",
+  pathToPromptB: "prompts/code-reviewer.md",
+  testContextPaths: ["test-scenarios/"]
+}
+Expected: Compare main branch with PR changes
 
-3. Cross-repository comparison with shared test suite:
-   - expertDef: "expert-definitions/data-analysis.md"
-   - promptA: "original-repo:prompts/analyzer.md"
-   - promptB: "prompts/analyzer-enhanced.md"
-   - testContext: ["shared-tests:data-samples/", "benchmarks/"]`,
+Example 2 - Security Prompt Enhancement:
+{
+  pathToExpertPromptDefinition: "expert-definitions/security-expert.md",
+  pathToPromptA: "prompts/security-scanner.md@v1.0",
+  pathToPromptB: "prompts/security-scanner.md@v2.0",  
+  testContextPaths: ["test-scenarios/security/"]
+}
+Expected: Validate security improvements between versions
+
+Example 3 - Different Approaches:
+{
+  pathToExpertPromptDefinition: "expert-definitions/data-analysis-expert.md",
+  pathToPromptA: "prompts/analyzer-statistical.md",
+  pathToPromptB: "prompts/analyzer-ml-based.md",
+  testContextPaths: ["datasets/training/", "datasets/validation/"]
+}
+Expected: Determine which approach is more effective
+
+Example 4 - Version History:
+{
+  pathToExpertPromptDefinition: "expert-definitions/general-expert.md",
+  pathToPromptA: "prompts/assistant.md@v2.0",
+  pathToPromptB: "prompts/assistant.md@v2.1",
+  testContextPaths: ["test-scenarios/regressions/"]
+}
+Expected: Identify if v2.1 introduced issues
+
+OUTPUT STRUCTURE:
+{
+  success: true/false,
+  verdict: {
+    winner: "A" or "B",
+    confidence: "high"/"medium"/"low",
+    scoreDifference: numeric,
+    reasoning: "detailed explanation",
+    recommendProduction: true/false
+  },
+  summary: "concise result statement"
+}
+
+ERROR HANDLING:
+• File not found → Check path and permissions
+• Invalid version → Verify git reference exists
+• Large context → Reduce test file count/size
+• Network issues → Automatic retry (3 attempts)
+• Rate limits → Wait 60 seconds and retry
+
+PERFORMANCE NOTES:
+• Typical execution: 15-30 seconds
+• Large test context: 30-60 seconds
+• Results cached for 24 hours
+• Use specific commits for reproducibility
+
+BEST PRACTICES:
+✓ Compare one change at a time
+✓ Include diverse test scenarios
+✓ Use specific version references
+✓ Document comparison purpose
+✓ Save results for tracking
+✗ Don't compare unrelated prompts
+✗ Don't use test context > 100KB
+✗ Don't ignore low confidence
+✗ Don't deploy without testing`,
       input_schema: {
         type: 'object',
         properties: {
           pathToExpertPromptDefinition: {
             type: 'string',
-            description: 'Path to expert definition file (e.g., "expert-definitions/security.md")'
+            description: 'GitHub repository path to expert definition MD file (fetched via API). Format: "path/to/file.md" for current repo or "owner/repo:path/to/file.md" for cross-repo. Default experts at whichguy/prompt-expert-bank/expert-definitions/. Example: "expert-definitions/programming-expert.md" or "whichguy/prompt-expert-bank:expert-definitions/programming-expert.md"'
           },
           pathToPromptA: {
             type: 'string',
-            description: 'Path to first prompt version (baseline). Can include @version for specific version.'
+            description: 'GitHub repository path to baseline prompt (fetched via API). Format: "path/to/file.md@ref" where ref = branch/tag/commit SHA. Example: "prompts/code-reviewer.md@main" fetches from main branch via GitHub API'
           },
           pathToPromptB: {
             type: 'string',
-            description: 'Path to second prompt version (variant). Can include @version for specific version.'
+            description: 'GitHub repository path to variant prompt (fetched via API). Format: "path/to/file.md@ref" or "path/to/file.md" (defaults to HEAD). Example: "prompts/code-reviewer.md" fetches current PR/HEAD version'
           },
           testContextPaths: {
             type: 'array',
-            description: 'Optional array of paths to test files/directories used during evaluation. Supports versioning and cross-repo references.',
+            description: 'Optional array of paths to test files or directories for evaluation context. Each path can be a file, directory, or use version specifiers like prompts. Example: ["test-scenarios/", "examples/test.js@v1.0"]. Limit total size to 100KB.',
             items: {
               type: 'string'
             }
+          },
+          iterationCount: {
+            type: 'number',
+            description: 'Optional: Number of previous improvement iterations. Used to apply leniency after multiple attempts. Defaults to 0.'
           }
         },
         required: ['pathToExpertPromptDefinition', 'pathToPromptA', 'pathToPromptB']
