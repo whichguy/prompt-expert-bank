@@ -6,6 +6,7 @@
  */
 
 const { ErrorHandler } = require('./error-handler');
+const { FileValidator } = require('./file-validator');
 
 async function main() {
   const handler = new ErrorHandler({
@@ -39,7 +40,22 @@ async function main() {
     const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
 
     // Extract the user's request from the comment
-    const request = comment.replace(/@claude-code/gi, '').trim();
+    const request = comment.replace(/@claude-code/gi, '').replace(/@prompt-expert/gi, '').trim();
+    
+    // Validate file paths mentioned in the comment
+    const fileValidator = new FileValidator(process.env.GITHUB_WORKSPACE);
+    const validation = fileValidator.validateComment(comment);
+    
+    // Log file validation results
+    if (validation.invalid.length > 0) {
+      handler.log('warning', `Invalid file paths detected: ${validation.invalid.join(', ')}`);
+      if (Object.keys(validation.suggestions).length > 0) {
+        handler.log('info', `Suggestions: ${JSON.stringify(validation.suggestions)}`);
+      }
+    }
+    
+    // Load valid files
+    const validFileContents = fileValidator.loadFiles(validation);
 
     // Build context
     let context = '';
@@ -97,15 +113,29 @@ ${context}
 
 User request: "${request}"`;
 
-    // Add file contents if available
+    // Add file contents from PR if available
     if (Object.keys(fileContents).length > 0) {
-      promptContent += '\n\nFile Contents:';
+      promptContent += '\n\nPR File Contents:';
       for (const [filename, content] of Object.entries(fileContents)) {
         promptContent += `\n\n--- ${filename} ---\n${content}`;
       }
     }
+    
+    // Add validated file contents
+    if (Object.keys(validFileContents).length > 0) {
+      promptContent += '\n\nRequested File Contents:';
+      for (const [filename, content] of Object.entries(validFileContents)) {
+        promptContent += `\n\n--- ${filename} ---\n${content}`;
+      }
+    }
 
-    promptContent += '\n\nPlease provide a helpful response. If you can access the files mentioned, confirm that. Be concise and specific.';
+    // Add file validation report if there were issues
+    let validationReport = '';
+    if (validation.invalid.length > 0) {
+      validationReport = '\n\n' + fileValidator.generateReport(validation);
+    }
+
+    promptContent += '\n\nPlease provide a helpful response. If you can access the files mentioned, confirm that. Be concise and specific.' + validationReport;
 
     const response = await anthropic.messages.create({
       model: 'claude-3-5-sonnet-20241022',
