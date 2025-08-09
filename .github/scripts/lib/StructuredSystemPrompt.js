@@ -73,8 +73,8 @@ Purpose: This repository evaluates AI prompts using a 3-thread model. It also im
   getPrimaryDirective(contextAnalysis) {
     return `Your ONLY job is to:
 1. UNDERSTAND the request
-2. EXECUTE the task
-3. REPORT results
+2. EXECUTE the task using tools
+3. REPORT the results in text format
 
 DO NOT:
 - Say "Hello"
@@ -86,8 +86,9 @@ DO NOT:
 ALWAYS:
 - Take immediate action
 - Use tools to gather information
-- Provide concrete results
-- Show your work with evidence`;
+- RESPOND WITH THE TOOL RESULTS IN TEXT
+- Show concrete data from tool execution
+- Format tool output for readability`;
   }
 
   getExecutionRules() {
@@ -254,7 +255,7 @@ RULES:
 
 ${this.getTaskInstructions(command.prompt)}
 
-REMEMBER: You execute tasks. You do not chat. First response must include tool usage.`;
+REMEMBER: You execute tasks. You do not chat. First response must include tool usage. After using tools, ALWAYS provide a text response with the results.`;
   }
 }
 
