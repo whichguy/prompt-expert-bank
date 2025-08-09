@@ -123,37 +123,60 @@ class ABTest {
   }
 
   async evaluate({ expert, baseline, variant, context }) {
-    // Build context names if available
-    const contextNames = context && context.length > 0 ? 
-      context.map(f => f.name).join(', ') : '';
+    // Calculate context metrics
+    const contextMetrics = this.calculateContextMetrics(context);
     
-    // Prepare template variables
+    // Prepare template variables with enhanced metrics
     const variables = {
-      EXPERT_CONTENT: expert.content || '',
-      CONTEXT_FILES: context && context.length > 0,
-      CONTEXT_NAMES: contextNames,
+      EXPERT_NAME: this.extractExpertName(expert),
+      TIMESTAMP: new Date().toISOString(),
       BASELINE_CONTENT: baseline.content || '',
-      VARIANT_CONTENT: variant.content || ''
+      VARIANT_CONTENT: variant.content || '',
+      CONTEXT_FILES: context || [],
+      CONTEXT_FILE_COUNT: context ? context.length : 0,
+      CONTEXT_SIZE: contextMetrics.totalSize,
+      // Placeholder metrics - will be populated after API calls
+      BASELINE_LATENCY: 0,
+      VARIANT_LATENCY: 0,
+      BASELINE_TOKENS: 0,
+      BASELINE_INPUT_TOKENS: 0,
+      BASELINE_OUTPUT_TOKENS: 0,
+      VARIANT_TOKENS: 0,
+      VARIANT_INPUT_TOKENS: 0,
+      VARIANT_OUTPUT_TOKENS: 0
     };
 
     // Load and process template
     const prompt = await this.templateHelper.processTemplate(
-      'templates/abtest-prompt.md',
+      'templates/abtest-evaluation-instructional.md',
       variables
     );
 
+    // Time the API call
+    const startTime = performance.now();
     const response = await this.anthropic.messages.create({
       model: 'claude-3-5-sonnet-20241022',
       max_tokens: 1000,
       messages: [{ role: 'user', content: prompt }]
     });
+    const endTime = performance.now();
+    
+    // Extract metrics from response
+    const responseMetrics = {
+      latency: Math.round(endTime - startTime),
+      inputTokens: response.usage?.input_tokens || 0,
+      outputTokens: response.usage?.output_tokens || 0,
+      totalTokens: (response.usage?.input_tokens || 0) + (response.usage?.output_tokens || 0)
+    };
     
     const text = response.content[0].text.toLowerCase();
     
     return {
       winner: text.includes('variant') ? 'variant' : 'baseline',
       confidence: text.includes('high') ? 'high' : 
-                  text.includes('low') ? 'low' : 'medium'
+                  text.includes('low') ? 'low' : 'medium',
+      metrics: responseMetrics,
+      fullResponse: response.content[0].text
     };
   }
 
@@ -161,7 +184,8 @@ class ABTest {
    * Run thread-based evaluation where each prompt gets the same GitHub repo context
    */
   async runThreadEvaluation({ expert, baseline, variant, context, testScenario }) {
-    // Prepare context content for threads
+    // Calculate context metrics
+    const contextMetrics = this.calculateContextMetrics(context);
     const contextContent = this.formatContextForThreads(context);
     
     // Thread A: Evaluate baseline prompt with repository context
@@ -176,11 +200,14 @@ class ABTest {
       threadAVariables
     );
     
+    // Time Thread A execution
+    const threadAStartTime = performance.now();
     const threadA = await this.anthropic.messages.create({
       model: 'claude-3-5-sonnet-20241022',
       max_tokens: 4000,
       messages: [{ role: 'user', content: threadAPrompt }]
     });
+    const threadAEndTime = performance.now();
     
     // Thread B: Evaluate variant prompt with same repository context  
     const threadBVariables = TemplateHelper.createThreadVariables(
@@ -194,50 +221,76 @@ class ABTest {
       threadBVariables
     );
     
+    // Time Thread B execution
+    const threadBStartTime = performance.now();
     const threadB = await this.anthropic.messages.create({
       model: 'claude-3-5-sonnet-20241022',
       max_tokens: 4000,
       messages: [{ role: 'user', content: threadBPrompt }]
     });
+    const threadBEndTime = performance.now();
     
-    // Thread C: Expert comparison
-    const comparisonVariables = TemplateHelper.createComparisonVariables({
-      expertContent: expert.content,
-      testScenario,
-      responseA: threadA.content[0].text,
-      responseB: threadB.content[0].text,
-      labelA: 'Baseline',
-      labelB: 'Variant',
-      contextNote: context.length > 0 ? 
-        `Both responses had access to ${context.length} repository files for context.` : null
-    });
+    // Prepare enhanced template variables with actual metrics
+    const evaluationVariables = {
+      EXPERT_NAME: this.extractExpertName(expert),
+      TIMESTAMP: new Date().toISOString(),
+      BASELINE_CONTENT: threadA.content[0].text,
+      VARIANT_CONTENT: threadB.content[0].text,
+      CONTEXT_FILES: context || [],
+      CONTEXT_FILE_COUNT: context ? context.length : 0,
+      CONTEXT_SIZE: contextMetrics.totalSize,
+      BASELINE_LATENCY: Math.round(threadAEndTime - threadAStartTime),
+      VARIANT_LATENCY: Math.round(threadBEndTime - threadBStartTime),
+      BASELINE_TOKENS: (threadA.usage?.input_tokens || 0) + (threadA.usage?.output_tokens || 0),
+      BASELINE_INPUT_TOKENS: threadA.usage?.input_tokens || 0,
+      BASELINE_OUTPUT_TOKENS: threadA.usage?.output_tokens || 0,
+      VARIANT_TOKENS: (threadB.usage?.input_tokens || 0) + (threadB.usage?.output_tokens || 0),
+      VARIANT_INPUT_TOKENS: threadB.usage?.input_tokens || 0,
+      VARIANT_OUTPUT_TOKENS: threadB.usage?.output_tokens || 0
+    };
     
-    const comparisonPrompt = await this.templateHelper.processTemplate(
-      'templates/expert-comparison.md',
-      comparisonVariables
+    // Generate evaluation using instructional template
+    const evaluationPrompt = await this.templateHelper.processTemplate(
+      'templates/abtest-evaluation-instructional.md',
+      evaluationVariables
     );
     
-    const comparison = await this.anthropic.messages.create({
+    const evaluation = await this.anthropic.messages.create({
       model: 'claude-3-5-sonnet-20241022',
       max_tokens: 2000,
-      messages: [{ role: 'user', content: comparisonPrompt }]
+      messages: [{ role: 'user', content: evaluationPrompt }]
     });
     
-    const comparisonText = comparison.content[0].text.toLowerCase();
+    const evaluationText = evaluation.content[0].text.toLowerCase();
     
     return {
       success: true,
-      winner: comparisonText.includes('response b') ? 'variant' : 'baseline',
-      confidence: comparisonText.includes('high') ? 'high' : 
-                  comparisonText.includes('low') ? 'low' : 'medium',
+      winner: evaluationText.includes('response b') || evaluationText.includes('variant') ? 'variant' : 'baseline',
+      confidence: evaluationText.includes('high') ? 'high' : 
+                  evaluationText.includes('low') ? 'low' : 'medium',
       threads: {
         baseline: threadA.content[0].text,
         variant: threadB.content[0].text,
-        comparison: comparison.content[0].text
+        evaluation: evaluation.content[0].text
       },
-      context: {
-        filesUsed: context.length,
-        contextProvided: contextContent ? contextContent.length : 0
+      metrics: {
+        baseline: {
+          latency: Math.round(threadAEndTime - threadAStartTime),
+          inputTokens: threadA.usage?.input_tokens || 0,
+          outputTokens: threadA.usage?.output_tokens || 0,
+          totalTokens: (threadA.usage?.input_tokens || 0) + (threadA.usage?.output_tokens || 0)
+        },
+        variant: {
+          latency: Math.round(threadBEndTime - threadBStartTime),
+          inputTokens: threadB.usage?.input_tokens || 0,
+          outputTokens: threadB.usage?.output_tokens || 0,
+          totalTokens: (threadB.usage?.input_tokens || 0) + (threadB.usage?.output_tokens || 0)
+        },
+        context: {
+          filesUsed: context ? context.length : 0,
+          totalSize: contextMetrics.totalSize,
+          types: contextMetrics.types
+        }
       }
     };
   }
@@ -251,6 +304,99 @@ class ABTest {
     return context.map(file => {
       return `### ${file.name}\n\`\`\`\n${file.content}\n\`\`\``;
     }).join('\n\n');
+  }
+
+  /**
+   * Calculate context metrics from files
+   */
+  calculateContextMetrics(context) {
+    if (!context || context.length === 0) {
+      return { totalSize: 0, types: [] };
+    }
+
+    let totalSize = 0;
+    const typeMap = new Map();
+
+    context.forEach(file => {
+      const size = file.content ? file.content.length : 0;
+      totalSize += size;
+      
+      // Detect file type from name/extension
+      const ext = file.name.split('.').pop().toLowerCase();
+      const type = this.detectFileType(ext);
+      typeMap.set(type, (typeMap.get(type) || 0) + 1);
+      
+      // Add size and type metadata to file object
+      file.size = size;
+      file.type = type;
+    });
+
+    return {
+      totalSize,
+      types: Array.from(typeMap.entries()).map(([type, count]) => `${type}(${count})`)
+    };
+  }
+
+  /**
+   * Detect file type from extension
+   */
+  detectFileType(extension) {
+    const typeMap = {
+      'js': 'JavaScript',
+      'ts': 'TypeScript', 
+      'jsx': 'React',
+      'tsx': 'React TypeScript',
+      'py': 'Python',
+      'java': 'Java',
+      'cpp': 'C++',
+      'c': 'C',
+      'cs': 'C#',
+      'php': 'PHP',
+      'rb': 'Ruby',
+      'go': 'Go',
+      'rs': 'Rust',
+      'kt': 'Kotlin',
+      'swift': 'Swift',
+      'md': 'Markdown',
+      'html': 'HTML',
+      'css': 'CSS',
+      'json': 'JSON',
+      'xml': 'XML',
+      'yaml': 'YAML',
+      'yml': 'YAML',
+      'toml': 'TOML',
+      'sql': 'SQL',
+      'sh': 'Shell',
+      'bash': 'Bash',
+      'dockerfile': 'Docker',
+      'makefile': 'Makefile'
+    };
+
+    return typeMap[extension] || 'Text';
+  }
+
+  /**
+   * Extract expert name from file path or content
+   */
+  extractExpertName(expert) {
+    if (expert.name) return expert.name;
+    
+    // Try to extract from file path
+    const pathParts = expert.path?.split('/') || [];
+    const filename = pathParts[pathParts.length - 1];
+    if (filename) {
+      return filename.replace('.md', '').replace('-expert', '');
+    }
+
+    // Try to extract from content (look for title or role)
+    const content = expert.content || '';
+    const titleMatch = content.match(/^#\s*(.+)$/m);
+    if (titleMatch) return titleMatch[1];
+
+    const roleMatch = content.match(/role[:\s]+([^\n\r.]+)/i);
+    if (roleMatch) return roleMatch[1];
+
+    return 'Expert';
   }
 }
 
