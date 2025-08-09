@@ -222,8 +222,8 @@ class ClaudeCodeSession {
    * Process request with Claude
    */
   async processRequest(command, context, anthropic, octokit) {
-    // Define available tools
-    const tools = this.getTools(context);
+    // Define available tools based on mode
+    const tools = this.getTools(context, command.mode);
     
     // Prepare initial message with role-aware system prompt
     const systemMessage = this.buildSystemMessage(context, command);
@@ -445,7 +445,7 @@ class ClaudeCodeSession {
   /**
    * Get tool definitions
    */
-  getTools(context) {
+  getTools(context, mode = 'standard') {
     // Start with standard tools
     const standardTools = [
       {
@@ -507,8 +507,8 @@ class ClaudeCodeSession {
       }
     ];
 
-    // Add expert evaluation tools if integration is available
-    if (this.expertIntegration) {
+    // Only add expert evaluation tools in expert mode
+    if (mode === 'expert' && this.expertIntegration) {
       const evaluationTools = this.expertIntegration.getEvaluationTools();
       return [...standardTools, ...evaluationTools];
     }

@@ -195,15 +195,19 @@ Tools to use: github_api /issues/{number}, run_command, get_file`;
   getTaskInstructions(prompt) {
     const promptLower = prompt.toLowerCase();
     
-    // Immediate action mappings
+    // Immediate action mappings - check most specific first
     const taskMap = {
+      'echo': 'EXECUTE COMMAND: Use run_command tool with the echo command',
+      '@claude-code test': 'RUN TESTS: Execute test commands, show results',
+      'run test': 'RUN TESTS: Execute test commands, show results',
       'hello': 'IGNORE - Do not respond to greetings. Execute: echo "System operational"',
       'analyze': 'IMMEDIATE ACTION: Use tools to analyze. Start with list_files. Try github_api next.',
       'what is': 'ANSWER WITH EVIDENCE: Use get_file README.md. Try github_api /repos if needed.',
       'fix': 'LOCATE THEN FIX: Find the issue. Show the problem. Implement solution.',
-      'test': 'RUN TESTS: Execute test commands, show results',
       'review': 'DEEP DIVE: Get diffs, analyze changes, provide specific feedback',
-      'explain': 'SHOW DON\'T TELL: Use actual code examples from the repository'
+      'explain': 'SHOW DON\'T TELL: Use actual code examples from the repository',
+      'list': 'SHOW FILES: Use list_files tool to display directory contents',
+      'show': 'DISPLAY CONTENT: Use get_file tool to show file contents'
     };
 
     for (const [keyword, instruction] of Object.entries(taskMap)) {
