@@ -148,7 +148,7 @@ class ABTest {
 
     // Load and process template
     const prompt = await this.templateHelper.processTemplate(
-      'templates/abtest-evaluation-instructional.md',
+      'templates/abtest-evaluation.md',
       variables
     );
 
@@ -249,9 +249,9 @@ class ABTest {
       VARIANT_OUTPUT_TOKENS: threadB.usage?.output_tokens || 0
     };
     
-    // Generate evaluation using instructional template
+    // Generate evaluation using main template
     const evaluationPrompt = await this.templateHelper.processTemplate(
-      'templates/abtest-evaluation-instructional.md',
+      'templates/abtest-evaluation.md',
       evaluationVariables
     );
     
