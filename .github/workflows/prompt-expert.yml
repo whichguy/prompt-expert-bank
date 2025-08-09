@@ -35,7 +35,7 @@ jobs:
           sparse-checkout: |
             scripts
             templates
-            expert-definitions
+            experts
             prompts
             package.json
           sparse-checkout-cone-mode: false
@@ -144,7 +144,7 @@ jobs:
           sparse-checkout: |
             scripts
             templates
-            expert-definitions
+            experts
             prompts
             package.json
           sparse-checkout-cone-mode: false
