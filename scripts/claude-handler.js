@@ -40,6 +40,8 @@ async function main() {
 
     // Build context
     let context = '';
+    let fileContents = {};
+    
     if (prNumber) {
       try {
         // Try to get PR details
@@ -49,10 +51,40 @@ async function main() {
           pull_number: prNumber
         });
 
+        // Get PR files
+        const { data: files } = await octokit.pulls.listFiles({
+          owner,
+          repo,
+          pull_number: prNumber
+        });
+
+        // Fetch content for mentioned files
+        for (const file of files) {
+          if (request.includes(file.filename) || request.includes(file.filename.split('/').pop())) {
+            try {
+              const { data } = await octokit.repos.getContent({
+                owner,
+                repo,
+                path: file.filename,
+                ref: pr.head.ref
+              });
+              
+              if (!Array.isArray(data) && data.content) {
+                fileContents[file.filename] = Buffer.from(data.content, 'base64').toString('utf-8');
+              }
+            } catch (e) {
+              handler.log('warn', `Could not fetch ${file.filename}: ${e.message}`);
+            }
+          }
+        }
+
         context = `PR #${prNumber}: ${pr.title}
 State: ${pr.state}
 Base: ${pr.base.ref}
-Head: ${pr.head.ref}`;
+Head: ${pr.head.ref}
+
+Files changed: ${files.length}
+${files.map(f => `- ${f.filename} (+${f.additions} -${f.deletions})`).join('\n')}`;
       } catch (e) {
         // Might be an issue, not a PR
         const { data: issue } = await octokit.issues.get({
@@ -67,19 +99,29 @@ State: ${issue.state}`;
     }
 
     // Call Claude
+    let promptContent = `You are responding to a GitHub comment.
+
+Context:
+${context}
+
+User request: "${request}"`;
+
+    // Add file contents if available
+    if (Object.keys(fileContents).length > 0) {
+      promptContent += '\n\nFile Contents:';
+      for (const [filename, content] of Object.entries(fileContents)) {
+        promptContent += `\n\n--- ${filename} ---\n${content}`;
+      }
+    }
+
+    promptContent += '\n\nPlease provide a helpful response. Be concise and specific.';
+
     const response = await anthropic.messages.create({
       model: 'claude-3-5-sonnet-20241022',
       max_tokens: 4000,
       messages: [{
         role: 'user',
-        content: `You are responding to a GitHub comment.
-
-Context:
-${context}
-
-User request: "${request}"
-
-Please provide a helpful response. Be concise and specific.`
+        content: promptContent
       }]
     });
 
