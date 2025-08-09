@@ -16,6 +16,7 @@ const execFileAsync = promisify(execFile);
 const { PromptRoleManager } = require('./lib/PromptRoleManager');
 const { ExpertEvaluationIntegration } = require('./lib/ExpertEvaluationIntegration');
 const { StructuredSystemPrompt } = require('./lib/StructuredSystemPrompt');
+const { ABTestTool } = require('./lib/ABTestTool');
 
 class ClaudeCodeSession {
   constructor() {
@@ -48,6 +49,7 @@ class ClaudeCodeSession {
     this.roleManager = null;
     this.currentRole = null;
     this.expertIntegration = null;
+    this.abTestTool = null;
     this.promptBuilder = new StructuredSystemPrompt();
   }
 
@@ -80,6 +82,15 @@ class ClaudeCodeSession {
 
       // Initialize expert evaluation integration
       this.expertIntegration = new ExpertEvaluationIntegration({
+        octokit,
+        anthropic,
+        repoOwner: this.repoOwner,
+        repoName: this.repoName,
+        workspace: context.workspace
+      });
+
+      // Initialize AB Test tool
+      this.abTestTool = new ABTestTool({
         octokit,
         anthropic,
         repoOwner: this.repoOwner,
@@ -307,10 +318,17 @@ class ClaudeCodeSession {
       try {
         let result;
         
-        // Check if it's an expert evaluation tool
+        // Check if it's an expert evaluation tool or AB test
         const evaluationTools = ['evaluate_prompt_changes', 'get_prompt_history', 'compare_prompt_versions', 'get_expert_feedback'];
         
-        if (evaluationTools.includes(tool.name)) {
+        if (tool.name === 'ab_test') {
+          result = await this.abTestTool.executeABTest(
+            tool.input.pathToExpertPromptDefinition,
+            tool.input.pathToPromptA,
+            tool.input.pathToPromptB,
+            tool.input.testContextPaths || []
+          );
+        } else if (evaluationTools.includes(tool.name)) {
           result = await this.expertIntegration.executeEvaluationTool(tool.name, tool.input, context);
         } else {
           // Standard tools
@@ -507,13 +525,16 @@ class ClaudeCodeSession {
       }
     ];
 
+    // Add AB test tool (always available)
+    const abTestTool = ABTestTool.getToolDefinition();
+    
     // Only add expert evaluation tools in expert mode
     if (mode === 'expert' && this.expertIntegration) {
       const evaluationTools = this.expertIntegration.getEvaluationTools();
-      return [...standardTools, ...evaluationTools];
+      return [...standardTools, abTestTool, ...evaluationTools];
     }
 
-    return standardTools;
+    return [...standardTools, abTestTool];
   }
 
   /**
