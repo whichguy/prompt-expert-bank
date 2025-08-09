@@ -15,6 +15,7 @@ const execAsync = promisify(exec);
 const execFileAsync = promisify(execFile);
 const { PromptRoleManager } = require('./lib/PromptRoleManager');
 const { ExpertEvaluationIntegration } = require('./lib/ExpertEvaluationIntegration');
+const { EnhancedSystemPrompt } = require('./lib/EnhancedSystemPrompt');
 
 class ClaudeCodeSession {
   constructor() {
@@ -47,6 +48,7 @@ class ClaudeCodeSession {
     this.roleManager = null;
     this.currentRole = null;
     this.expertIntegration = null;
+    this.promptBuilder = new EnhancedSystemPrompt();
   }
 
   /**
@@ -224,7 +226,7 @@ class ClaudeCodeSession {
     const tools = this.getTools(context);
     
     // Prepare initial message with role-aware system prompt
-    const systemMessage = this.buildSystemMessage(context);
+    const systemMessage = this.buildSystemMessage(context, command);
     const userMessage = this.buildUserMessage(command, context);
     
     // Start conversation
@@ -515,26 +517,21 @@ class ClaudeCodeSession {
   }
 
   /**
-   * Build system message (role-aware)
+   * Build system message (role-aware and enhanced)
    */
-  buildSystemMessage(context) {
+  buildSystemMessage(context, command) {
+    // If we have a specific role, blend it with enhanced prompt
     if (this.currentRole) {
-      // Use role-based system message
-      return this.roleManager.buildRoleSystemMessage(this.currentRole, context);
+      // Get role-based system message
+      const roleMessage = this.roleManager.buildRoleSystemMessage(this.currentRole, context);
+      // Enhance it with repository context and guidelines
+      const enhancedBase = this.promptBuilder.buildEnhancedSystemMessage(context, command);
+      // Combine role specifics with enhanced context
+      return `${roleMessage}\n\n${enhancedBase.split('## Repository Context')[1]}`;
     }
 
-    // Default Claude Code system message
-    return `You are Claude Code, integrated into a GitHub Actions workflow.
-
-Context:
-- Repository: ${context.repository}
-- Actor: ${context.actor}
-- Workspace: ${context.workspace}
-${context.pr ? `- Pull Request: #${context.pr.number}` : ''}
-${context.issue ? `- Issue: #${context.issue.number}` : ''}
-
-You have access to tools for reading/writing files, running commands, and using the GitHub API.
-Be concise and focus on completing the requested task.`;
+    // Use fully enhanced system message
+    return this.promptBuilder.buildEnhancedSystemMessage(context, command);
   }
 
   /**
@@ -563,17 +560,27 @@ Use your expert tools to examine the changed files and provide detailed analysis
    * Post results back to GitHub
    */
   async postResults(context, result, octokit) {
-    const body = `## Claude Code Response
+    // Build enhanced response with better formatting
+    const duration = ((Date.now() - this.startTime) / 1000).toFixed(2);
+    
+    // Add tools section if tools were used
+    const toolsSection = result.toolCalls.length > 0 ? `
 
-${result.response}
+### 🔧 Tools Used
+${result.toolCalls.map(t => `- \`${t.name}\``).join('\n')}` : '';
 
-${result.toolCalls.length > 0 ? `
-### Tools Used
-${result.toolCalls.map(t => `- ${t.name}`).join('\n')}
-` : ''}
+    // Add metrics if significant
+    const metricsSection = this.metrics.toolCalls > 1 ? `
+
+### 📊 Session Metrics
+- Tool calls: ${this.metrics.toolCalls}
+- Errors encountered: ${this.metrics.errors}
+- Processing time: ${duration}s` : '';
+
+    const body = `${result.response}${toolsSection}${metricsSection}
 
 ---
-*Session: ${this.sessionId} | Duration: ${((Date.now() - this.startTime) / 1000).toFixed(2)}s*`;
+<sub>Session: \`${this.sessionId}\` | Duration: ${duration}s | [prompt-expert-bank](https://github.com/${this.repoOwner}/${this.repoName}) Claude v2.0</sub>`;
 
     if (context.pr) {
       await octokit.issues.createComment({
