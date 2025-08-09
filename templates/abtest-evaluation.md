@@ -7,8 +7,9 @@ You are evaluating two prompt responses using LLM-as-Judge methodology. Your tas
 **Bias Mitigation Protocol**: 
 - Evaluate each response independently before comparing
 - Base scores on specific evidence, not general impressions
-- The order (A vs B) must not influence your judgment
+- **Positional Bias Warning**: The order (A vs B) must NOT influence your judgment - studies show judges often favor the first or last option presented
 - Provide explicit reasoning for every score to ensure consistency
+- Consider swapping your initial preference and defending the opposite choice as a bias check
 
 ## Expert Context
 
