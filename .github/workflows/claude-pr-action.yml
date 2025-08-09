@@ -22,41 +22,34 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          sparse-checkout: |
+            scripts
+            templates
+            expert-definitions
+            prompts
+            package.json
+          sparse-checkout-cone-mode: false
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: Install Claude CLI
-        run: npm install -g @anthropic-ai/claude-cli
+      - name: Install dependencies
+        run: |
+          cd scripts
+          npm install @anthropic-ai/sdk @octokit/rest
 
       - name: Claude PR Action
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.issue.number || github.event.pull_request.number }}
+          COMMENT_BODY: ${{ github.event.comment.body }}
+          IS_PR: true
+          GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
-          # Extract the comment and context
-          COMMENT="${{ github.event.comment.body }}"
-          ISSUE_NUMBER="${{ github.event.issue.number || github.event.pull_request.number }}"
-          
-          # Remove @claude mention to get the actual request
-          REQUEST=$(echo "$COMMENT" | sed 's/@claude//g' | xargs)
-          
-          echo "Processing request: $REQUEST"
-          
-          # Create a temporary file with the request
-          echo "$REQUEST" > /tmp/claude_request.txt
-          
-          # Use Claude CLI to process the request
-          claude code --no-interactive \
-            --model claude-3-5-sonnet-20241022 \
-            --context-repo . \
-            --request-file /tmp/claude_request.txt \
-            --output-format markdown > /tmp/claude_response.md
-          
-          # Post the response as a comment
-          gh issue comment $ISSUE_NUMBER --body-file /tmp/claude_response.md
+          node scripts/claude-handler.js
 
       - name: Create PR if needed
         if: contains(github.event.comment.body, 'create PR') || contains(github.event.comment.body, 'make changes')
