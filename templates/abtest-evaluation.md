@@ -9,10 +9,15 @@ You are evaluating two prompt responses using LLM-as-Judge methodology to determ
 ## Test Information
 - **Expert**: {{EXPERT_NAME}}
 - **Date**: {{TIMESTAMP}}
+- **Test Scenario**: Evaluate which response better handles the user's request
 
 ## Performance Metrics
-- **Baseline Response**: {{BASELINE_LATENCY}}ms | {{BASELINE_TOKENS}} tokens ({{BASELINE_INPUT_TOKENS}} in, {{BASELINE_OUTPUT_TOKENS}} out)
-- **Variant Response**: {{VARIANT_LATENCY}}ms | {{VARIANT_TOKENS}} tokens ({{VARIANT_INPUT_TOKENS}} in, {{VARIANT_OUTPUT_TOKENS}} out)
+- **Baseline (A)**: {{BASELINE_LATENCY}}ms | {{BASELINE_TOKENS}} tokens ({{BASELINE_INPUT_TOKENS}} in, {{BASELINE_OUTPUT_TOKENS}} out)
+- **Variant (B)**: {{VARIANT_LATENCY}}ms | {{VARIANT_TOKENS}} tokens ({{VARIANT_INPUT_TOKENS}} in, {{VARIANT_OUTPUT_TOKENS}} out)
+
+**Quick Analysis**: 
+- Speed difference: [Calculate which is faster and by what %]
+- Token efficiency: [Calculate which uses fewer tokens and by what %]
 
 {{#if CONTEXT_FILES}}
 
@@ -36,7 +41,14 @@ You are evaluating two prompt responses using LLM-as-Judge methodology to determ
 ## Evaluation
 
 ### Step 1: Individual Assessment
-Rate each response independently with reasoning (1-10 scale):
+Rate each response independently with reasoning (1-10 scale).
+
+**Scoring Guide:**
+- 9-10: Exceptional, could not be improved
+- 7-8: Strong, minor improvements possible
+- 5-6: Adequate, notable gaps
+- 3-4: Poor, significant issues
+- 1-2: Failing, major problems
 
 **Baseline (A):**
 - Clarity: ___/10 - [Why this score?]
@@ -88,13 +100,21 @@ Evaluate the impact of choosing the winner:
 
 ### Final Decision
 
-**Winner:** [Baseline/Variant]
-**Confidence:** [High/Medium/Low] 
-**Score Difference:** ___/10 points
+**Winner:** [Baseline (A) / Variant (B)]
+**Confidence Level:** [High 80-100% / Medium 60-79% / Low <60%]
+**Final Score Difference:** ___/10 points
 
-**Primary Factors:** [What drove this decision? Consider quality scores, performance metrics, and PIE analysis]
+**Decision Rationale:** [Explain your decision in 2-3 sentences focusing on the most important factors]
 
-**Trade-offs:** [What advantages does the losing version have?]
+**Key Strengths of Winner:**
+- [Most important advantage]
+- [Second advantage]
+
+**Key Strengths of Loser:**
+- [What it did better]
+- [Worth preserving]
+
+**Implementation Recommendation:** [Should this be deployed? Any conditions or caveats?]
 
 {{#if CONTEXT_FILES}}
 
