@@ -1,84 +1,47 @@
-# Templates Directory
+# Templates
 
-This directory contains templates used by the Prompt Expert GitHub Actions workflow for A/B testing and prompt evaluation.
+This folder contains prompt templates used by the GitHub Actions workflow.
 
 ## Active Templates
 
-### 1. `abtest-evaluation.md`
-**Purpose**: Main template for comprehensive A/B test evaluation
-**Used by**: `scripts/abtest.js`, GitHub Actions workflow
-**Features**:
-- LLM-as-Judge methodology with bias mitigation
-- Weighted scoring system
-- Domain-specific criteria evaluation
-- Performance metrics comparison
-- PIE framework for impact assessment
+### abtest-evaluation.md
+The main A/B test evaluation template using LLM-as-Judge methodology. This template is used when A/B testing is detected in PR comments.
 
-### 2. `abtest-prompt.md`
-**Purpose**: Template for generating A/B test prompts
-**Used by**: `scripts/abtest.js`
-**Features**:
-- Structured prompt generation
-- Variable substitution support
-- Context integration
+**Variables used:**
+- `{{EXPERT_DEFINITION}}` - Expert criteria for evaluation
+- `{{EXPERT_NAME}}` - Name of the expert role
+- `{{TIMESTAMP}}` - Evaluation timestamp
+- `{{BASELINE_PROMPT}}` - The baseline prompt content
+- `{{IMPROVED_PROMPT}}` - The improved prompt content
+- `{{BASELINE_CONTENT}}` - Response from baseline
+- `{{IMPROVED_CONTENT}}` - Response from improved
 
-### 3. `expert-comparison.md`
-**Purpose**: Compare multiple expert definitions
-**Used by**: `scripts/template-helper.js`
-**Features**:
-- Side-by-side expert comparison
-- Capability assessment
-- Domain coverage analysis
+**Triggered by:** Keywords like "A/B test", "compare", "baseline", "improved", "evaluate"
 
-### 4. `thread-evaluation.md`
-**Purpose**: Evaluate conversation threads and multi-turn interactions
-**Used by**: Thread analysis workflows
-**Features**:
-- Conversation flow analysis
-- Context retention evaluation
-- Response consistency checking
+### claude-response.md
+Standard response template for non-A/B test requests. Used for general PR comment responses.
 
-## Template Variables
+**Variables used:**
+- `{{GITHUB_CONTEXT}}` - PR/Issue context information
+- `{{USER_REQUEST}}` - The user's request from the comment
+- `{{PR_FILE_CONTENTS}}` - Files from the PR (conditional)
+- `{{REQUESTED_FILE_CONTENTS}}` - Files mentioned in comment (conditional)
+- `{{FILE_VALIDATION_REPORT}}` - File path validation results (conditional)
 
-Templates use Handlebars-style variables for dynamic content:
+**Used for:** All non-A/B test @prompt-expert mentions
 
-- `{{EXPERT_DEFINITION}}` - Expert role and capabilities
-- `{{BASELINE_PROMPT}}` - Baseline prompt for comparison
-- `{{VARIANT_PROMPT}}` - Variant/improved prompt
-- `{{TEST_SCENARIO}}` - Test case or scenario
-- `{{BASELINE_RESPONSE}}` - Response from baseline
-- `{{VARIANT_RESPONSE}}` - Response from variant
-- `{{BASELINE_LATENCY}}` - Performance metric
-- `{{VARIANT_LATENCY}}` - Performance metric
+## Usage
 
-## Usage Example
+Templates are loaded by `scripts/claude-code-session-simplified.js` when processing GitHub comments:
+- A/B test requests trigger `abtest-evaluation.md`
+- Standard requests use `claude-response.md`
+- Both templates have fallback prompts if files cannot be loaded
 
-```javascript
-const { loadTemplate } = require('./scripts/template-helper');
+## Template Processing
 
-const evaluationTemplate = loadTemplate('abtest-evaluation');
-const filled = evaluationTemplate.replace('{{EXPERT_DEFINITION}}', expertDef);
-```
-
-## Workflow Integration
-
-The GitHub Actions workflow (`prompt-expert.yml`) uses these templates when:
-1. Evaluating prompt changes in PRs
-2. Running A/B tests on prompt improvements
-3. Comparing expert definitions
-4. Analyzing conversation quality
-
-## Adding New Templates
-
-1. Create a new `.md` file in this directory
-2. Use Handlebars notation for variables: `{{VARIABLE_NAME}}`
-3. Update this README with the template's purpose
-4. Add template loading in relevant scripts
-
-## Template Best Practices
-
-- Keep templates focused on a single evaluation type
-- Use clear, descriptive variable names
-- Include bias mitigation instructions for LLM judges
-- Provide scoring rubrics where applicable
-- Document expected inputs and outputs
+The script automatically:
+1. Detects request type based on keywords and file contents
+2. Loads the appropriate template
+3. Replaces variables with actual content
+4. Handles conditional sections ({{#if}} blocks)
+5. Falls back to hardcoded prompts if template loading fails

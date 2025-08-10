@@ -36,7 +36,6 @@ jobs:
             scripts
             templates
             experts
-            prompts
             package.json
           sparse-checkout-cone-mode: false
 
@@ -145,7 +144,6 @@ jobs:
             scripts
             templates
             experts
-            prompts
             package.json
           sparse-checkout-cone-mode: false
 
