@@ -76,6 +76,27 @@ class ABTestTool {
       const promptAInfo = this.parsePath(pathToPromptA);
       const promptBInfo = this.parsePath(pathToPromptB);
 
+      // VERIFICATION PHASE: Check all paths exist before processing
+      console.log('Verifying all paths exist...');
+      const verificationResults = await this.verifyPathsExist({
+        expert: expertInfo,
+        promptA: promptAInfo,
+        promptB: promptBInfo,
+        testContextPaths: testContextPaths
+      });
+      
+      if (!verificationResults.success) {
+        return {
+          success: false,
+          error: 'Path verification failed',
+          details: verificationResults.errors.join('\n'),
+          missingPaths: verificationResults.missingPaths,
+          suggestion: 'Please verify all file paths exist and are accessible. Use "experts/" for expert definitions, not "expert-definitions/".'
+        };
+      }
+      
+      console.log('All paths verified successfully.');
+
       // Fetch phase
       const fetchStart = Date.now();
       console.log('Fetching content...');
@@ -341,6 +362,74 @@ class ABTestTool {
       filePath,
       version,
       fullPath: pathString
+    };
+  }
+
+  /**
+   * Verify that all paths exist before processing
+   * @param {object} paths - Object containing all paths to verify
+   * @returns {object} Verification results with success status and error details
+   */
+  async verifyPathsExist(paths) {
+    const errors = [];
+    const missingPaths = [];
+    
+    // Helper function to check if a path exists
+    const checkPath = async (pathInfo, label) => {
+      try {
+        await this.octokit.repos.getContent({
+          owner: pathInfo.owner,
+          repo: pathInfo.repo,
+          path: pathInfo.filePath,
+          ref: pathInfo.version === 'HEAD' ? undefined : pathInfo.version
+        });
+        return true;
+      } catch (error) {
+        if (error.status === 404) {
+          const fullPath = `${pathInfo.owner}/${pathInfo.repo}:${pathInfo.filePath}${pathInfo.version !== 'HEAD' ? '@' + pathInfo.version : ''}`;
+          errors.push(`${label} not found: ${fullPath}`);
+          missingPaths.push({
+            label,
+            path: fullPath,
+            error: 'File not found (404)'
+          });
+          
+          // Add helpful hint for common mistakes
+          if (pathInfo.filePath.includes('expert-definitions/')) {
+            errors.push(`  Hint: Expert files are in "experts/" folder, not "expert-definitions/"`);
+            errors.push(`  Try: ${pathInfo.filePath.replace('expert-definitions/', 'experts/')}`);
+          }
+          return false;
+        }
+        throw error; // Re-throw non-404 errors
+      }
+    };
+    
+    // Verify expert definition
+    console.log(`Verifying expert: ${paths.expert.filePath}`);
+    await checkPath(paths.expert, 'Expert definition');
+    
+    // Verify promptA
+    console.log(`Verifying promptA: ${paths.promptA.filePath}`);
+    await checkPath(paths.promptA, 'PromptA');
+    
+    // Verify promptB
+    console.log(`Verifying promptB: ${paths.promptB.filePath}`);
+    await checkPath(paths.promptB, 'PromptB');
+    
+    // Verify test context paths if provided
+    if (paths.testContextPaths && paths.testContextPaths.length > 0) {
+      for (const testPath of paths.testContextPaths) {
+        const testPathInfo = this.parsePath(testPath);
+        console.log(`Verifying test context: ${testPathInfo.filePath}`);
+        await checkPath(testPathInfo, `Test context: ${testPath}`);
+      }
+    }
+    
+    return {
+      success: errors.length === 0,
+      errors,
+      missingPaths
     };
   }
 
