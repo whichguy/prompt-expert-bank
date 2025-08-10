@@ -4,9 +4,9 @@
 
 ```yaml
 sparse-checkout: |
-  .github/scripts
-  .github/scripts/lib
-  .github/scripts/lib/templates
+  src/scripts
+  src/scripts/lib
+  src/scripts/lib/templates
   expert-definitions
   prompts
 sparse-checkout-cone-mode: false
@@ -14,7 +14,7 @@ sparse-checkout-cone-mode: false
 
 ## File Dependencies Analysis
 
-### 1. Node Script Dependencies (.github/scripts/)
+### 1. Node Script Dependencies (src/scripts/)
 
 #### Main Entry Points
 - `claude-code-session.js` requires:
@@ -31,14 +31,14 @@ sparse-checkout-cone-mode: false
 - `evaluate-prompts.js`:
   - External dependencies only (@anthropic-ai/sdk, @octokit/rest)
 
-### 2. Library Dependencies (.github/scripts/lib/)
+### 2. Library Dependencies (src/scripts/lib/)
 
 All lib files are self-contained within the lib directory and templates subdirectory.
 
 ### 3. GitHub API File Access Patterns
 
 From ABTestSimplified.js and examples:
-- `expert-definitions/*.md` - Expert definition files
+- `experts/*.md` - Expert definition files
 - `prompts/*.md` - Prompt files  
 - `.github/workflows/*.yml` - Workflow files (for context)
 - Cross-repo access (e.g., `facebook/react:README.md`)
@@ -57,12 +57,12 @@ Based on example usage patterns, these paths might be accessed:
 ```yaml
 sparse-checkout: |
   # Core script infrastructure
-  .github/scripts
-  .github/scripts/lib
-  .github/scripts/lib/templates
-  .github/scripts/config
-  .github/scripts/examples
-  .github/scripts/tests
+  src/scripts
+  src/scripts/lib
+  src/scripts/lib/templates
+  src/scripts/config
+  src/scripts/examples
+  src/scripts/tests
   
   # Expert and prompt definitions
   expert-definitions
@@ -91,7 +91,7 @@ sparse-checkout-cone-mode: false
 - Template files are accessible
 
 ⚠️ **Potential issues:**
-- Missing `.github/scripts/config/` directory
+- Missing `src/scripts/config/` directory
 - Missing `.github/workflows/` for workflow context analysis
 - Missing root files like README.md and package.json if referenced
 
@@ -100,10 +100,10 @@ sparse-checkout-cone-mode: false
 1. **Minimal Addition** (Recommended):
    ```yaml
    sparse-checkout: |
-     .github/scripts
-     .github/scripts/lib
-     .github/scripts/lib/templates
-     .github/scripts/config
+     src/scripts
+     src/scripts/lib
+     src/scripts/lib/templates
+     src/scripts/config
      .github/workflows
      expert-definitions
      prompts
@@ -134,7 +134,7 @@ The current sparse checkout configuration covers:
 ## Conclusion
 
 The current sparse checkout configuration is **adequate for the core functionality** but could benefit from adding:
-1. `.github/scripts/config` - For configuration files
+1. `src/scripts/config` - For configuration files
 2. `.github/workflows` - For workflow analysis
 3. `README.md` and `package.json` - Common reference files
 

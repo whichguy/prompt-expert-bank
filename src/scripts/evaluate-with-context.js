@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { Anthropic } = require('@anthropic-ai/sdk');
 const { Octokit } = require('@octokit/rest');
-const ExpertLoader = require('../../scripts/expert-loader');
+const ExpertLoader = require('./expert-loader');
 
 const OWNER = process.env.OWNER;
 const REPO = process.env.REPO;

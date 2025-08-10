@@ -35,7 +35,7 @@ The following files have been created and need to be committed:
 ├── workflows/
 │   └── claude-code.yml          # Main workflow file
 ├── scripts/
-│   ├── claude-code-session-simplified.js
+│   ├── prompt-expert-session.js
 │   ├── package.json
 │   └── lib/
 │       ├── PromptRoleManager.js
@@ -79,7 +79,7 @@ Create a test issue or PR comment with one of these commands:
 
 1. **Check workflow runs**: 
    - Go to `Actions` tab
-   - Look for "Claude Code Integration" workflow
+   - Look for "Prompt Expert Integration" workflow
    - Check for errors in the logs
 
 2. **Verify secrets**:
@@ -124,7 +124,7 @@ Create a test issue or PR comment with one of these commands:
 - Full GitHub API access
 
 ### Expert Personas
-- Loads prompts from `expert-definitions/` folder
+- Loads prompts from `experts/` folder
 - Adopts expert knowledge and behavior
 - Domain-specific evaluation criteria
 
@@ -132,7 +132,7 @@ Create a test issue or PR comment with one of these commands:
 
 View all Claude interactions:
 1. Go to the **Actions** tab
-2. Filter by workflow: "Claude Code Integration"
+2. Filter by workflow: "Prompt Expert Integration"
 3. Click on any run to see detailed logs
 
 ## 🔒 Security Notes
@@ -154,7 +154,7 @@ View all Claude interactions:
 1. Test with a simple command in a PR/issue comment
 2. Try the expert evaluation on a prompt change PR
 3. Experiment with different roles and tasks
-4. Customize expert definitions in `expert-definitions/` folder
+4. Customize expert definitions in `experts/` folder
 
 ---
 

@@ -61,12 +61,12 @@ jobs:
 
       - name: Install dependencies
         run: |
-          cd .github/scripts
+          cd src/scripts
           npm ci --audit-level=high
 
       - name: Security audit
         run: |
-          cd .github/scripts
+          cd src/scripts
           npm audit --audit-level=high
           npm audit --audit-level=moderate --json > audit-report.json || true
 
@@ -75,7 +75,7 @@ jobs:
         if: always()
         with:
           name: security-audit-report
-          path: .github/scripts/audit-report.json
+          path: src/scripts/audit-report.json
 
   secret-scan:
     name: Secret Scanning

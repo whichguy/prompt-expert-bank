@@ -6,7 +6,7 @@
 const { exec } = require('child_process');
 const { promisify } = require('util');
 const execAsync = promisify(exec);
-const ExpertLoader = require('../../../scripts/expert-loader');
+const ExpertLoader = require('../../scripts/expert-loader');
 const { ErrorRecovery } = require('./ErrorRecovery');
 
 class ClaudeToolExecutor {
@@ -40,8 +40,8 @@ class ClaudeToolExecutor {
       }
       
       // Configure git user for commits
-      await execAsync('git config user.name "Claude Code"');
-      await execAsync('git config user.email "claude@anthropic.com"');
+      await execAsync('git config user.name "Prompt Expert"');
+      await execAsync('git config user.email "prompt-expert@github.com"');
       
       // Check current branch
       const { stdout: currentBranch } = await execAsync('git branch --show-current');
@@ -444,7 +444,7 @@ Provide:
       
       // Commit the changes
       await this.gitCommit(
-        `Claude Code: Auto-implement prompt improvements for ${expert}
+        `Prompt Expert: Auto-implement prompt improvements for ${expert}
 
 Based on evaluation feedback, automatically implemented the following improvements:
 ${improvements.split('\n').slice(0, 5).join('\n')}
@@ -595,7 +595,7 @@ To re-evaluate the improved prompt, comment:
       }
     }
     
-    const message = `Claude Code: ${mode} ${path}`;
+    const message = `Prompt Expert: ${mode} ${path}`;
     
     // Handle binary content
     let encodedContent;
@@ -638,7 +638,7 @@ To re-evaluate the improved prompt, comment:
       owner: this.context.repository.owner,
       repo: this.context.repository.name,
       issue_number: this.context.pr.number,
-      body: `🤖 **Claude Code**\n\n${body}`
+      body: `🤖 **Prompt Expert**\n\n${body}`
     });
     
     return {
@@ -683,7 +683,7 @@ To re-evaluate the improved prompt, comment:
       repo: this.context.repository.name,
       pull_number: this.context.pr.number,
       merge_method: method,
-      commit_message: message || `Merge PR #${this.context.pr.number} via Claude Code`
+      commit_message: message || `Merge PR #${this.context.pr.number} via Prompt Expert`
     });
     
     return {
@@ -782,7 +782,7 @@ To re-evaluate the improved prompt, comment:
         owner: this.context.repository.owner,
         repo: this.context.repository.name,
         path: path,
-        message: `Claude Code: Delete ${path}`,
+        message: `Prompt Expert: Delete ${path}`,
         sha: data.sha,
         branch: this.context.pr?.branch?.head || 'main'
       });
@@ -1146,7 +1146,7 @@ To re-evaluate the improved prompt, comment:
 
 **Secret Name:** ${name}
 **Reason:** ${reason}
-**Requested by:** Claude Code
+**Requested by:** Prompt Expert
 
 ⚠️ **Manual approval required** - A maintainer must approve this secret access.
 
@@ -1176,7 +1176,7 @@ To approve, comment: \`@prompt-expert approve-secret ${name}\`
       owner: this.context.repository.owner,
       repo: this.context.repository.name,
       issue_number: this.context.issue.number,
-      body: `🤖 **Claude Code**\n\n${body}`
+      body: `🤖 **Prompt Expert**\n\n${body}`
     });
     
     return {

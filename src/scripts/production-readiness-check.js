@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Production Readiness Check for Claude Code Integration
+ * Production Readiness Check for Prompt Expert Integration
  * Comprehensive evaluation of all Claude API tooling
  */
 
@@ -200,7 +200,7 @@ class ProductionReadinessCheck {
     
     // Check for input validation
     try {
-      const executorFile = '.github/scripts/lib/ClaudeToolExecutorOptimized.js';
+      const executorFile = 'src/scripts/lib/ClaudeToolExecutorOptimized.js';
       const content = await fs.readFile(executorFile, 'utf8');
       
       if (content.includes('sanitize') || content.includes('validate')) {
@@ -222,7 +222,7 @@ class ProductionReadinessCheck {
     }
     
     // Check for rate limiting
-    if (this.checkFileContains('.github/scripts/lib/ClaudeToolExecutorOptimized.js', 'rate limit')) {
+    if (this.checkFileContains('src/scripts/lib/ClaudeToolExecutorOptimized.js', 'rate limit')) {
       passed.push('Rate limit handling implemented');
     } else {
       issues.push('No rate limit handling');
@@ -230,7 +230,7 @@ class ProductionReadinessCheck {
     }
     
     // Check for authentication
-    if (this.checkFileContains('.github/scripts/lib/ClaudeToolExecutorOptimized.js', 'auth')) {
+    if (this.checkFileContains('src/scripts/lib/ClaudeToolExecutorOptimized.js', 'auth')) {
       passed.push('Authentication checks present');
     } else {
       issues.push('No authentication verification');
@@ -260,10 +260,10 @@ class ProductionReadinessCheck {
     
     // Check for error recovery system
     try {
-      await fs.access('.github/scripts/lib/ErrorRecoveryEnhanced.js');
+      await fs.access('src/scripts/lib/ErrorRecoveryEnhanced.js');
       passed.push('Enhanced error recovery system present');
       
-      const content = await fs.readFile('.github/scripts/lib/ErrorRecoveryEnhanced.js', 'utf8');
+      const content = await fs.readFile('src/scripts/lib/ErrorRecoveryEnhanced.js', 'utf8');
       
       // Check for specific recovery strategies
       const strategies = [
@@ -297,12 +297,12 @@ class ProductionReadinessCheck {
     }
     
     // Check for retry logic
-    if (this.checkFileContains('.github/scripts/lib/ClaudeToolExecutorOptimized.js', 'retry')) {
+    if (this.checkFileContains('src/scripts/lib/ClaudeToolExecutorOptimized.js', 'retry')) {
       passed.push('Retry logic implemented');
       
       // Check for exponential backoff
-      if (this.checkFileContains('.github/scripts/lib/ClaudeToolExecutorOptimized.js', 'exponential') ||
-          this.checkFileContains('.github/scripts/lib/ClaudeToolExecutorOptimized.js', 'backoff')) {
+      if (this.checkFileContains('src/scripts/lib/ClaudeToolExecutorOptimized.js', 'exponential') ||
+          this.checkFileContains('src/scripts/lib/ClaudeToolExecutorOptimized.js', 'backoff')) {
         passed.push('Exponential backoff implemented');
       } else {
         issues.push('No exponential backoff');
@@ -314,7 +314,7 @@ class ProductionReadinessCheck {
     }
     
     // Check for proper error logging
-    if (this.checkFileContains('.github/scripts/lib/StructuredLogger.js', 'error')) {
+    if (this.checkFileContains('src/scripts/lib/StructuredLogger.js', 'error')) {
       passed.push('Structured error logging present');
     } else {
       issues.push('No structured error logging');
@@ -322,7 +322,7 @@ class ProductionReadinessCheck {
     }
     
     // Check for graceful degradation
-    if (this.checkFileContains('.github/scripts/claude-code-session-optimized.js', 'fallback')) {
+    if (this.checkFileContains('src/scripts/claude-code-session-optimized.js', 'fallback')) {
       passed.push('Fallback mechanisms present');
     } else {
       issues.push('No fallback mechanisms');
@@ -352,10 +352,10 @@ class ProductionReadinessCheck {
     
     // Check for caching system
     try {
-      await fs.access('.github/scripts/lib/RepositoryCache.js');
+      await fs.access('src/scripts/lib/RepositoryCache.js');
       passed.push('Repository caching system present');
       
-      const content = await fs.readFile('.github/scripts/lib/RepositoryCache.js', 'utf8');
+      const content = await fs.readFile('src/scripts/lib/RepositoryCache.js', 'utf8');
       
       if (content.includes('TTL') || content.includes('ttl')) {
         passed.push('Cache TTL management implemented');
@@ -377,7 +377,7 @@ class ProductionReadinessCheck {
     
     // Check for GitHub CLI optimization
     try {
-      await fs.access('.github/scripts/lib/GitHubCLIAdapter.js');
+      await fs.access('src/scripts/lib/GitHubCLIAdapter.js');
       passed.push('GitHub CLI optimization present');
     } catch (error) {
       issues.push('GitHub CLI adapter not found');
@@ -386,10 +386,10 @@ class ProductionReadinessCheck {
     
     // Check for performance monitoring
     try {
-      await fs.access('.github/scripts/lib/PerformanceMonitor.js');
+      await fs.access('src/scripts/lib/PerformanceMonitor.js');
       passed.push('Performance monitoring system present');
       
-      const content = await fs.readFile('.github/scripts/lib/PerformanceMonitor.js', 'utf8');
+      const content = await fs.readFile('src/scripts/lib/PerformanceMonitor.js', 'utf8');
       
       if (content.includes('checkpoint')) {
         passed.push('Performance checkpoints implemented');
@@ -403,7 +403,7 @@ class ProductionReadinessCheck {
     }
     
     // Check for parallel processing
-    if (this.checkFileContains('.github/scripts/lib/ClaudeToolExecutorOptimized.js', 'Promise.all')) {
+    if (this.checkFileContains('src/scripts/lib/ClaudeToolExecutorOptimized.js', 'Promise.all')) {
       passed.push('Parallel processing utilized');
     } else {
       issues.push('No parallel processing');
@@ -411,7 +411,7 @@ class ProductionReadinessCheck {
     }
     
     // Check for resource limits
-    if (this.checkFileContains('.github/scripts/lib/RepositoryCache.js', 'maxSize')) {
+    if (this.checkFileContains('src/scripts/lib/RepositoryCache.js', 'maxSize')) {
       passed.push('Resource limits implemented');
     } else {
       issues.push('No resource limits');
@@ -441,10 +441,10 @@ class ProductionReadinessCheck {
     
     // Check for structured logging
     try {
-      await fs.access('.github/scripts/lib/StructuredLogger.js');
+      await fs.access('src/scripts/lib/StructuredLogger.js');
       passed.push('Structured logging present');
       
-      const content = await fs.readFile('.github/scripts/lib/StructuredLogger.js', 'utf8');
+      const content = await fs.readFile('src/scripts/lib/StructuredLogger.js', 'utf8');
       
       if (content.includes('correlationId')) {
         passed.push('Correlation ID tracking');
@@ -469,7 +469,7 @@ class ProductionReadinessCheck {
     }
     
     // Check for GitHub Actions integration
-    if (this.checkFileContains('.github/scripts/lib/PerformanceMonitor.js', 'GITHUB_STEP_SUMMARY')) {
+    if (this.checkFileContains('src/scripts/lib/PerformanceMonitor.js', 'GITHUB_STEP_SUMMARY')) {
       passed.push('GitHub Actions summary integration');
     } else {
       issues.push('No GitHub Actions summary integration');
@@ -478,7 +478,7 @@ class ProductionReadinessCheck {
     
     // Check for health checks
     try {
-      await fs.access('.github/scripts/lib/HealthCheck.js');
+      await fs.access('src/scripts/lib/HealthCheck.js');
       passed.push('Health check system present');
     } catch (error) {
       issues.push('Health check system not found');
@@ -486,7 +486,7 @@ class ProductionReadinessCheck {
     }
     
     // Check for error tracking
-    if (this.checkFileContains('.github/scripts/lib/PerformanceMonitor.js', 'trackError')) {
+    if (this.checkFileContains('src/scripts/lib/PerformanceMonitor.js', 'trackError')) {
       passed.push('Error tracking implemented');
     } else {
       issues.push('No error tracking');
@@ -494,7 +494,7 @@ class ProductionReadinessCheck {
     }
     
     // Check for performance reporting
-    if (this.checkFileContains('.github/scripts/lib/PerformanceMonitor.js', 'generateReport')) {
+    if (this.checkFileContains('src/scripts/lib/PerformanceMonitor.js', 'generateReport')) {
       passed.push('Performance reporting available');
     } else {
       issues.push('No performance reporting');
@@ -548,9 +548,9 @@ class ProductionReadinessCheck {
     
     // Check for inline documentation
     const codeFiles = [
-      '.github/scripts/lib/ClaudeToolExecutorOptimized.js',
-      '.github/scripts/lib/ErrorRecoveryEnhanced.js',
-      '.github/scripts/lib/PerformanceMonitor.js'
+      'src/scripts/lib/ClaudeToolExecutorOptimized.js',
+      'src/scripts/lib/ErrorRecoveryEnhanced.js',
+      'src/scripts/lib/PerformanceMonitor.js'
     ];
     
     let wellDocumented = 0;

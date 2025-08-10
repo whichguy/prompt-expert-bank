@@ -13,31 +13,22 @@ prompt-expert-bank/
 ├── .github/workflows/
 │   └── prompt-expert.yml    # Main prompt evaluation workflow (@prompt-expert)
 ├── experts/                 # Expert role definitions
-│   ├── code-review-expert.md
-│   └── programming-expert.md
-├── prompts/                 # Prompt templates for testing
-│   ├── code-reviewer-baseline.md
-│   ├── code-reviewer-improved.md
-│   └── code-reviewer.md
-├── scripts/                 # Core functionality
-│   ├── abtest.js           # A/B testing framework
-│   ├── claude-code-session-simplified.js
-│   ├── error-handler.js
-│   ├── file-validator.js   # Validates file paths in comments
-│   ├── github-helper.js
-│   ├── prompt-loader.js
-│   ├── repo-context-v2.js
-│   └── template-helper.js
-├── templates/               # Evaluation templates
-│   ├── abtest-evaluation.md
-│   ├── abtest-prompt.md
-│   ├── expert-comparison.md
-│   └── thread-evaluation.md
-├── tests/                   # Test files and scenarios
-│   ├── fixtures/           # Test data
-│   ├── scenarios/          # Test cases (JSON)
-│   └── scripts/            # Test runners
-└── docs/                   # Documentation
+│   ├── programming-expert.md
+│   ├── security-expert.md
+│   ├── data-analysis-expert.md
+│   ├── financial-expert.md
+│   └── general-expert.md
+├── src/                     # Source code
+│   ├── scripts/            # Core scripts
+│   │   ├── prompt-expert-session.js
+│   │   ├── evaluate-prompts.js
+│   │   └── expert-loader.js
+│   └── lib/                # Libraries
+│       ├── abtest/         # A/B testing framework
+│       ├── claude/         # Claude integration
+│       ├── evaluation/     # Evaluation tools
+│       └── templates/      # Template files
+└── expert-aliases.json      # Expert alias configuration
     └── SETUP_CUSTOM_BOT.md # Bot customization guide
 ```
 
@@ -68,7 +59,7 @@ prompt-expert-bank/
 
 ### A/B Test with Custom Expert
 ```markdown
-@prompt-expert run A/B test using experts/code-review-expert.md
+@prompt-expert run A/B test using experts/programming-expert.md
 Compare:
 - Baseline: prompts/code-reviewer-baseline.md
 - Improved: prompts/code-reviewer-improved.md

@@ -91,7 +91,7 @@ async function evaluate() {
       const { data } = await octokit.repos.getContent({
         owner: OWNER,
         repo: REPO,
-        path: `expert-definitions/${domain}-expert.md`,
+        path: `experts/${domain}-expert.md`,
         ref: 'main' // Use main branch for stable expert definitions
       });
       expertDefinition = Buffer.from(data.content, 'base64').toString('utf-8');
@@ -100,7 +100,7 @@ async function evaluate() {
         owner: OWNER,
         repo: REPO,
         issue_number: PR_NUMBER,
-        body: `⚠️ No expert definition found for domain: ${domain}. Please check available experts in expert-definitions/ on GitHub.`
+        body: `⚠️ No expert definition found for domain: ${domain}. Please check available experts in experts/ on GitHub.`
       });
       return;
     }

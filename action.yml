@@ -1,0 +1,53 @@
+name: 'Prompt Expert'
+description: 'AI-powered prompt evaluation and A/B testing using domain-specific experts'
+author: 'James Wiese'
+
+branding:
+  icon: 'check-circle'
+  color: 'blue'
+
+inputs:
+  anthropic-api-key:
+    description: 'Anthropic API key for Claude integration'
+    required: true
+  github-token:
+    description: 'GitHub token for API access'
+    required: true
+    default: ${{ github.token }}
+  expert-type:
+    description: 'Expert type to use (programming, security, financial, data-analysis, general)'
+    required: false
+    default: 'general'
+  comment-body:
+    description: 'Comment body to parse for @prompt-expert commands'
+    required: false
+  repository:
+    description: 'Repository in format owner/repo'
+    required: false
+    default: ${{ github.repository }}
+  pr-number:
+    description: 'Pull request number'
+    required: false
+  issue-number:
+    description: 'Issue number'
+    required: false
+
+outputs:
+  evaluation-result:
+    description: 'The evaluation result from the expert analysis'
+  expert-used:
+    description: 'The expert type that was used for evaluation'
+  status:
+    description: 'Success or error status'
+
+runs:
+  using: 'node20'
+  main: 'api/index.js'
+  env:
+    ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
+    GITHUB_TOKEN: ${{ inputs.github-token }}
+    EXPERT_TYPE: ${{ inputs.expert-type }}
+    COMMENT_BODY: ${{ inputs.comment-body }}
+    GITHUB_REPOSITORY: ${{ inputs.repository }}
+    PR_NUMBER: ${{ inputs.pr-number }}
+    ISSUE_NUMBER: ${{ inputs.issue-number }}

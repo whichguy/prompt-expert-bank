@@ -30,9 +30,9 @@ The ABTest tool performs comparative evaluation of two prompt versions using exp
 Path to the expert definition file that provides evaluation criteria.
 
 **Format Options:**
-- `"expert-definitions/programming-expert.md"` - Local file
-- `"expert-definitions/security-expert.md@main"` - Specific branch
-- `"other-repo:expert-definitions/custom-expert.md"` - Cross-repo
+- `"experts/programming-expert.md"` - Local file
+- `"experts/security-expert.md@main"` - Specific branch
+- `"other-repo:experts/custom-expert.md"` - Cross-repo
 
 **Available Experts:**
 - `programming-expert.md` - Code quality, best practices, performance
@@ -84,7 +84,7 @@ List of files or directories to use as test context during evaluation.
 
 ```javascript
 {
-  pathToExpertPromptDefinition: "expert-definitions/programming-expert.md",
+  pathToExpertPromptDefinition: "experts/programming-expert.md",
   pathToPromptA: "prompts/code-reviewer.md@v2.0",  // Current production
   pathToPromptB: "prompts/code-reviewer.md",       // New version
   testContextPaths: [
@@ -101,7 +101,7 @@ List of files or directories to use as test context during evaluation.
 
 ```javascript
 {
-  pathToExpertPromptDefinition: "expert-definitions/security-expert.md",
+  pathToExpertPromptDefinition: "experts/security-expert.md",
   pathToPromptA: "prompts/security-scanner-rules.md",
   pathToPromptB: "prompts/security-scanner-ml.md",
   testContextPaths: [
@@ -118,7 +118,7 @@ List of files or directories to use as test context during evaluation.
 
 ```javascript
 {
-  pathToExpertPromptDefinition: "expert-definitions/data-analysis-expert.md",
+  pathToExpertPromptDefinition: "experts/data-analysis-expert.md",
   pathToPromptA: "team-alpha:prompts/data-processor.md",
   pathToPromptB: "team-beta:prompts/data-analyzer.md",
   testContextPaths: [
@@ -135,7 +135,7 @@ List of files or directories to use as test context during evaluation.
 
 ```javascript
 {
-  pathToExpertPromptDefinition: "expert-definitions/general-expert.md",
+  pathToExpertPromptDefinition: "experts/general-expert.md",
   pathToPromptA: "prompts/assistant.md@3commits-ago",
   pathToPromptB: "prompts/assistant.md@2commits-ago",
   testContextPaths: [
@@ -151,7 +151,7 @@ List of files or directories to use as test context during evaluation.
 
 ```javascript
 {
-  pathToExpertPromptDefinition: "expert-definitions/financial-expert.md",
+  pathToExpertPromptDefinition: "experts/financial-expert.md",
   pathToPromptA: "prompts/calculator.md@production",
   pathToPromptB: "prompts/calculator.md@staging",
   testContextPaths: [
@@ -169,7 +169,7 @@ List of files or directories to use as test context during evaluation.
 
 ```javascript
 {
-  pathToExpertPromptDefinition: "expert-definitions/security-expert.md",
+  pathToExpertPromptDefinition: "experts/security-expert.md",
   pathToPromptA: "prompts/validator.md@before-audit",
   pathToPromptB: "prompts/validator.md@after-audit",
   testContextPaths: [
@@ -299,7 +299,7 @@ List of files or directories to use as test context during evaluation.
 - name: Run A/B Test
   run: |
     @claude-code ab_test \
-      --expert "expert-definitions/programming-expert.md" \
+      --expert "experts/programming-expert.md" \
       --promptA "prompts/code-reviewer.md@main" \
       --promptB "prompts/code-reviewer.md@${{ github.sha }}" \
       --context "test-scenarios/"
@@ -308,7 +308,7 @@ List of files or directories to use as test context during evaluation.
 ### Pull Request Comment
 ```
 @claude-code Please run an A/B test:
-- Expert: expert-definitions/security-expert.md
+- Expert: experts/security-expert.md
 - Baseline: prompts/validator.md@main
 - Variant: prompts/validator.md (this PR)
 - Test with: security-tests/
@@ -317,7 +317,7 @@ List of files or directories to use as test context during evaluation.
 ### Command Line
 ```bash
 claude-code ab-test \
-  --expert expert-definitions/programming-expert.md \
+  --expert experts/programming-expert.md \
   --baseline prompts/old.md \
   --variant prompts/new.md \
   --test-context test-scenarios/
@@ -353,7 +353,7 @@ Compare multiple versions in sequence:
 const versions = ["v1.0", "v1.1", "v1.2", "HEAD"];
 for (let i = 0; i < versions.length - 1; i++) {
   await ab_test({
-    pathToExpertPromptDefinition: "expert-definitions/general-expert.md",
+    pathToExpertPromptDefinition: "experts/general-expert.md",
     pathToPromptA: `prompts/assistant.md@${versions[i]}`,
     pathToPromptB: `prompts/assistant.md@${versions[i+1]}`,
     testContextPaths: ["test-scenarios/"]

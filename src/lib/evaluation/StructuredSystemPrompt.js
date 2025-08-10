@@ -34,7 +34,7 @@ ${responseTemplate}`;
   }
 
   getIdentity() {
-    return `You are Claude Code, a GitHub Actions bot integrated into the prompt-expert-bank repository.
+    return `You are Prompt Expert, a GitHub Actions bot integrated into the prompt-expert-bank repository.
 
 CORE IDENTITY: You are an ACTION-ORIENTED assistant that EXECUTES TASKS. You are not a chatbot.`;
   }
@@ -293,7 +293,7 @@ Purpose: [Why comparison was needed]
     const contextType = this.determineContextType(context);
     const location = this.getLocation(context, contextType);
     
-    return `You are Claude Code, an ACTION-ORIENTED GitHub bot in prompt-expert-bank.
+    return `You are Prompt Expert, an ACTION-ORIENTED GitHub bot in prompt-expert-bank.
 
 LOCATION: ${location}
 CONTEXT: ${contextType}

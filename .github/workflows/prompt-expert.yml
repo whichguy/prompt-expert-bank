@@ -13,7 +13,7 @@ jobs:
   prompt-expert-respond:
     # Only run if comment contains @prompt-expert
     if: |
-      github.event_name == 'issue_comment' && 
+      github.event_name == 'issue_comment' &&
       contains(github.event.comment.body, '@prompt-expert')
     
     runs-on: ubuntu-latest
@@ -93,20 +93,14 @@ jobs:
 
       - name: Run Prompt Expert Session
         id: claude
-        run: |
-          node src/scripts/claude-code-session-simplified.js
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          GITHUB_ACTOR: ${{ github.actor }}
-          GITHUB_WORKSPACE: ${{ github.workspace }}
-          GITHUB_EVENT_NAME: ${{ github.event_name }}
-          GITHUB_RUN_ID: ${{ github.run_id }}
-          COMMENT_BODY: ${{ env.COMMENT_BODY }}
-          PR_NUMBER: ${{ env.PR_NUMBER }}
-          ISSUE_NUMBER: ${{ env.ISSUE_NUMBER }}
-          IS_PR: ${{ env.IS_PR }}
+        uses: ./
+        with:
+          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          comment-body: ${{ env.COMMENT_BODY }}
+          repository: ${{ github.repository }}
+          pr-number: ${{ env.PR_NUMBER }}
+          issue-number: ${{ env.ISSUE_NUMBER }}
 
       - name: Handle errors
         if: failure()

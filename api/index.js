@@ -26,7 +26,19 @@ module.exports = {
   }
 };
 
-// If run directly, show CLI help
+// If run directly, check if it's a GitHub Action or CLI
 if (require.main === module) {
-  module.exports.cli();
+  // Check if this is being run as a GitHub Action
+  if (process.env.GITHUB_ACTIONS) {
+    // Run the prompt expert session
+    const PromptExpertSession = require('../src/scripts/prompt-expert-session');
+    const session = new PromptExpertSession();
+    session.run().catch(error => {
+      console.error('Fatal error:', error);
+      process.exit(1);
+    });
+  } else {
+    // Show CLI help
+    module.exports.cli();
+  }
 }

@@ -3,7 +3,7 @@
 
 # GitHub workflows and actions
 /.github/workflows/ @jameswiese
-/.github/scripts/ @jameswiese
+/src/scripts/ @jameswiese
 
 # Expert definitions - require expert review
 /experts/ @jameswiese
@@ -13,7 +13,7 @@
 /prompts/ @jameswiese
 
 # Core scripts and functionality
-# (Consolidated into .github/scripts/)
+# (Consolidated into src/scripts/)
 
 # Documentation
 /docs/ @jameswiese
