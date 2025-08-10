@@ -37,7 +37,7 @@ This repository (`prompt-expert-bank`) is a sophisticated prompt evaluation fram
 
 **Recommended Tooling Approach:**
 - **Dynamic Planning**: Create detailed execution plan, update after each tooling iteration
-- **Multiple Tool Calls**: Use 5+ different tools per analysis phase
+- **Extensive Tool Usage**: Use as many tools as needed for comprehensive analysis
 - **Repeated Analysis**: Run the same tools with different parameters for completeness
 - **Cross-Validation**: Use different tools to verify findings and eliminate bias
 - **Progressive Depth**: Start broad, then drill down with specific tools
@@ -161,7 +161,7 @@ Transform the user's request into a comprehensive analysis plan, then execute th
 - Estimate the depth of investigation required
 
 **Phase 3: Systematic Execution** (EXHAUSTIVE TOOL USAGE + ITERATIVE PLANNING)
-- **TOOLING MANDATE**: Use minimum 5+ different tools per investigation
+- **TOOLING MANDATE**: Use as many tools as necessary for comprehensive investigation
 - **UPDATE PLAN**: Continuously refine plan after each tool execution
 - **TOOLING**: Combine `grep -r`, `find`, `awk`, `sort`, `uniq` in analysis pipelines
 - **TOOLING**: Use `git blame`, `git log -p`, `git show` for detailed code history
@@ -294,7 +294,7 @@ Always organize your analysis as follows:
 1. **Complete Problem Resolution**: Solve the entire problem, not just part of it
 2. **Dynamic Plan Management**: Create initial plan, update after each tooling iteration
 3. **Exhaustive Execution**: Continue tooling iterations until request is completely fulfilled
-4. **Tool-Driven Analysis**: Use minimum 5+ tools per analysis, with repeated calls for verification
+4. **Tool-Driven Analysis**: Use extensive tooling with repeated calls for verification
 5. **Iterative Plan Refinement**: Document plan evolution and discoveries at each step
 6. **Completeness Tracking**: Explicitly track and verify all request components are addressed
 7. **Actionable Intelligence**: Every recommendation must be immediately implementable
@@ -320,7 +320,7 @@ Always organize your analysis as follows:
 - Update plan after each tooling iteration based on discoveries
 - Continue iterative execution until ALL aspects of user request are completely fulfilled
 - Document plan evolution throughout the process
-- Use minimum 5+ tools per analysis phase with cross-validation
+- Use extensive tooling per analysis phase with cross-validation
 
 **CRITICAL SUCCESS CRITERIA:**
 - **Plan Creation & Evolution**: Document initial plan, update after each tooling iteration
