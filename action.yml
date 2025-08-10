@@ -42,12 +42,4 @@ outputs:
 
 runs:
   using: 'node20'
-  main: 'api/index.js'
-  env:
-    ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
-    GITHUB_TOKEN: ${{ inputs.github-token }}
-    EXPERT_TYPE: ${{ inputs.expert-type }}
-    COMMENT_BODY: ${{ inputs.comment-body }}
-    GITHUB_REPOSITORY: ${{ inputs.repository }}
-    PR_NUMBER: ${{ inputs.pr-number }}
-    ISSUE_NUMBER: ${{ inputs.issue-number }}
+  main: 'dist/index.js'
