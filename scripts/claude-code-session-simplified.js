@@ -9,6 +9,7 @@ const { ErrorHandler } = require('./error-handler');
 const { FileValidator } = require('./file-validator');
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 
 async function main() {
   const handler = new ErrorHandler({
@@ -70,24 +71,66 @@ async function main() {
     const isABTest = detectABTestRequest(request, validFileContents);
     console.log(`[DEBUG] A/B Test detected: ${isABTest}`);
 
+    // Collect system information
+    const systemInfo = collectSystemInfo();
+    
     // Build context
     let context = '';
     let fileContents = {};
     
     if (isPR && prNumber) {
-      // Get PR details
+      // Get comprehensive PR details
       const { data: pr } = await octokit.pulls.get({
         owner,
         repo,
         pull_number: prNumber
       });
 
-      // Get PR files
+      // Get PR files with detailed changes
       const { data: files } = await octokit.pulls.listFiles({
         owner,
         repo,
         pull_number: prNumber
       });
+
+      // Get repository information
+      const { data: repoInfo } = await octokit.repos.get({
+        owner,
+        repo
+      });
+
+      // Get commit details for the PR
+      const { data: commits } = await octokit.pulls.listCommits({
+        owner,
+        repo,
+        pull_number: prNumber
+      });
+
+      // Get PR reviews if any
+      let reviews = [];
+      try {
+        const { data: reviewsData } = await octokit.pulls.listReviews({
+          owner,
+          repo,
+          pull_number: prNumber
+        });
+        reviews = reviewsData;
+      } catch (e) {
+        handler.log('debug', `Could not fetch reviews: ${e.message}`);
+      }
+
+      // Get issue comments (PR comments)
+      let comments = [];
+      try {
+        const { data: commentsData } = await octokit.issues.listComments({
+          owner,
+          repo,
+          issue_number: prNumber
+        });
+        comments = commentsData;
+      } catch (e) {
+        handler.log('debug', `Could not fetch comments: ${e.message}`);
+      }
 
       // Fetch content for mentioned files
       for (const file of files) {
@@ -109,13 +152,175 @@ async function main() {
         }
       }
 
-      context = `PR #${prNumber}: ${pr.title}
-State: ${pr.state}
-Base: ${pr.base.ref}
-Head: ${pr.head.ref}
+      // Build comprehensive context
+      context = `### Repository Information
+- **Repository**: ${owner}/${repo}
+- **Description**: ${repoInfo.description || 'No description provided'}
+- **Primary Language**: ${repoInfo.language || 'Not specified'}
+- **Stars**: ${repoInfo.stargazers_count} ⭐
+- **Forks**: ${repoInfo.forks_count}
+- **Open Issues**: ${repoInfo.open_issues_count}
+- **Default Branch**: ${repoInfo.default_branch}
+- **Repository Created**: ${new Date(repoInfo.created_at).toLocaleDateString()}
+- **Last Updated**: ${new Date(repoInfo.updated_at).toLocaleDateString()}
+- **Size**: ${Math.round(repoInfo.size / 1024)} MB
+- **License**: ${repoInfo.license ? repoInfo.license.name : 'Not specified'}
 
-Files changed: ${files.length}
-${files.map(f => `- ${f.filename} (+${f.additions} -${f.deletions})`).join('\n')}`;
+### Pull Request Overview
+- **PR #${prNumber}**: ${pr.title}
+- **Current State**: ${pr.state.toUpperCase()} ${pr.merged ? '(MERGED ✅)' : pr.draft ? '(DRAFT 📝)' : '(OPEN 🔄)'}
+- **Author**: @${pr.user.login}${pr.user.name ? ` (${pr.user.name})` : ''}
+- **Author Type**: ${pr.user.type}
+- **Created**: ${new Date(pr.created_at).toLocaleString()}
+- **Last Updated**: ${new Date(pr.updated_at).toLocaleString()}
+${pr.merged_at ? `- **Merged**: ${new Date(pr.merged_at).toLocaleString()} by @${pr.merged_by?.login || 'unknown'}` : ''}
+${pr.closed_at && !pr.merged_at ? `- **Closed**: ${new Date(pr.closed_at).toLocaleString()}` : ''}
+
+### Branch Information
+- **Base Branch**: \`${pr.base.ref}\` (${pr.base.sha.substring(0, 8)}) 
+- **Head Branch**: \`${pr.head.ref}\` (${pr.head.sha.substring(0, 8)})
+- **Base Repository**: ${pr.base.repo.full_name}
+- **Head Repository**: ${pr.head.repo.full_name}
+- **Mergeable State**: ${pr.mergeable_state}
+- **Can Merge**: ${pr.mergeable ? 'Yes ✅' : 'No ❌'}
+- **Rebaseable**: ${pr.rebaseable ? 'Yes' : 'No'}
+
+### PR Metadata & Workflow
+- **Labels**: ${pr.labels.length > 0 ? pr.labels.map(l => `\`${l.name}\``).join(', ') : 'None'}
+- **Assignees**: ${pr.assignees.length > 0 ? pr.assignees.map(a => `@${a.login}`).join(', ') : 'None'}
+- **Reviewers Requested**: ${pr.requested_reviewers.length > 0 ? pr.requested_reviewers.map(r => `@${r.login}`).join(', ') : 'None'}
+- **Team Reviewers**: ${pr.requested_teams.length > 0 ? pr.requested_teams.map(t => `@${t.slug}`).join(', ') : 'None'}
+- **Milestone**: ${pr.milestone ? `${pr.milestone.title} (Due: ${pr.milestone.due_on ? new Date(pr.milestone.due_on).toLocaleDateString() : 'No due date'})` : 'None'}
+- **Linked Issues**: ${pr.body && pr.body.match(/#\d+/g) ? pr.body.match(/#\d+/g).join(', ') : 'None detected'}
+
+### PR Description
+${pr.body ? '```markdown\n' + pr.body.substring(0, 1000) + (pr.body.length > 1000 ? '\n... (truncated)' : '') + '\n```' : '_No description provided_'}
+
+### Code Changes Analysis  
+- **Total Files Modified**: ${files.length}
+- **Lines Added**: ${files.reduce((sum, f) => sum + f.additions, 0)} (+)
+- **Lines Removed**: ${files.reduce((sum, f) => sum + f.deletions, 0)} (-)
+- **Net Change**: ${files.reduce((sum, f) => sum + f.additions - f.deletions, 0)} lines
+- **Largest File**: ${files.length > 0 ? files.reduce((max, f) => f.changes > max.changes ? f : max, files[0])?.filename : 'N/A'} (${files.length > 0 ? Math.max(...files.map(f => f.changes)) : 0} changes)
+
+### File Modification Details
+${files.map(f => {
+  const statusEmoji = {
+    'added': '🆕',
+    'modified': '✏️', 
+    'removed': '🗑️',
+    'renamed': '📝',
+    'copied': '📄'
+  };
+  return `- **${f.filename}** ${statusEmoji[f.status] || '📄'} ${f.status.toUpperCase()}
+  - Changes: +${f.additions} -${f.deletions} (${f.changes} total)
+  - Status: ${f.status}${f.previous_filename ? ` (was: ${f.previous_filename})` : ''}`;
+}).join('\n')}
+
+### Commit History (${commits.length} commits)
+${commits.slice(-5).map(c => 
+  `- **${c.sha.substring(0, 8)}** by ${c.commit.author.name} <${c.commit.author.email}> 
+  - Date: ${new Date(c.commit.author.date).toLocaleString()}
+  - Message: "${c.commit.message.split('\\n')[0]}"${c.commit.message.split('\\n').length > 1 ? ' (+more)' : ''}`
+).join('\n')}${commits.length > 5 ? `\n- ... (${commits.length - 5} more commits)` : ''}
+
+### Reviews & Feedback (${reviews.length} reviews)
+${reviews.length > 0 ? reviews.map(r => 
+  `- **@${r.user.login}** - ${r.state} ${r.state === 'APPROVED' ? '✅' : r.state === 'CHANGES_REQUESTED' ? '❌' : '💬'}
+  - Submitted: ${new Date(r.submitted_at).toLocaleString()}
+  ${r.body ? `- Comment: "${r.body.substring(0, 150)}${r.body.length > 150 ? '...' : ''}"` : ''}
+  - Commit: ${r.commit_id.substring(0, 8)}`
+).join('\n') : '- No reviews submitted yet'}
+
+### Discussion Activity (${comments.length} comments)
+${comments.length > 0 ? 
+  `- Total Comments: ${comments.length}
+- Latest Comment: ${new Date(comments[comments.length - 1].updated_at).toLocaleString()} by @${comments[comments.length - 1].user.login}
+- Most Active Commenter: @${comments.reduce((acc, comment) => {
+    acc[comment.user.login] = (acc[comment.user.login] || 0) + 1;
+    return acc;
+  }, {})} (analysis)` : '- No comments yet'}
+
+### GitHub Actions Context
+- **Triggered Event**: ${process.env.GITHUB_EVENT_NAME}
+- **Triggering Actor**: @${process.env.GITHUB_ACTOR}
+- **Workflow Run ID**: ${process.env.GITHUB_RUN_ID}
+- **Run Number**: #${process.env.GITHUB_RUN_NUMBER}
+- **Job**: ${process.env.GITHUB_JOB || 'prompt-expert-response'}
+- **Runner OS**: ${process.env.RUNNER_OS || 'Linux'}
+- **Triggered At**: ${new Date().toISOString()}
+- **Repository Reference**: ${process.env.GITHUB_REF}
+- **SHA**: ${process.env.GITHUB_SHA?.substring(0, 8)}`;
+
+    } else if (issueNumber) {
+      // Get comprehensive issue details
+      const { data: issue } = await octokit.issues.get({
+        owner,
+        repo,
+        issue_number: issueNumber
+      });
+
+      // Get repository information
+      const { data: repoInfo } = await octokit.repos.get({
+        owner,
+        repo
+      });
+
+      // Get issue comments
+      let comments = [];
+      try {
+        const { data: commentsData } = await octokit.issues.listComments({
+          owner,
+          repo,
+          issue_number: issueNumber
+        });
+        comments = commentsData;
+      } catch (e) {
+        handler.log('debug', `Could not fetch comments: ${e.message}`);
+      }
+
+      context = `### Repository Information
+- **Repository**: ${owner}/${repo}
+- **Description**: ${repoInfo.description || 'No description provided'}
+- **Primary Language**: ${repoInfo.language || 'Not specified'}
+- **Stars**: ${repoInfo.stargazers_count} ⭐
+- **Forks**: ${repoInfo.forks_count}
+- **Open Issues**: ${repoInfo.open_issues_count}
+- **Default Branch**: ${repoInfo.default_branch}
+
+### Issue Details
+- **Issue #${issueNumber}**: ${issue.title}
+- **Current State**: ${issue.state.toUpperCase()} ${issue.state === 'open' ? '🔄' : '✅'}
+- **Author**: @${issue.user.login}${issue.user.name ? ` (${issue.user.name})` : ''}
+- **Created**: ${new Date(issue.created_at).toLocaleString()}
+- **Last Updated**: ${new Date(issue.updated_at).toLocaleString()}
+${issue.closed_at ? `- **Closed**: ${new Date(issue.closed_at).toLocaleString()}` : ''}
+
+### Issue Metadata
+- **Labels**: ${issue.labels.length > 0 ? issue.labels.map(l => `\`${l.name}\``).join(', ') : 'None'}
+- **Assignees**: ${issue.assignees.length > 0 ? issue.assignees.map(a => `@${a.login}`).join(', ') : 'None'}
+- **Milestone**: ${issue.milestone ? issue.milestone.title : 'None'}
+- **Comments**: ${issue.comments} total
+- **Reactions**: ${Object.entries(issue.reactions).filter(([key, value]) => key !== 'url' && key !== 'total_count' && value > 0).map(([key, value]) => `${key}: ${value}`).join(', ') || 'None'}
+
+### Issue Description
+${issue.body ? '```markdown\n' + issue.body.substring(0, 1000) + (issue.body.length > 1000 ? '\n... (truncated)' : '') + '\n```' : '_No description provided_'}
+
+### Discussion Activity (${comments.length} comments)
+${comments.length > 0 ? 
+  `- Total Comments: ${comments.length}
+- Latest Comment: ${new Date(comments[comments.length - 1].updated_at).toLocaleString()} by @${comments[comments.length - 1].user.login}
+- First Comment: ${new Date(comments[0].updated_at).toLocaleString()} by @${comments[0].user.login}` : '- No comments yet'}
+
+### GitHub Actions Context
+- **Triggered Event**: ${process.env.GITHUB_EVENT_NAME}
+- **Triggering Actor**: @${process.env.GITHUB_ACTOR}
+- **Workflow Run ID**: ${process.env.GITHUB_RUN_ID}
+- **Run Number**: #${process.env.GITHUB_RUN_NUMBER}
+- **Job**: ${process.env.GITHUB_JOB || 'prompt-expert-response'}
+- **Triggered At**: ${new Date().toISOString()}
+- **Repository Reference**: ${process.env.GITHUB_REF}
+- **SHA**: ${process.env.GITHUB_SHA?.substring(0, 8)}`;
     }
 
     // Build the prompt based on whether this is an A/B test
@@ -402,6 +607,45 @@ User request: "${request}"`;
   promptContent += '\n\nPlease provide a helpful response. If you can access the files mentioned, confirm that. Be concise and specific.';
   
   return promptContent;
+}
+
+/**
+ * Collect system and runtime environment information
+ */
+function collectSystemInfo() {
+  const startTime = Date.now();
+  
+  return {
+    // Operating System
+    platform: os.platform(),
+    arch: os.arch(),
+    release: os.release(),
+    hostname: os.hostname(),
+    
+    // Hardware
+    totalMemory: Math.round(os.totalmem() / 1024 / 1024 / 1024 * 100) / 100, // GB
+    freeMemory: Math.round(os.freemem() / 1024 / 1024 / 1024 * 100) / 100, // GB
+    cpuCount: os.cpus().length,
+    cpuModel: os.cpus()[0]?.model || 'Unknown',
+    
+    // Runtime
+    nodeVersion: process.version,
+    uptime: Math.round(os.uptime()),
+    loadAverage: os.loadavg(),
+    
+    // Process
+    workingDirectory: process.cwd(),
+    execPath: process.execPath,
+    
+    // Environment
+    user: os.userInfo().username,
+    homeDir: os.homedir(),
+    tempDir: os.tmpdir(),
+    
+    // Timestamps
+    sessionStart: new Date(startTime).toISOString(),
+    systemBootTime: new Date(Date.now() - os.uptime() * 1000).toISOString()
+  };
 }
 
 main().catch(console.error);
