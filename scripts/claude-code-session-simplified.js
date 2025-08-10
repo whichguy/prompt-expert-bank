@@ -47,6 +47,9 @@ async function main() {
     const validation = fileValidator.validateComment(comment);
     
     // Log file validation results
+    console.log(`[DEBUG] Workspace: ${process.env.GITHUB_WORKSPACE}`);
+    console.log(`[DEBUG] Valid files found: ${validation.valid.join(', ')}`);
+    
     if (validation.invalid.length > 0) {
       handler.log('warning', `Invalid file paths detected: ${validation.invalid.join(', ')}`);
       if (Object.keys(validation.suggestions).length > 0) {
@@ -56,6 +59,7 @@ async function main() {
     
     // Load valid files
     const validFileContents = fileValidator.loadFiles(validation);
+    console.log(`[DEBUG] Loaded ${Object.keys(validFileContents).length} files`);
 
     // Build context
     let context = '';
