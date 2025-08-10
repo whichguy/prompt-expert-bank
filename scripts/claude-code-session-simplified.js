@@ -132,7 +132,7 @@ async function main() {
         handler.log('debug', `Could not fetch comments: ${e.message}`);
       }
 
-      // Fetch content for PR files
+      // Load PR files from local workspace
       // Default: include all PR files unless request specifically mentions other files
       const shouldIncludeAllPRFiles = !files.some(file => request.includes(file.filename));
       
@@ -142,18 +142,15 @@ async function main() {
         
         if (shouldIncludeFile) {
           try {
-            const { data } = await octokit.repos.getContent({
-              owner,
-              repo,
-              path: file.filename,
-              ref: pr.head.ref
-            });
-            
-            if (!Array.isArray(data) && data.content) {
-              fileContents[file.filename] = Buffer.from(data.content, 'base64').toString('utf-8');
+            const filePath = path.join(process.env.GITHUB_WORKSPACE, file.filename);
+            if (fs.existsSync(filePath)) {
+              const content = fs.readFileSync(filePath, 'utf8');
+              fileContents[file.filename] = content;
+            } else {
+              handler.log('warn', `PR file not found in workspace: ${file.filename}`);
             }
           } catch (e) {
-            handler.log('warn', `Could not fetch ${file.filename}: ${e.message}`);
+            handler.log('warn', `Could not read PR file ${file.filename}: ${e.message}`);
           }
         }
       }
