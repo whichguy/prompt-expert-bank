@@ -98,8 +98,8 @@ class PromptRoleManager {
    * Load role from expert domain
    */
   async loadFromDomain(domain) {
-    // Check if it matches existing expert definitions
-    const expertPath = `expert-definitions/${domain}-expert.md`;
+    // Try as direct alias to experts folder
+    const expertPath = `experts/${domain}.md`;
     return await this.loadFromFile(expertPath);
   }
 
@@ -175,13 +175,13 @@ class PromptRoleManager {
         const { data } = await this.octokit.repos.getContent({
           owner: this.repoOwner,
           repo: this.repoName,
-          path: 'expert-definitions',
+          path: 'experts',
           ref: 'main' // Use main branch for stable definitions
         });
 
         for (const item of data) {
-          if (item.name.endsWith('-expert.md')) {
-            const domain = item.name.replace('-expert.md', '');
+          if (item.name.endsWith('.md')) {
+            const domain = item.name.replace('.md', '');
             roles.push({
               identifier: domain,
               name: `${domain.charAt(0).toUpperCase() + domain.slice(1)} Expert`,
@@ -200,19 +200,19 @@ class PromptRoleManager {
     
     // Only try local as fallback for development
     try {
-      const expertPath = path.join(this.workspace, 'expert-definitions');
+      const expertPath = path.join(this.workspace, 'experts');
       const files = await fs.readdir(expertPath);
       
       console.warn('WARNING: Using local expert definitions - should fetch from GitHub in production');
       
       for (const file of files) {
-        if (file.endsWith('-expert.md')) {
-          const domain = file.replace('-expert.md', '');
+        if (file.endsWith('.md')) {
+          const domain = file.replace('.md', '');
           roles.push({
             identifier: domain,
             name: `${domain.charAt(0).toUpperCase() + domain.slice(1)} Expert`,
             source: 'local',
-            path: `expert-definitions/${file}`
+            path: `experts/${file}`
           });
         }
       }
