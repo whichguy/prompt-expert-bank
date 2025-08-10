@@ -40,8 +40,8 @@ class ABTestTool {
     this.repoName = options.repoName;
     this.workspace = options.workspace;
     
-    // Template paths
-    this.templateDir = path.join(__dirname, 'templates');
+    // Template paths - templates are in src/lib/templates
+    this.templateDir = path.join(__dirname, '..', 'templates');
     
     // Cache for fetched content (24 hour TTL)
     this.contentCache = new Map();
@@ -112,12 +112,18 @@ class ABTestTool {
       });
       
       if (!verificationResults.success) {
+        // Return concise error information to avoid token limits
+        const missingFiles = verificationResults.missingPaths.map(mp => ({
+          file: mp.path,
+          status: mp.httpStatus,
+          type: mp.label
+        }));
+        
         return {
           success: false,
-          error: 'Path verification failed',
-          details: verificationResults.errors.join('\n'),
-          missingPaths: verificationResults.missingPaths,
-          suggestion: 'Please verify all file paths exist and are accessible. Use "experts/" for expert definitions, not "expert-definitions/".'
+          error: 'File verification failed',
+          missingFiles,
+          summary: `${missingFiles.length} file(s) could not be accessed`
         };
       }
       
@@ -425,12 +431,10 @@ class ABTestTool {
    * @param {Array<string>} [paths.testContextPaths] - Test context paths
    * @returns {Promise<Object>} Verification results
    * @returns {boolean} returns.success - Whether all paths exist
-   * @returns {Array<string>} returns.errors - Error messages
-   * @returns {Array<Object>} returns.missingPaths - Details of missing paths
+   * @returns {Array<Object>} returns.missingPaths - Details of missing paths with concise error info
    * @private
    */
   async verifyPathsExist(paths) {
-    const errors = [];
     const missingPaths = [];
     
     // Helper function to check if a path exists with retry logic
@@ -467,19 +471,12 @@ class ABTestTool {
           // Check if this is a 404 - file genuinely doesn't exist
           if (error.status === 404) {
             const fullPath = `${pathInfo.owner}/${pathInfo.repo}:${pathInfo.filePath}${pathInfo.version !== 'HEAD' ? '@' + pathInfo.version : ''}`;
-            errors.push(`${label} not found: ${fullPath}`);
             missingPaths.push({
               label,
               path: fullPath,
-              error: 'File not found (404)',
+              error: 'Not found',
               httpStatus: 404
             });
-            
-            // Add helpful hint for common mistakes
-            if (pathInfo.filePath.includes('expert-definitions/')) {
-              errors.push(`  Hint: Expert files are in "experts/" folder, not "expert-definitions/"`);
-              errors.push(`  Try: ${pathInfo.filePath.replace('expert-definitions/', 'experts/')}`);
-            }
             return false; // Don't retry 404s
           }
           
@@ -491,20 +488,18 @@ class ABTestTool {
             const fullPath = `${pathInfo.owner}/${pathInfo.repo}:${pathInfo.filePath}${pathInfo.version !== 'HEAD' ? '@' + pathInfo.version : ''}`;
             const errorMsg = error.message || error.toString();
             
-            // Check if it's an HTML error page
-            if (errorMsg.includes('HTML error page')) {
-              errors.push(`${label} verification failed: GitHub API returned HTML error page (likely 5xx server error)`);
-              errors.push(`  Path: ${fullPath}`);
-              errors.push(`  This is usually a temporary GitHub server issue. Please try again in a few moments.`);
-            } else {
-              errors.push(`${label} verification failed: ${errorMsg}`);
-              errors.push(`  Path: ${fullPath}`);
+            // Determine concise error type
+            let errorType = 'Access failed';
+            if (errorMsg.includes('<!DOCTYPE html>') || errorMsg.includes('<html>')) {
+              errorType = 'Server error';
+            } else if (error.status) {
+              errorType = `HTTP ${error.status}`;
             }
             
             missingPaths.push({
               label,
               path: fullPath,
-              error: errorMsg,
+              error: errorType,
               httpStatus: error.status || 'unknown',
               attempts: attempt + 1
             });
@@ -542,8 +537,7 @@ class ABTestTool {
     }
     
     return {
-      success: errors.length === 0,
-      errors,
+      success: missingPaths.length === 0,
       missingPaths
     };
   }
@@ -672,7 +666,9 @@ class ABTestTool {
           message.includes('ETIMEDOUT') || 
           message.includes('ENOTFOUND') ||
           message.includes('Network') ||
-          message.includes('HTML error page')) {
+          message.includes('HTML error page') ||
+          message.includes('<!DOCTYPE html>') ||
+          message.includes('<html>')) {
         return true;
       }
       return false;
