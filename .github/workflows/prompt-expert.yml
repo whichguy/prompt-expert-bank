@@ -33,7 +33,7 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
           sparse-checkout: |
-            scripts
+            .github
             templates
             experts
             package.json
@@ -47,7 +47,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          cd scripts
+          cd .github/scripts
           npm install @anthropic-ai/sdk @octokit/rest
 
       - name: Get PR/Issue context
@@ -154,7 +154,7 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.ref }}
           sparse-checkout: |
-            scripts
+            .github
             templates
             experts
             package.json
@@ -185,7 +185,7 @@ jobs:
       - name: Install dependencies
         if: env.PROMPTS_CHANGED == 'true'
         run: |
-          cd scripts
+          cd .github/scripts
           npm install @anthropic-ai/sdk @octokit/rest
 
       - name: Run automatic prompt evaluation
