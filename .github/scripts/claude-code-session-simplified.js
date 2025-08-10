@@ -174,11 +174,17 @@ class PromptExpertSession {
 
       // Load role if specified
       if (command.role) {
-        this.currentRole = await this.roleManager.loadRole(command.role);
-        this.log('info', `Loaded role: ${this.currentRole.name}`, {
-          role: command.role,
-          source: this.currentRole.source
-        });
+        try {
+          this.currentRole = await this.roleManager.loadRole(command.role);
+          this.log('info', `Loaded role: ${this.currentRole.name}`, {
+            role: command.role,
+            source: this.currentRole.source
+          });
+        } catch (error) {
+          this.log('warn', `Could not load role ${command.role}, continuing without it`, {
+            error: error.message
+          });
+        }
       }
       
       // Process request with Claude
@@ -222,28 +228,64 @@ class PromptExpertSession {
    * @method parseCommand
    * @description Parses the @prompt-expert command from GitHub comment body
    * @returns {Object} Parsed command object
-   * @returns {string} returns.role - Expert role/domain name
-   * @returns {string} returns.prompt - User's request text
+   * @returns {string} returns.prompt - User's full request text (everything after @prompt-expert)
    * @returns {string} returns.raw - Original comment text
-   * @returns {string} returns.mode - Command mode (always 'expert')
+   * @returns {string} returns.mode - Command mode ('expert' for prompt evaluation)
+   * @returns {string|null} returns.role - Expert role if specified inline
    * @throws {Error} If command format is invalid
    * @private
    */
   parseCommand() {
     const comment = process.env.COMMENT_BODY || '';
     
-    // Check for prompt-expert commands
-    const match = comment.match(/@prompt-expert\s+(\S+)\s*(.*)/i);
+    // Extract everything after @prompt-expert as the user prompt
+    const match = comment.match(/@prompt-expert\s+(.*)/is);
     if (match) {
+      const fullPrompt = match[1].trim();
+      
+      // Check if the first word might be an expert name (single word followed by space)
+      // This allows both formats:
+      // @prompt-expert security-expert analyze the PR
+      // @prompt-expert analyze the PR with security focus
+      let role = null;
+      let prompt = fullPrompt;
+      
+      const expertMatch = fullPrompt.match(/^([a-z-]+)\s+(.+)/i);
+      if (expertMatch && this.isKnownExpert(expertMatch[1])) {
+        role = expertMatch[1];
+        prompt = expertMatch[2];
+      }
+      
+      // If no prompt provided, use the full input or a default
+      prompt = prompt || fullPrompt || 'Please analyze and help with this pull request';
+      
       return {
-        role: match[1], // Domain expert
-        prompt: match[2].trim() || 'Please evaluate the prompt changes in this PR',
+        prompt: prompt,
         raw: comment,
-        mode: 'expert'
+        mode: 'expert', // Keep expert mode for evaluation tools
+        role: role
       };
     }
     
-    throw new Error('Invalid command format. Use: @prompt-expert <expert-name> <request>');
+    throw new Error('Invalid command format. Use: @prompt-expert <request>');
+  }
+
+  /**
+   * @method isKnownExpert
+   * @description Checks if a string matches a known expert role
+   * @param {string} name - Potential expert name
+   * @returns {boolean} Whether this is a known expert
+   * @private
+   */
+  isKnownExpert(name) {
+    const knownExperts = [
+      'security', 'security-expert',
+      'programming', 'programming-expert', 
+      'financial', 'financial-expert',
+      'data-analysis', 'data-expert',
+      'general', 'general-expert'
+    ];
+    return knownExperts.includes(name.toLowerCase());
   }
 
   /**
@@ -340,7 +382,7 @@ class PromptExpertSession {
       fullSystemMessage: systemMessage,
       fullUserMessage: userMessage,
       mode: command.mode,
-      role: command.role || 'default',
+      role: command.role || 'none',
       availableTools: tools.map(t => t.name).join(', ')
     });
     
@@ -795,21 +837,8 @@ class PromptExpertSession {
    * @private
    */
   buildUserMessage(command, context) {
-    if (command.mode === 'expert') {
-      // Expert evaluation mode - integrate with existing evaluation system
-      return `As a ${command.role} expert, please evaluate the prompt changes in this PR and provide feedback. 
-
-${command.prompt}
-
-Focus on:
-1. Domain-specific best practices
-2. Technical accuracy and completeness
-3. Potential improvements or issues
-4. Overall quality assessment
-
-Use your expert tools to examine the changed files and provide detailed analysis.`;
-    }
-
+    // For expert mode, still pass through the user's request directly
+    // The expert tools and system prompt will guide the behavior
     return command.prompt;
   }
 
