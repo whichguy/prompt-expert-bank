@@ -11,7 +11,6 @@ This repository provides automated prompt evaluation through GitHub comments. Si
 ```
 prompt-expert-bank/
 ├── .github/workflows/
-│   ├── claude-code.yml      # Anthropic's Claude Code workflow (@claude-code)
 │   └── prompt-expert.yml    # Main prompt evaluation workflow (@prompt-expert)
 ├── experts/                 # Expert role definitions
 │   ├── code-review-expert.md
