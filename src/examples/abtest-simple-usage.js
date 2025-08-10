@@ -5,7 +5,7 @@
  * Clean, straightforward approach without overengineering
  */
 
-const { ABTestSimplified } = require('../lib/ABTestSimplified');
+const { ABTestTool } = require('../lib/abtest/ABTestTool');
 const { Anthropic } = require('@anthropic-ai/sdk');
 const { Octokit } = require('@octokit/rest');
 

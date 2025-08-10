@@ -5,7 +5,7 @@
  * Tests corner cases, error handling, and logging
  */
 
-const { ABTestToolRobust } = require('../lib/ABTestToolRobust');
+const { ABTestTool } = require('../../src/lib/abtest/ABTestTool');
 const { Octokit } = require('@octokit/rest');
 const { Anthropic } = require('@anthropic-ai/sdk');
 

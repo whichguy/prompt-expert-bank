@@ -5,7 +5,7 @@
  * Demonstrates loading GitHub repo paths, folders, and various file types
  */
 
-const { ABTestToolEnhanced } = require('../lib/ABTestToolEnhanced');
+const { ABTestTool } = require('../lib/abtest/ABTestTool');
 const { Anthropic } = require('@anthropic-ai/sdk');
 const { Octokit } = require('@octokit/rest');
 

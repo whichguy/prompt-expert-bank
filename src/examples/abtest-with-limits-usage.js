@@ -5,7 +5,7 @@
  * Demonstrates safe loading of large contexts without overwhelming resources
  */
 
-const { ABTestToolWithLimits } = require('../lib/ABTestToolWithLimits');
+const { ABTestTool } = require('../lib/abtest/ABTestTool');
 const { Anthropic } = require('@anthropic-ai/sdk');
 const { Octokit } = require('@octokit/rest');
 const fs = require('fs').promises;
