@@ -20,7 +20,7 @@ const { ABTestTool } = require('./lib/ABTestTool');
 
 class ClaudeCodeSession {
   constructor() {
-    this.sessionId = `session-${Date.now()}`;
+    this.sessionId = `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     this.startTime = Date.now();
     
     // Parse repository info once
@@ -28,15 +28,24 @@ class ClaudeCodeSession {
     this.repoOwner = repoOwner || 'unknown';
     this.repoName = repoName || 'unknown';
     
-    // Simple logging
+    // Thread-safe logging with session isolation
     this.log = (level, message, data = {}) => {
-      console.log(JSON.stringify({
+      const logEntry = {
         timestamp: new Date().toISOString(),
         level,
         message,
         sessionId: this.sessionId,
+        repository: process.env.GITHUB_REPOSITORY,
+        pr: process.env.PR_NUMBER || 'none',
+        issue: process.env.ISSUE_NUMBER || 'none',
+        actor: process.env.GITHUB_ACTOR,
+        runId: process.env.GITHUB_RUN_ID,
+        threadContext: `${this.sessionId}`,
         ...data
-      }));
+      };
+      
+      // Clear session identification in logs
+      console.log(`[${this.sessionId}] ${JSON.stringify(logEntry)}`);
     };
     
     // Basic metrics
@@ -58,7 +67,17 @@ class ClaudeCodeSession {
    */
   async run() {
     try {
-      this.log('info', '🚀 Starting Claude Code session');
+      this.log('info', '🚀 Starting Claude Code session', {
+        conversationThread: this.sessionId,
+        startTime: new Date().toISOString(),
+        githubContext: {
+          repository: process.env.GITHUB_REPOSITORY,
+          pr: process.env.PR_NUMBER,
+          issue: process.env.ISSUE_NUMBER,
+          actor: process.env.GITHUB_ACTOR,
+          event: process.env.GITHUB_EVENT_NAME
+        }
+      });
       
       // Validate environment
       this.validateEnvironment();
@@ -114,9 +133,12 @@ class ClaudeCodeSession {
       await this.postResults(context, result, octokit);
       
       this.log('info', '✅ Session completed', {
+        conversationThread: this.sessionId,
         duration: Date.now() - this.startTime,
         toolCalls: this.metrics.toolCalls,
-        errors: this.metrics.errors
+        errors: this.metrics.errors,
+        endTime: new Date().toISOString(),
+        sessionSummary: `Session ${this.sessionId} processed ${this.metrics.toolCalls} tool calls with ${this.metrics.errors} errors in ${Date.now() - this.startTime}ms`
       });
       
       process.exit(0);
