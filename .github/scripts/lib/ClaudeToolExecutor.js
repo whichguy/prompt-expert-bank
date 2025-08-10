@@ -307,7 +307,7 @@ class ClaudeToolExecutor {
     // Execute prompt with each test scenario
     for (const scenario of scenarios) {
       const response = await this.anthropic.messages.create({
-        model: 'claude-3-5-sonnet-20241022',
+        model: 'claude-sonnet-4-20250514',
         max_tokens: 4000,
         messages: [
           {
@@ -319,7 +319,7 @@ class ClaudeToolExecutor {
       
       // Expert evaluation of the response
       const evaluation = await this.anthropic.messages.create({
-        model: 'claude-3-5-sonnet-20241022',
+        model: 'claude-sonnet-4-20250514',
         max_tokens: 2000,
         messages: [
           {
@@ -380,7 +380,7 @@ Provide:
 
   async generateImprovements(originalPrompt, evaluationResults, expert) {
     const improvements = await this.anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
+      model: 'claude-sonnet-4-20250514',
       max_tokens: 4000,
       messages: [
         {
@@ -1387,7 +1387,7 @@ To approve, comment: \`@prompt-expert approve-secret ${name}\`
     for (const test of tests) {
       // Test Prompt A
       const responseA = await this.anthropic.messages.create({
-        model: 'claude-3-5-sonnet-20241022',
+        model: 'claude-sonnet-4-20250514',
         max_tokens: 2000,
         messages: [
           { role: 'user', content: `${promptA}\n\nTest: ${test}` }
@@ -1397,7 +1397,7 @@ To approve, comment: \`@prompt-expert approve-secret ${name}\`
       
       // Test Prompt B
       const responseB = await this.anthropic.messages.create({
-        model: 'claude-3-5-sonnet-20241022',
+        model: 'claude-sonnet-4-20250514',
         max_tokens: 2000,
         messages: [
           { role: 'user', content: `${promptB}\n\nTest: ${test}` }
@@ -1408,7 +1408,7 @@ To approve, comment: \`@prompt-expert approve-secret ${name}\`
     
     // Compare results
     const comparison = await this.anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
+      model: 'claude-sonnet-4-20250514',
       max_tokens: 3000,
       messages: [
         {
@@ -1441,7 +1441,7 @@ Determine which prompt performs better and provide specific recommendations.`
     const { prompt, metrics = ['clarity', 'specificity', 'efficiency', 'robustness'] } = args;
     
     const analysis = await this.anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
+      model: 'claude-sonnet-4-20250514',
       max_tokens: 3000,
       messages: [
         {

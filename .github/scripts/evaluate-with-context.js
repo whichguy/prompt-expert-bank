@@ -345,14 +345,14 @@ When responding to requests:
             
             console.log(`[EVALUATE] Executing Thread A for new prompt analysis`);
             const threadA = await anthropic.messages.create({
-              model: 'claude-3-5-sonnet-20241022',
+              model: 'claude-sonnet-4-20250514',
               max_tokens: 4000,
               messages: threadAMessages
             });
             
             // Expert analysis of the single prompt (no comparison)
             const expertAnalysis = await anthropic.messages.create({
-              model: 'claude-3-5-sonnet-20241022',
+              model: 'claude-sonnet-4-20250514',
               max_tokens: 4000,
               messages: [{
                 role: 'user',
@@ -484,7 +484,7 @@ ${expertAnalysis.content[0].text}
         // Thread A: Evaluate current prompt WITH repository context (same file IDs as Thread B)
         console.log(`[EVALUATE] Executing Thread A with ${contextMessages.length > 0 ? 'repository context' : 'no context'}`);
         const threadA = await anthropic.messages.create({
-          model: 'claude-3-5-sonnet-20241022',
+          model: 'claude-sonnet-4-20250514',
           max_tokens: 4000,
           messages: threadAMessages
         });
@@ -492,7 +492,7 @@ ${expertAnalysis.content[0].text}
         // Thread B: Evaluate new prompt WITH repository context (same file IDs as Thread A)
         console.log(`[EVALUATE] Executing Thread B with ${contextMessages.length > 0 ? 'repository context' : 'no context'}`);
         const threadB = await anthropic.messages.create({
-          model: 'claude-3-5-sonnet-20241022',
+          model: 'claude-sonnet-4-20250514',
           max_tokens: 4000,
           messages: threadBMessages
         });
@@ -509,7 +509,7 @@ ${expertAnalysis.content[0].text}
 ` : '';
         
         const expertComparison = await anthropic.messages.create({
-          model: 'claude-3-5-sonnet-20241022',
+          model: 'claude-sonnet-4-20250514',
           max_tokens: 4000,
           messages: [
             {

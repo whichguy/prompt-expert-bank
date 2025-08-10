@@ -399,7 +399,7 @@ class ClaudeCodeSessionFixed {
       this.performanceMonitor.trackMetric('initial_tokens', tokenEstimate);
       
       this.logger.log('info', '📨 Sending request to Claude', {
-        model: 'claude-3-5-sonnet-20241022',
+        model: 'claude-sonnet-4-20250514',
         toolCount: tools.length,
         estimatedTokens: tokenEstimate
       });
@@ -407,7 +407,7 @@ class ClaudeCodeSessionFixed {
       // Create conversation with Claude
       const response = await this.executeWithRetry(async () => {
         return anthropic.messages.create({
-          model: 'claude-3-5-sonnet-20241022',
+          model: 'claude-sonnet-4-20250514',
           max_tokens: 8000,
           messages: [
             {
@@ -545,7 +545,7 @@ class ClaudeCodeSessionFixed {
         if (toolResults.length > 0) {
           currentResponse = await this.executeWithRetry(async () => {
             return anthropic.messages.create({
-              model: 'claude-3-5-sonnet-20241022',
+              model: 'claude-sonnet-4-20250514',
               max_tokens: 8000,
               messages: messages,
               tools: tools,

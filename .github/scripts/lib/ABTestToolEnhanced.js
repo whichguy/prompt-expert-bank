@@ -479,7 +479,7 @@ ${codeFile.content.substring(0, 500)}${codeFile.content.length > 500 ? '...' : '
     }
 
     const response = await this.anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
+      model: 'claude-sonnet-4-20250514',
       max_tokens: 4000,
       messages
     });
@@ -524,7 +524,7 @@ Provide your verdict with:
 - Recommendations for production use`;
 
     const response = await this.anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
+      model: 'claude-sonnet-4-20250514',
       max_tokens: 4000,
       messages: [{ role: 'user', content: comparisonPrompt }]
     });

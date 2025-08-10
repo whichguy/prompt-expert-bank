@@ -433,35 +433,91 @@ class ABTestTool {
     const errors = [];
     const missingPaths = [];
     
-    // Helper function to check if a path exists
+    // Helper function to check if a path exists with retry logic
     const checkPath = async (pathInfo, label) => {
-      try {
-        await this.octokit.repos.getContent({
-          owner: pathInfo.owner,
-          repo: pathInfo.repo,
-          path: pathInfo.filePath,
-          ref: pathInfo.version === 'HEAD' ? undefined : pathInfo.version
-        });
-        return true;
-      } catch (error) {
-        if (error.status === 404) {
-          const fullPath = `${pathInfo.owner}/${pathInfo.repo}:${pathInfo.filePath}${pathInfo.version !== 'HEAD' ? '@' + pathInfo.version : ''}`;
-          errors.push(`${label} not found: ${fullPath}`);
-          missingPaths.push({
-            label,
-            path: fullPath,
-            error: 'File not found (404)'
+      const maxRetries = 3;
+      const baseDelay = 1000;
+      let lastError = null;
+      
+      for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        try {
+          // If this is a retry, wait with exponential backoff
+          if (attempt > 0) {
+            const delay = baseDelay * Math.pow(2, attempt - 1) + Math.random() * 500;
+            console.log(`  Retrying path verification (${attempt}/${maxRetries}) after ${Math.round(delay)}ms...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+          }
+          
+          const response = await this.octokit.repos.getContent({
+            owner: pathInfo.owner,
+            repo: pathInfo.repo,
+            path: pathInfo.filePath,
+            ref: pathInfo.version === 'HEAD' ? undefined : pathInfo.version
           });
           
-          // Add helpful hint for common mistakes
-          if (pathInfo.filePath.includes('expert-definitions/')) {
-            errors.push(`  Hint: Expert files are in "experts/" folder, not "expert-definitions/"`);
-            errors.push(`  Try: ${pathInfo.filePath.replace('expert-definitions/', 'experts/')}`);
+          // Check if we got an HTML error page instead of JSON
+          if (typeof response === 'string' && response.includes('<!DOCTYPE html>')) {
+            throw new Error('Received HTML error page instead of JSON response - GitHub API server error');
           }
-          return false;
+          
+          return true; // Path exists
+        } catch (error) {
+          lastError = error;
+          
+          // Check if this is a 404 - file genuinely doesn't exist
+          if (error.status === 404) {
+            const fullPath = `${pathInfo.owner}/${pathInfo.repo}:${pathInfo.filePath}${pathInfo.version !== 'HEAD' ? '@' + pathInfo.version : ''}`;
+            errors.push(`${label} not found: ${fullPath}`);
+            missingPaths.push({
+              label,
+              path: fullPath,
+              error: 'File not found (404)',
+              httpStatus: 404
+            });
+            
+            // Add helpful hint for common mistakes
+            if (pathInfo.filePath.includes('expert-definitions/')) {
+              errors.push(`  Hint: Expert files are in "experts/" folder, not "expert-definitions/"`);
+              errors.push(`  Try: ${pathInfo.filePath.replace('expert-definitions/', 'experts/')}`);
+            }
+            return false; // Don't retry 404s
+          }
+          
+          // Check if this is a retryable error
+          const isRetryable = this.isRetryableError(error);
+          
+          if (!isRetryable || attempt === maxRetries) {
+            // Not retryable or final attempt
+            const fullPath = `${pathInfo.owner}/${pathInfo.repo}:${pathInfo.filePath}${pathInfo.version !== 'HEAD' ? '@' + pathInfo.version : ''}`;
+            const errorMsg = error.message || error.toString();
+            
+            // Check if it's an HTML error page
+            if (errorMsg.includes('HTML error page')) {
+              errors.push(`${label} verification failed: GitHub API returned HTML error page (likely 5xx server error)`);
+              errors.push(`  Path: ${fullPath}`);
+              errors.push(`  This is usually a temporary GitHub server issue. Please try again in a few moments.`);
+            } else {
+              errors.push(`${label} verification failed: ${errorMsg}`);
+              errors.push(`  Path: ${fullPath}`);
+            }
+            
+            missingPaths.push({
+              label,
+              path: fullPath,
+              error: errorMsg,
+              httpStatus: error.status || 'unknown',
+              attempts: attempt + 1
+            });
+            
+            return false;
+          }
+          
+          // Log retry information
+          console.log(`  Verification failed (attempt ${attempt + 1}/${maxRetries + 1}): ${error.message}`);
         }
-        throw error; // Re-throw non-404 errors
       }
+      
+      return false; // Should not reach here
     };
     
     // Verify expert definition
@@ -495,14 +551,14 @@ class ABTestTool {
   /**
    * @method fetchContent
    * @async
-   * @description Fetches content from GitHub with version support and caching
+   * @description Fetches content from GitHub with version support, caching, and retry logic
    * @param {Object} pathInfo - Parsed path information
    * @param {string} pathInfo.owner - Repository owner
    * @param {string} pathInfo.repo - Repository name
    * @param {string} pathInfo.filePath - File path in repository
    * @param {string} pathInfo.version - Version reference (branch/tag/commit)
    * @returns {Promise<string>} File content
-   * @throws {Error} If content cannot be fetched
+   * @throws {Error} If content cannot be fetched after retries
    * @private
    */
   async fetchContent(pathInfo) {
@@ -515,53 +571,129 @@ class ABTestTool {
       return cached.data;
     }
     
-    try {
-      // If version is a commit SHA or branch/tag
-      const { data } = await this.octokit.repos.getContent({
-        owner: pathInfo.owner,
-        repo: pathInfo.repo,
-        path: pathInfo.filePath,
-        ref: pathInfo.version
-      });
+    // Implement retry with exponential backoff
+    const maxRetries = 3;
+    const baseDelay = 1000; // 1 second
+    let lastError = null;
+    
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        // If this is a retry, wait with exponential backoff
+        if (attempt > 0) {
+          const delay = baseDelay * Math.pow(2, attempt - 1) + Math.random() * 1000; // Add jitter
+          console.log(`Retry attempt ${attempt}/${maxRetries} after ${Math.round(delay)}ms delay...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+        
+        // Make the API request
+        const { data } = await this.octokit.repos.getContent({
+          owner: pathInfo.owner,
+          repo: pathInfo.repo,
+          path: pathInfo.filePath,
+          ref: pathInfo.version === 'HEAD' ? undefined : pathInfo.version
+        });
 
-      // Decode base64 content
-      const content = Buffer.from(data.content, 'base64').toString('utf-8');
-      
-      // Validate content is not empty
-      if (!content || content.trim().length === 0) {
-        throw new Error(`File ${pathInfo.filePath} is empty`);
+        // Validate response is not HTML error page
+        if (typeof data === 'string' && data.includes('<!DOCTYPE html>')) {
+          throw new Error('Received HTML error page instead of JSON response - GitHub API server error');
+        }
+
+        // Decode base64 content
+        const content = Buffer.from(data.content, 'base64').toString('utf-8');
+        
+        // Validate content is not empty
+        if (!content || content.trim().length === 0) {
+          throw new Error(`File ${pathInfo.filePath} is empty`);
+        }
+        
+        // Warn if file is very large
+        if (data.size > 50000) {
+          console.warn(`Warning: ${pathInfo.filePath} is large (${(data.size/1024).toFixed(1)}KB)`);
+        }
+        
+        const result = {
+          content,
+          sha: data.sha,
+          size: data.size,
+          path: pathInfo.filePath,
+          version: pathInfo.version,
+          url: data.html_url
+        };
+        
+        // Cache the result
+        this.contentCache.set(cacheKey, {
+          data: result,
+          timestamp: Date.now()
+        });
+        
+        return result;
+      } catch (error) {
+        lastError = error;
+        
+        // Check if this is a retryable error
+        const isRetryable = this.isRetryableError(error);
+        
+        if (!isRetryable || attempt === maxRetries) {
+          // Not retryable or final attempt - throw the error
+          const errorMsg = `Failed to fetch ${pathInfo.fullPath} after ${attempt + 1} attempts:\n` +
+                          `  Repository: ${pathInfo.owner}/${pathInfo.repo}\n` +
+                          `  File: ${pathInfo.filePath}\n` +
+                          `  Version: ${pathInfo.version}\n` +
+                          `  Error: ${error.message || error.toString()}\n` +
+                          `  HTTP Status: ${error.status || 'unknown'}`;
+          throw new Error(errorMsg);
+        }
+        
+        // Log retry information
+        console.log(`Request failed (attempt ${attempt + 1}/${maxRetries + 1}): ${error.message}`);
+        if (error.status) {
+          console.log(`HTTP Status: ${error.status}`);
+        }
       }
-      
-      // Warn if file is very large
-      if (data.size > 50000) {
-        console.warn(`Warning: ${pathInfo.filePath} is large (${(data.size/1024).toFixed(1)}KB)`);
-      }
-      
-      const result = {
-        content,
-        sha: data.sha,
-        size: data.size,
-        path: pathInfo.filePath,
-        version: pathInfo.version,
-        url: data.html_url
-      };
-      
-      // Cache the result
-      this.contentCache.set(cacheKey, {
-        data: result,
-        timestamp: Date.now()
-      });
-      
-      return result;
-    } catch (error) {
-      // Provide more detailed error information
-      const errorMsg = `Failed to fetch ${pathInfo.fullPath}:\n` +
-                      `  Repository: ${pathInfo.owner}/${pathInfo.repo}\n` +
-                      `  File: ${pathInfo.filePath}\n` +
-                      `  Version: ${pathInfo.version}\n` +
-                      `  Error: ${error.message}`;
-      throw new Error(errorMsg);
     }
+    
+    // Should never reach here, but just in case
+    throw lastError || new Error('Failed to fetch content after all retries');
+  }
+  
+  /**
+   * @method isRetryableError
+   * @description Determines if an error is retryable based on HTTP status codes
+   * @param {Error} error - The error to check
+   * @returns {boolean} Whether the error is retryable
+   * @private
+   */
+  isRetryableError(error) {
+    // Check if error has a status code
+    if (!error.status) {
+      // Network errors, timeouts, etc. are retryable
+      const message = error.message || error.toString();
+      if (message.includes('ECONNRESET') || 
+          message.includes('ETIMEDOUT') || 
+          message.includes('ENOTFOUND') ||
+          message.includes('Network') ||
+          message.includes('HTML error page')) {
+        return true;
+      }
+      return false;
+    }
+    
+    // HTTP status codes that are retryable
+    const retryableStatuses = [
+      408, // Request Timeout
+      429, // Too Many Requests (rate limit)
+      500, // Internal Server Error
+      502, // Bad Gateway
+      503, // Service Unavailable
+      504, // Gateway Timeout
+      520, // Cloudflare: Unknown Error
+      521, // Cloudflare: Web Server Is Down
+      522, // Cloudflare: Connection Timed Out
+      523, // Cloudflare: Origin Is Unreachable
+      524, // Cloudflare: A Timeout Occurred
+    ];
+    
+    return retryableStatuses.includes(error.status);
   }
 
   /**
@@ -603,6 +735,146 @@ class ABTestTool {
   }
 
   /**
+   * @method callClaudeWithRetry
+   * @async
+   * @description Calls Claude API with retry logic and exponential backoff
+   * @param {Object} payload - API request payload
+   * @returns {Promise<Object>} Claude API response
+   * @throws {Error} If all retry attempts fail
+   * @private
+   */
+  async callClaudeWithRetry(payload) {
+    const maxRetries = 3;
+    const baseDelay = 2000; // 2 seconds base delay for Claude API
+    let lastError = null;
+    
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        // If this is a retry, wait with exponential backoff
+        if (attempt > 0) {
+          const delay = baseDelay * Math.pow(2, attempt - 1) + Math.random() * 1000; // Add jitter
+          console.log(`Retrying Claude API call (attempt ${attempt}/${maxRetries}) after ${Math.round(delay)}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+        
+        // Make the API call
+        const response = await this.anthropic.messages.create(payload);
+        
+        // Success - return the response
+        if (attempt > 0) {
+          console.log(`Claude API call succeeded after ${attempt} retries`);
+        }
+        return response;
+        
+      } catch (error) {
+        lastError = error;
+        
+        // Check if this is a retryable error
+        const isRetryable = this.isClaudeErrorRetryable(error);
+        
+        if (!isRetryable || attempt === maxRetries) {
+          // Not retryable or final attempt - throw the error
+          console.error(`Claude API call failed after ${attempt + 1} attempts:`, error.message);
+          throw error;
+        }
+        
+        // Log retry information
+        console.log(`Claude API call failed (attempt ${attempt + 1}/${maxRetries + 1}): ${error.message}`);
+        if (error.status) {
+          console.log(`HTTP Status: ${error.status}`);
+        }
+      }
+    }
+    
+    // Should never reach here, but just in case
+    throw lastError || new Error('Failed to call Claude API after all retries');
+  }
+
+  /**
+   * @method isClaudeErrorRetryable
+   * @description Determines if a Claude API error is retryable
+   * @param {Error} error - The error to check
+   * @returns {boolean} Whether the error is retryable
+   * @private
+   */
+  isClaudeErrorRetryable(error) {
+    // Check error status if available
+    if (error.status) {
+      const retryableStatuses = [
+        408, // Request Timeout
+        429, // Too Many Requests (rate limit)
+        500, // Internal Server Error
+        502, // Bad Gateway
+        503, // Service Unavailable
+        504, // Gateway Timeout
+        520, // Cloudflare errors
+        521,
+        522,
+        523,
+        524,
+      ];
+      
+      if (retryableStatuses.includes(error.status)) {
+        return true;
+      }
+    }
+    
+    // Check error types specific to Anthropic SDK
+    const retryableTypes = [
+      'rate_limit_error',
+      'overloaded_error',
+      'api_error', // General API errors are often transient
+      'timeout_error',
+      'connection_error',
+      'network_error'
+    ];
+    
+    if (error.type && retryableTypes.includes(error.type)) {
+      return true;
+    }
+    
+    // Check error message for known retryable patterns
+    const message = error.message || error.toString();
+    const retryablePatterns = [
+      'ECONNRESET',
+      'ETIMEDOUT',
+      'ENOTFOUND',
+      'ECONNREFUSED',
+      'socket hang up',
+      'Network',
+      'Timeout',
+      'temporarily unavailable',
+      'overloaded',
+      'rate limit',
+      'Too Many Requests',
+      'Service Unavailable'
+    ];
+    
+    for (const pattern of retryablePatterns) {
+      if (message.includes(pattern)) {
+        return true;
+      }
+    }
+    
+    // Non-retryable errors
+    const nonRetryableTypes = [
+      'invalid_request_error', // Bad request - won't get better with retry
+      'authentication_error',  // Auth issues need fixing, not retrying
+      'permission_error',      // Permission issues won't resolve with retry
+      'not_found_error',       // Resource not found
+      'request_too_large',     // Request size issues
+      'invalid_api_key'
+    ];
+    
+    if (error.type && nonRetryableTypes.includes(error.type)) {
+      return false;
+    }
+    
+    // Default to not retrying unknown errors
+    return false;
+  }
+
+  /**
    * Evaluate structural aspects of the prompt
    */
   async evaluateStructure(expertPrompt, promptContent, testContext, iterationCount = 0) {
@@ -639,8 +911,8 @@ class ABTestTool {
       ? `Evaluate this prompt's structure with the following test context:\n\n${promptContent.content}\n\nTest Context Summary:\n${testContext.summary.join('\n')}`
       : `Evaluate this prompt's structure:\n\n${promptContent.content}`;
 
-    const response = await this.anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
+    const response = await this.callClaudeWithRetry({
+      model: 'claude-sonnet-4-20250514',
       max_tokens: 1000,
       messages: [{
         role: 'user',
@@ -689,8 +961,8 @@ Evaluate the prompt for:
       userContent += `\n\nSample test context (${sampleFile.name}):\n${sampleFile.content.substring(0, 500)}...`;
     }
 
-    const response = await this.anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
+    const response = await this.callClaudeWithRetry({
+      model: 'claude-sonnet-4-20250514',
       max_tokens: 1000,
       messages: [{
         role: 'user',
@@ -742,8 +1014,8 @@ Evaluate the prompt for:
       }
     }
 
-    const response = await this.anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
+    const response = await this.callClaudeWithRetry({
+      model: 'claude-sonnet-4-20250514',
       max_tokens: 1000,
       messages: [{
         role: 'user',
@@ -826,8 +1098,8 @@ ${expertPrompt.content}
 
 Provide a detailed comparison of two prompt evaluations.`;
 
-    const response = await this.anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
+    const response = await this.callClaudeWithRetry({
+      model: 'claude-sonnet-4-20250514',
       max_tokens: 1500,
       messages: [{
         role: 'user',
@@ -864,8 +1136,8 @@ ${expertPrompt.content}
 
 You must provide a clear verdict on which prompt version is better.`;
 
-    const response = await this.anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
+    const response = await this.callClaudeWithRetry({
+      model: 'claude-sonnet-4-20250514',
       max_tokens: 1000,
       messages: [{
         role: 'user',

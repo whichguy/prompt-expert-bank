@@ -354,7 +354,7 @@ class PromptExpertSession {
     this.log('api_request', 'CLAUDE API REQUEST - Initial Message', {
       payload: {
         messages: messages,
-        model: 'claude-3-5-sonnet-20241022',
+        model: 'claude-sonnet-4-20250514',
         max_tokens: 4000,
         tools: tools.map(t => ({ name: t.name, description: t.description })),
         tool_choice: { type: 'auto' }
@@ -373,7 +373,7 @@ class PromptExpertSession {
       
       // Log the API request payload for each iteration
       const apiPayload = {
-        model: 'claude-3-5-sonnet-20241022',
+        model: 'claude-sonnet-4-20250514',
         max_tokens: 4000,
         messages: messages,
         tools: tools,
@@ -388,7 +388,8 @@ class PromptExpertSession {
         }
       });
       
-      const response = await anthropic.messages.create(apiPayload);
+      // Call Claude API with retry logic
+      const response = await this.callClaudeWithRetry(anthropic, apiPayload);
       
       // Log the API response
       this.log('api_response', `CLAUDE API RESPONSE - Iteration ${iterations}`, {
@@ -810,6 +811,157 @@ Use your expert tools to examine the changed files and provide detailed analysis
     }
 
     return command.prompt;
+  }
+
+  /**
+   * @method callClaudeWithRetry
+   * @async
+   * @description Calls Claude API with retry logic and exponential backoff
+   * @param {Anthropic} anthropic - Anthropic API client
+   * @param {Object} payload - API request payload
+   * @returns {Promise<Object>} Claude API response
+   * @throws {Error} If all retry attempts fail
+   * @private
+   */
+  async callClaudeWithRetry(anthropic, payload) {
+    const maxRetries = 3;
+    const baseDelay = 2000; // 2 seconds base delay for Claude API
+    let lastError = null;
+    
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        // If this is a retry, wait with exponential backoff
+        if (attempt > 0) {
+          const delay = baseDelay * Math.pow(2, attempt - 1) + Math.random() * 1000; // Add jitter
+          this.log('info', `Retrying Claude API call (attempt ${attempt}/${maxRetries})`, {
+            delay: Math.round(delay),
+            lastError: lastError?.message || 'Unknown error'
+          });
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+        
+        // Make the API call
+        const response = await anthropic.messages.create(payload);
+        
+        // Success - return the response
+        if (attempt > 0) {
+          this.log('info', `Claude API call succeeded after ${attempt} retries`);
+        }
+        return response;
+        
+      } catch (error) {
+        lastError = error;
+        
+        // Check if this is a retryable error
+        const isRetryable = this.isClaudeErrorRetryable(error);
+        
+        if (!isRetryable || attempt === maxRetries) {
+          // Not retryable or final attempt - throw the error
+          this.log('error', `Claude API call failed after ${attempt + 1} attempts`, {
+            error: error.message,
+            errorType: error.type || 'unknown',
+            statusCode: error.status || 'unknown',
+            headers: error.headers || {}
+          });
+          throw error;
+        }
+        
+        // Log retry information
+        this.log('warn', `Claude API call failed (attempt ${attempt + 1}/${maxRetries + 1})`, {
+          error: error.message,
+          errorType: error.type || 'unknown',
+          statusCode: error.status || 'unknown',
+          willRetry: true
+        });
+      }
+    }
+    
+    // Should never reach here, but just in case
+    throw lastError || new Error('Failed to call Claude API after all retries');
+  }
+
+  /**
+   * @method isClaudeErrorRetryable
+   * @description Determines if a Claude API error is retryable
+   * @param {Error} error - The error to check
+   * @returns {boolean} Whether the error is retryable
+   * @private
+   */
+  isClaudeErrorRetryable(error) {
+    // Check error status if available
+    if (error.status) {
+      const retryableStatuses = [
+        408, // Request Timeout
+        429, // Too Many Requests (rate limit)
+        500, // Internal Server Error
+        502, // Bad Gateway
+        503, // Service Unavailable
+        504, // Gateway Timeout
+        520, // Cloudflare errors
+        521,
+        522,
+        523,
+        524,
+      ];
+      
+      if (retryableStatuses.includes(error.status)) {
+        return true;
+      }
+    }
+    
+    // Check error types specific to Anthropic SDK
+    const retryableTypes = [
+      'rate_limit_error',
+      'overloaded_error',
+      'api_error', // General API errors are often transient
+      'timeout_error',
+      'connection_error',
+      'network_error'
+    ];
+    
+    if (error.type && retryableTypes.includes(error.type)) {
+      return true;
+    }
+    
+    // Check error message for known retryable patterns
+    const message = error.message || error.toString();
+    const retryablePatterns = [
+      'ECONNRESET',
+      'ETIMEDOUT',
+      'ENOTFOUND',
+      'ECONNREFUSED',
+      'socket hang up',
+      'Network',
+      'Timeout',
+      'temporarily unavailable',
+      'overloaded',
+      'rate limit',
+      'Too Many Requests',
+      'Service Unavailable'
+    ];
+    
+    for (const pattern of retryablePatterns) {
+      if (message.includes(pattern)) {
+        return true;
+      }
+    }
+    
+    // Non-retryable errors
+    const nonRetryableTypes = [
+      'invalid_request_error', // Bad request - won't get better with retry
+      'authentication_error',  // Auth issues need fixing, not retrying
+      'permission_error',      // Permission issues won't resolve with retry
+      'not_found_error',       // Resource not found
+      'request_too_large',     // Request size issues
+      'invalid_api_key'
+    ];
+    
+    if (error.type && nonRetryableTypes.includes(error.type)) {
+      return false;
+    }
+    
+    // Default to not retrying unknown errors
+    return false;
   }
 
   /**

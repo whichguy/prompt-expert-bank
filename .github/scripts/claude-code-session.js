@@ -77,7 +77,7 @@ async function main() {
 
     // Create Claude conversation
     const response = await anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
+      model: 'claude-sonnet-4-20250514',
       max_tokens: 8000,
       messages: [
         {
@@ -246,7 +246,7 @@ async function processClaudeResponse(response, executor, anthropic, context, log
     // Send tool results back to Claude
     if (toolResults.length > 0) {
       currentResponse = await anthropic.messages.create({
-        model: 'claude-3-5-sonnet-20241022',
+        model: 'claude-sonnet-4-20250514',
         max_tokens: 8000,
         messages: messages,
         tools: tools,

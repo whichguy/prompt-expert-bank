@@ -135,7 +135,7 @@ async function evaluate() {
         
         // Thread A: Evaluate current prompt
         const threadA = await anthropic.messages.create({
-          model: 'claude-3-5-sonnet-20241022',
+          model: 'claude-sonnet-4-20250514',
           max_tokens: 4000,
           messages: [{
             role: 'user',
@@ -145,7 +145,7 @@ async function evaluate() {
         
         // Thread B: Evaluate new prompt  
         const threadB = await anthropic.messages.create({
-          model: 'claude-3-5-sonnet-20241022',
+          model: 'claude-sonnet-4-20250514',
           max_tokens: 4000,
           messages: [{
             role: 'user',
@@ -163,7 +163,7 @@ ${improvementCycles >= 3 ? '- Consider approving if the prompt is reasonably goo
 ` : '';
 
         const comparison = await anthropic.messages.create({
-          model: 'claude-3-5-sonnet-20241022',
+          model: 'claude-sonnet-4-20250514',
           max_tokens: 4000,
           messages: [{
             role: 'user',
