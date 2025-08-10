@@ -60,6 +60,9 @@ async function main() {
     // Load valid files
     const validFileContents = fileValidator.loadFiles(validation);
     console.log(`[DEBUG] Loaded ${Object.keys(validFileContents).length} files`);
+    for (const [file, content] of Object.entries(validFileContents)) {
+      console.log(`[DEBUG] File ${file}: ${content.length} chars`);
+    }
 
     // Build context
     let context = '';
