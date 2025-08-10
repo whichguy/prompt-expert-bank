@@ -52,10 +52,14 @@ class PromptExpertSession {
     this.repoOwner = repoOwner || 'unknown';
     this.repoName = repoName || 'unknown';
     
-    // Thread-safe logging with session isolation
+    // Thread-safe logging with session isolation and improved formatting
     this.log = (level, message, data = {}) => {
+      const timestamp = new Date().toISOString();
+      const sessionShort = this.sessionId.split('-').pop();
+      
+      // Create structured log entry
       const logEntry = {
-        timestamp: new Date().toISOString(),
+        timestamp,
         level,
         message,
         sessionId: this.sessionId,
@@ -68,8 +72,31 @@ class PromptExpertSession {
         ...data
       };
       
-      // Clear session identification in logs
-      console.log(`[${this.sessionId}] ${JSON.stringify(logEntry)}`);
+      // Format for better readability based on log level
+      if (level === 'api_request' || level === 'api_response') {
+        // Special formatting for API calls
+        console.log(`\n${'='.repeat(80)}`);
+        console.log(`[${timestamp}] [${sessionShort}] ${message}`);
+        console.log(`${'='.repeat(80)}`);
+        if (data.payload) {
+          console.log('PAYLOAD:', JSON.stringify(data.payload, null, 2));
+        }
+        if (data.response) {
+          console.log('RESPONSE:', JSON.stringify(data.response, null, 2));
+        }
+        console.log(`${'='.repeat(80)}\n`);
+      } else if (level === 'tool_call' || level === 'tool_response') {
+        // Special formatting for tool calls
+        console.log(`\n[${timestamp}] [${sessionShort}] ${'-'.repeat(60)}`);
+        console.log(`TOOL ${level === 'tool_call' ? 'CALL' : 'RESPONSE'}: ${message}`);
+        if (data.tool) console.log(`  Tool: ${data.tool}`);
+        if (data.input) console.log(`  Input: ${JSON.stringify(data.input, null, 2)}`);
+        if (data.result) console.log(`  Result: ${JSON.stringify(data.result, null, 2)}`);
+        console.log(`${'-'.repeat(60)}\n`);
+      } else {
+        // Standard JSON logging for other messages
+        console.log(`[${this.sessionId}] ${JSON.stringify(logEntry)}`);
+      }
     };
     
     // Basic metrics
@@ -306,18 +333,33 @@ class PromptExpertSession {
     const systemMessage = this.buildSystemMessage(context, command);
     const userMessage = this.buildUserMessage(command, context);
     
-    this.log('info', '🎯 CLAUDE CONTEXT:', {
-      systemMessage: systemMessage.substring(0, 500) + (systemMessage.length > 500 ? '...' : ''),
-      userRequest: command.prompt,
+    // Log the complete initial prompts before sending
+    this.log('info', '📝 INITIAL PROMPTS PREPARED:', {
+      systemMessageLength: systemMessage.length,
+      userMessageLength: userMessage.length,
+      fullSystemMessage: systemMessage,
+      fullUserMessage: userMessage,
       mode: command.mode,
       role: command.role || 'default',
       availableTools: tools.map(t => t.name).join(', ')
     });
     
     // Start conversation
+    const initialContent = `${systemMessage}\n\n${userMessage}`;
     let messages = [
-      { role: 'user', content: `${systemMessage}\n\n${userMessage}` }
+      { role: 'user', content: initialContent }
     ];
+    
+    // Log the exact message being sent to Claude
+    this.log('api_request', 'CLAUDE API REQUEST - Initial Message', {
+      payload: {
+        messages: messages,
+        model: 'claude-3-5-sonnet-20241022',
+        max_tokens: 4000,
+        tools: tools.map(t => ({ name: t.name, description: t.description })),
+        tool_choice: { type: 'auto' }
+      }
+    });
     
     let iterations = 0;
     const maxIterations = 10;
@@ -329,32 +371,38 @@ class PromptExpertSession {
     while (iterations < maxIterations) {
       iterations++;
       
-      this.log('info', `🔄 ITERATION ${iterations}: Sending request to Claude`, {
-        messageCount: messages.length,
-        toolsAvailable: tools.length
-      });
-      
-      const response = await anthropic.messages.create({
+      // Log the API request payload for each iteration
+      const apiPayload = {
         model: 'claude-3-5-sonnet-20241022',
         max_tokens: 4000,
         messages: messages,
         tools: tools,
         tool_choice: { type: 'auto' }
+      };
+      
+      this.log('api_request', `CLAUDE API REQUEST - Iteration ${iterations}`, {
+        payload: {
+          messageCount: messages.length,
+          toolsAvailable: tools.length,
+          lastMessage: messages[messages.length - 1]
+        }
+      });
+      
+      const response = await anthropic.messages.create(apiPayload);
+      
+      // Log the API response
+      this.log('api_response', `CLAUDE API RESPONSE - Iteration ${iterations}`, {
+        response: {
+          id: response.id,
+          model: response.model,
+          stop_reason: response.stop_reason,
+          usage: response.usage,
+          content_preview: response.content.slice(0, 2) // First 2 content blocks
+        }
       });
       
       // Check for tool use
       const toolUses = response.content.filter(c => c.type === 'tool_use');
-      
-      this.log('info', `📝 ASSISTANT RESPONSE:`, {
-        iteration: iterations,
-        hasTools: toolUses.length > 0,
-        toolCount: toolUses.length,
-        toolsRequested: toolUses.map(t => t.name).join(', '),
-        responsePreview: response.content
-          .filter(c => c.type === 'text')
-          .map(c => c.text.substring(0, 200))
-          .join('')
-      });
       
       if (toolUses.length === 0) {
         // No tools, get final response
@@ -365,38 +413,38 @@ class PromptExpertSession {
         
         this.log('info', '✅ FINAL RESPONSE GENERATED', {
           responseLength: textContent.length,
-          totalIterations: iterations
+          totalIterations: iterations,
+          finalText: textContent.substring(0, 500) + (textContent.length > 500 ? '...' : '')
         });
         
         results.response = textContent;
         break;
       }
       
-      this.log('info', '🔧 TOOLING REQUESTS:', {
-        iteration: iterations,
-        tools: toolUses.map(t => ({
-          name: t.name,
-          id: t.id,
-          input: Object.keys(t.input || {}).join(', ')
-        }))
-      });
+      // Log each tool request individually
+      for (const tool of toolUses) {
+        this.log('tool_call', `${tool.name}`, {
+          tool: tool.name,
+          id: tool.id,
+          input: tool.input,
+          iteration: iterations
+        });
+      }
       
       // Execute tools
       const toolResults = await this.executeTools(toolUses, context, octokit);
       results.toolCalls.push(...toolResults);
       
-      this.log('info', '⚙️ TOOLING RESPONSES:', {
-        iteration: iterations,
-        results: toolResults.map(r => ({
-          tool: r.name,
-          id: r.id,
-          success: !r.result.error,
-          resultSummary: r.result.error ? `ERROR: ${r.result.error}` : 
-            (typeof r.result === 'object' ? 
-              `${Object.keys(r.result).join(', ')}` : 
-              `${String(r.result).substring(0, 100)}`)
-        }))
-      });
+      // Log each tool response individually
+      for (const result of toolResults) {
+        this.log('tool_response', `${result.name}`, {
+          tool: result.name,
+          id: result.id,
+          success: !result.result.error,
+          result: result.result,
+          iteration: iterations
+        });
+      }
       
       // Add to conversation
       messages.push({
