@@ -20,7 +20,7 @@ const { ABTestTool } = require('./lib/ABTestTool');
 
 class ClaudeCodeSession {
   constructor() {
-    this.sessionId = `session-${Date.now()}`;
+    this.sessionId = `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     this.startTime = Date.now();
     
     // Parse repository info once
@@ -28,15 +28,24 @@ class ClaudeCodeSession {
     this.repoOwner = repoOwner || 'unknown';
     this.repoName = repoName || 'unknown';
     
-    // Simple logging
+    // Thread-safe logging with session isolation
     this.log = (level, message, data = {}) => {
-      console.log(JSON.stringify({
+      const logEntry = {
         timestamp: new Date().toISOString(),
         level,
         message,
         sessionId: this.sessionId,
+        repository: process.env.GITHUB_REPOSITORY,
+        pr: process.env.PR_NUMBER || 'none',
+        issue: process.env.ISSUE_NUMBER || 'none',
+        actor: process.env.GITHUB_ACTOR,
+        runId: process.env.GITHUB_RUN_ID,
+        threadContext: `${this.sessionId}`,
         ...data
-      }));
+      };
+      
+      // Clear session identification in logs
+      console.log(`[${this.sessionId}] ${JSON.stringify(logEntry)}`);
     };
     
     // Basic metrics
@@ -58,7 +67,17 @@ class ClaudeCodeSession {
    */
   async run() {
     try {
-      this.log('info', '🚀 Starting Claude Code session');
+      this.log('info', '🚀 Starting Claude Code session', {
+        conversationThread: this.sessionId,
+        startTime: new Date().toISOString(),
+        githubContext: {
+          repository: process.env.GITHUB_REPOSITORY,
+          pr: process.env.PR_NUMBER,
+          issue: process.env.ISSUE_NUMBER,
+          actor: process.env.GITHUB_ACTOR,
+          event: process.env.GITHUB_EVENT_NAME
+        }
+      });
       
       // Validate environment
       this.validateEnvironment();
@@ -114,9 +133,12 @@ class ClaudeCodeSession {
       await this.postResults(context, result, octokit);
       
       this.log('info', '✅ Session completed', {
+        conversationThread: this.sessionId,
         duration: Date.now() - this.startTime,
         toolCalls: this.metrics.toolCalls,
-        errors: this.metrics.errors
+        errors: this.metrics.errors,
+        endTime: new Date().toISOString(),
+        sessionSummary: `Session ${this.sessionId} processed ${this.metrics.toolCalls} tool calls with ${this.metrics.errors} errors in ${Date.now() - this.startTime}ms`
       });
       
       process.exit(0);
@@ -240,6 +262,14 @@ class ClaudeCodeSession {
     const systemMessage = this.buildSystemMessage(context, command);
     const userMessage = this.buildUserMessage(command, context);
     
+    this.log('info', '🎯 CLAUDE CONTEXT:', {
+      systemMessage: systemMessage.substring(0, 500) + (systemMessage.length > 500 ? '...' : ''),
+      userRequest: command.prompt,
+      mode: command.mode,
+      role: command.role || 'default',
+      availableTools: tools.map(t => t.name).join(', ')
+    });
+    
     // Start conversation
     let messages = [
       { role: 'user', content: `${systemMessage}\n\n${userMessage}` }
@@ -255,6 +285,11 @@ class ClaudeCodeSession {
     while (iterations < maxIterations) {
       iterations++;
       
+      this.log('info', `🔄 ITERATION ${iterations}: Sending request to Claude`, {
+        messageCount: messages.length,
+        toolsAvailable: tools.length
+      });
+      
       const response = await anthropic.messages.create({
         model: 'claude-3-5-sonnet-20241022',
         max_tokens: 4000,
@@ -266,6 +301,17 @@ class ClaudeCodeSession {
       // Check for tool use
       const toolUses = response.content.filter(c => c.type === 'tool_use');
       
+      this.log('info', `📝 ASSISTANT RESPONSE:`, {
+        iteration: iterations,
+        hasTools: toolUses.length > 0,
+        toolCount: toolUses.length,
+        toolsRequested: toolUses.map(t => t.name).join(', '),
+        responsePreview: response.content
+          .filter(c => c.type === 'text')
+          .map(c => c.text.substring(0, 200))
+          .join('')
+      });
+      
       if (toolUses.length === 0) {
         // No tools, get final response
         const textContent = response.content
@@ -273,13 +319,40 @@ class ClaudeCodeSession {
           .map(c => c.text)
           .join('\n');
         
+        this.log('info', '✅ FINAL RESPONSE GENERATED', {
+          responseLength: textContent.length,
+          totalIterations: iterations
+        });
+        
         results.response = textContent;
         break;
       }
       
+      this.log('info', '🔧 TOOLING REQUESTS:', {
+        iteration: iterations,
+        tools: toolUses.map(t => ({
+          name: t.name,
+          id: t.id,
+          input: Object.keys(t.input || {}).join(', ')
+        }))
+      });
+      
       // Execute tools
       const toolResults = await this.executeTools(toolUses, context, octokit);
       results.toolCalls.push(...toolResults);
+      
+      this.log('info', '⚙️ TOOLING RESPONSES:', {
+        iteration: iterations,
+        results: toolResults.map(r => ({
+          tool: r.name,
+          id: r.id,
+          success: !r.result.error,
+          resultSummary: r.result.error ? `ERROR: ${r.result.error}` : 
+            (typeof r.result === 'object' ? 
+              `${Object.keys(r.result).join(', ')}` : 
+              `${String(r.result).substring(0, 100)}`)
+        }))
+      });
       
       // Add to conversation
       messages.push({

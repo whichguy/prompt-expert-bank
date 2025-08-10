@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 GitHub Discussions
+    url: https://github.com/whichguy/prompt-expert-bank/discussions
+    about: Ask questions, share ideas, and discuss prompt engineering techniques
+  - name: 📖 Documentation
+    url: https://github.com/whichguy/prompt-expert-bank/blob/main/README.md
+    about: Read the documentation and guides for using Prompt Expert Bank
+  - name: 🔒 Security Issues
+    url: https://github.com/whichguy/prompt-expert-bank/blob/main/.github/SECURITY.md
+    about: Report security vulnerabilities privately following our security policy

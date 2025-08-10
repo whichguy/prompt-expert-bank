@@ -1,0 +1,147 @@
+name: 🚀 Feature Request
+description: Suggest a new feature or enhancement for Prompt Expert Bank
+title: "[FEATURE]: "
+labels: ["enhancement", "needs-triage"]
+assignees: ["jameswiese"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a new feature! Please provide as much detail as possible to help us understand your request.
+
+  - type: textarea
+    id: problem-statement
+    attributes:
+      label: Problem Statement
+      description: What problem are you trying to solve? What pain point does this address?
+      placeholder: "Currently, I need to... but there's no way to..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed-solution
+    attributes:
+      label: Proposed Solution
+      description: Describe your ideal solution to this problem.
+      placeholder: "I would like to see... that allows me to..."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: feature-category
+    attributes:
+      label: Feature Category
+      description: What category does this feature fall into?
+      options:
+        - Expert Definitions
+        - GitHub Actions/Workflows
+        - A/B Testing Framework
+        - Prompt Templates
+        - API/Integration
+        - Documentation
+        - Testing/Quality
+        - UI/UX
+        - Performance
+        - Security
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority-level
+    attributes:
+      label: Priority Level
+      description: How important is this feature to you?
+      options:
+        - Critical - Blocking current work
+        - High - Would significantly improve workflow
+        - Medium - Would be nice to have
+        - Low - Minor improvement
+    validations:
+      required: true
+
+  - type: textarea
+    id: use-cases
+    attributes:
+      label: Use Cases
+      description: Provide specific examples of how this feature would be used
+      placeholder: |
+        1. When working on [scenario], I would use this to...
+        2. For [use case], this would help by...
+        3. In [situation], this feature would allow...
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternative-solutions
+    attributes:
+      label: Alternative Solutions
+      description: Have you considered other approaches? What alternatives exist?
+      placeholder: "I've also considered... but this doesn't work because..."
+    validations:
+      required: false
+
+  - type: textarea
+    id: implementation-ideas
+    attributes:
+      label: Implementation Ideas
+      description: Do you have any thoughts on how this could be implemented?
+      placeholder: "This could potentially be implemented by..."
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: feature-scope
+    attributes:
+      label: Feature Scope
+      description: Check all that apply to this feature request
+      options:
+        - label: This would require new expert definitions
+        - label: This would modify existing GitHub Actions
+        - label: This would need new documentation
+        - label: This might affect backward compatibility
+        - label: This requires external API integrations
+        - label: This is related to security/privacy concerns
+
+  - type: textarea
+    id: mockups-examples
+    attributes:
+      label: Mockups or Examples
+      description: Include any mockups, examples, or references that illustrate your idea
+      placeholder: "You can attach images or provide links to similar implementations..."
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: contribution-willingness
+    attributes:
+      label: Contribution
+      description: Are you willing to help implement this feature?
+      options:
+        - label: I would be willing to contribute to the implementation
+        - label: I can help with testing once implemented
+        - label: I can provide detailed requirements and feedback
+        - label: I can help with documentation
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Pre-submission Checklist
+      description: Please confirm the following before submitting
+      options:
+        - label: I have searched existing issues to ensure this is not a duplicate
+          required: true
+        - label: I have provided a clear problem statement and proposed solution
+          required: true
+        - label: This is a feature request, not a bug report or question
+          required: true
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: Add any other context, screenshots, or information about the feature request
+      placeholder: "Any other information that would help understand this request..."
+    validations:
+      required: false

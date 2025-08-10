@@ -1,0 +1,221 @@
+name: 👨‍💻 Expert Addition
+description: Propose a new expert definition for Prompt Expert Bank
+title: "[EXPERT]: "
+labels: ["expert-definition", "needs-review"]
+assignees: ["jameswiese"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for proposing a new expert! Expert definitions are the core of Prompt Expert Bank. Please provide comprehensive details about your proposed expert.
+
+  - type: input
+    id: expert-name
+    attributes:
+      label: Expert Name
+      description: What should this expert be called?
+      placeholder: "e.g., Security Analyst, Code Reviewer, Database Architect"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: domain-category
+    attributes:
+      label: Domain Category
+      description: Which category does this expert fit into?
+      options:
+        - Software Development
+        - Security & Privacy
+        - Data & Analytics
+        - DevOps & Infrastructure
+        - AI & Machine Learning
+        - Design & UX
+        - Business & Strategy
+        - Content & Writing
+        - Testing & QA
+        - Architecture & Systems
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: expert-description
+    attributes:
+      label: Expert Description
+      description: Provide a comprehensive description of this expert's role and capabilities
+      placeholder: |
+        This expert specializes in...
+        They are capable of...
+        Their primary focus is...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expertise-areas
+    attributes:
+      label: Expertise Areas
+      description: List the specific areas of expertise (one per line)
+      placeholder: |
+        - Primary skill area
+        - Secondary skill area
+        - Specialized technique
+        - Domain knowledge
+    validations:
+      required: true
+
+  - type: textarea
+    id: use-cases
+    attributes:
+      label: Primary Use Cases
+      description: What are the main scenarios where this expert would be valuable?
+      placeholder: |
+        1. When analyzing...
+        2. For reviewing...
+        3. To help with...
+        4. During the process of...
+    validations:
+      required: true
+
+  - type: textarea
+    id: prompt-template
+    attributes:
+      label: Initial Prompt Template
+      description: Provide a draft prompt template for this expert
+      placeholder: |
+        You are a [Expert Name] with extensive experience in [domain].
+        
+        Your primary responsibilities include:
+        - [Responsibility 1]
+        - [Responsibility 2]
+        
+        When analyzing [subject matter], you should:
+        1. [Step 1]
+        2. [Step 2]
+        
+        Please provide your analysis in the following format:
+        [Output format]
+    validations:
+      required: true
+
+  - type: textarea
+    id: example-scenarios
+    attributes:
+      label: Example Scenarios
+      description: Provide 2-3 specific examples of how this expert would be used
+      placeholder: |
+        **Scenario 1: [Title]**
+        Input: [Example input]
+        Expected Output: [Expected analysis/response]
+        
+        **Scenario 2: [Title]**
+        Input: [Example input]
+        Expected Output: [Expected analysis/response]
+    validations:
+      required: true
+
+  - type: textarea
+    id: limitations
+    attributes:
+      label: Known Limitations
+      description: What are the boundaries and limitations of this expert?
+      placeholder: |
+        - Cannot perform [specific task]
+        - Limited to [specific scope]
+        - Requires [specific input type]
+        - Not suitable for [specific scenarios]
+    validations:
+      required: true
+
+  - type: textarea
+    id: quality-criteria
+    attributes:
+      label: Success/Quality Criteria
+      description: How would you measure the quality of this expert's outputs?
+      placeholder: |
+        - Accuracy of [specific aspect]
+        - Completeness of [specific analysis]
+        - Relevance to [specific context]
+        - Adherence to [specific standards]
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: expert-characteristics
+    attributes:
+      label: Expert Characteristics
+      description: Check all that apply to this expert
+      options:
+        - label: Requires technical/domain-specific knowledge
+        - label: Involves security or privacy considerations
+        - label: Needs access to external resources/APIs
+        - label: Produces structured/formatted output
+        - label: Requires iterative analysis
+        - label: Involves subjective judgment
+        - label: Needs real-time information
+        - label: Requires specialized tools/frameworks knowledge
+
+  - type: textarea
+    id: testing-approach
+    attributes:
+      label: Testing and Validation Approach
+      description: How should this expert be tested and validated?
+      placeholder: |
+        - Test with [specific types of inputs]
+        - Validate against [specific criteria]
+        - Compare with [existing tools/experts]
+        - Measure [specific metrics]
+    validations:
+      required: false
+
+  - type: textarea
+    id: related-experts
+    attributes:
+      label: Related Experts
+      description: Are there existing experts that this would complement or potentially conflict with?
+      placeholder: |
+        - Complements: [Expert Name] by providing...
+        - Differs from: [Expert Name] in that...
+        - Could work together with: [Expert Name] for...
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: contribution-commitment
+    attributes:
+      label: Contribution Commitment
+      description: What level of involvement are you committing to?
+      options:
+        - label: I will create the complete expert definition file
+        - label: I will help test and refine the expert
+        - label: I will provide ongoing feedback and improvements
+        - label: I will help create documentation and examples
+        - label: I will maintain this expert long-term
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Pre-submission Checklist
+      description: Please confirm the following before submitting
+      options:
+        - label: I have searched existing experts to ensure this is not a duplicate
+          required: true
+        - label: I have provided comprehensive details above
+          required: true
+        - label: I understand the expert will be reviewed before acceptance
+          required: true
+        - label: I have read the Contributing Guidelines
+          required: true
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: Any other information, references, or context that would be helpful
+      placeholder: |
+        - Links to similar tools or resources
+        - Academic papers or industry standards
+        - Personal experience or credentials in this domain
+        - Timeline considerations or urgency
+    validations:
+      required: false

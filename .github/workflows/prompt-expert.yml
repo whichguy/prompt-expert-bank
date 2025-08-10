@@ -33,10 +33,11 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
           sparse-checkout: |
-            scripts
+            .github
             templates
             experts
             package.json
+            *.md
           sparse-checkout-cone-mode: false
 
       - name: Setup Node.js
@@ -46,7 +47,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          cd scripts
+          cd .github/scripts
           npm install @anthropic-ai/sdk @octokit/rest
 
       - name: Get PR/Issue context
@@ -100,7 +101,7 @@ jobs:
       - name: Run Claude Code Session
         id: claude
         run: |
-          node scripts/claude-code-session-simplified.js
+          node .github/scripts/claude-code-session-simplified.js
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -153,10 +154,11 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.ref }}
           sparse-checkout: |
-            scripts
+            .github
             templates
             experts
             package.json
+            *.md
           sparse-checkout-cone-mode: false
 
       - name: Check for prompt changes
@@ -183,7 +185,7 @@ jobs:
       - name: Install dependencies
         if: env.PROMPTS_CHANGED == 'true'
         run: |
-          cd scripts
+          cd .github/scripts
           npm install @anthropic-ai/sdk @octokit/rest
 
       - name: Run automatic prompt evaluation
@@ -191,7 +193,7 @@ jobs:
         run: |
           # Auto-invoke prompt expert evaluation
           export COMMENT_BODY="@prompt-expert programming evaluate all prompt changes in this PR"
-          node scripts/claude-code-session-simplified.js
+          node .github/scripts/claude-code-session-simplified.js
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
