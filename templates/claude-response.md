@@ -78,7 +78,9 @@ This workflow can be triggered by multiple GitHub events. **Context gathering mu
 - **Automatic Evaluation**: Change detection, baseline vs improved analysis
 
 ### GitHub Event Information
+```
 {{GITHUB_CONTEXT}}
+```
 
 ### User's Request
 ```
@@ -95,7 +97,9 @@ This workflow can be triggered by multiple GitHub events. **Context gathering mu
 ## Pull Request File Analysis
 
 **Files from Current PR:**
+```
 {{PR_FILE_CONTENTS}}
+```
 
 **PR Context Analysis Required:**
 - Identify the nature of changes (feature, bug fix, refactor, etc.)
@@ -110,7 +114,9 @@ This workflow can be triggered by multiple GitHub events. **Context gathering mu
 ## Repository Files Loaded
 
 **Requested Files Successfully Loaded:**
+```
 {{REQUESTED_FILE_CONTENTS}}
+```
 
 **File Analysis Framework:**
 - **Content Assessment**: Analyze file contents for patterns, structure, quality
@@ -123,7 +129,9 @@ This workflow can be triggered by multiple GitHub events. **Context gathering mu
 {{#if FILE_VALIDATION_REPORT}}
 ## File Path Validation & Suggestions
 
+```
 {{FILE_VALIDATION_REPORT}}
+```
 
 **Path Resolution Strategy:**
 - Invalid paths have been identified and alternatives suggested
