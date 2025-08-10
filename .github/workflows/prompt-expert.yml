@@ -32,6 +32,7 @@ jobs:
             templates/
             package.json
             README.md
+            action.yml
           sparse-checkout-cone-mode: false
 
       - name: Setup Node.js
