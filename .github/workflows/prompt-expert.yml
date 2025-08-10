@@ -94,14 +94,20 @@ jobs:
 
       - name: Run Prompt Expert Session
         id: claude
-        uses: ./
-        with:
-          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          comment-body: ${{ env.COMMENT_BODY }}
-          repository: ${{ github.repository }}
-          pr-number: ${{ env.PR_NUMBER }}
-          issue-number: ${{ env.ISSUE_NUMBER }}
+        run: node src/scripts/prompt-expert-session.js
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_WORKSPACE: ${{ github.workspace }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          PR_NUMBER: ${{ env.PR_NUMBER }}
+          COMMENT_ID: ${{ env.COMMENT_ID }}
+          IS_PR: ${{ env.IS_PR }}
+          ISSUE_NUMBER: ${{ env.ISSUE_NUMBER }}
+          COMMENT_BODY: ${{ env.COMMENT_BODY }}
 
       - name: Handle errors
         if: failure()
