@@ -1,0 +1,32 @@
+# Global ownership
+* @jameswiese
+
+# GitHub workflows and actions
+/.github/workflows/ @jameswiese
+/.github/scripts/ @jameswiese
+
+# Expert definitions - require expert review
+/experts/ @jameswiese
+
+# Templates and prompts
+/templates/ @jameswiese
+/prompts/ @jameswiese
+
+# Core scripts and functionality
+# (Consolidated into .github/scripts/)
+
+# Documentation
+/docs/ @jameswiese
+*.md @jameswiese
+
+# Security and configuration files
+/.github/SECURITY.md @jameswiese
+/CONTRIBUTING.md @jameswiese
+/LICENSE @jameswiese
+
+# Test files
+/tests/ @jameswiese
+
+# Package and configuration files
+package*.json @jameswiese
+/.github/dependabot.yml @jameswiese

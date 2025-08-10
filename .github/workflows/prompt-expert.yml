@@ -101,7 +101,7 @@ jobs:
       - name: Run Claude Code Session
         id: claude
         run: |
-          node scripts/claude-code-session-simplified.js
+          node .github/scripts/claude-code-session-simplified.js
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -193,7 +193,7 @@ jobs:
         run: |
           # Auto-invoke prompt expert evaluation
           export COMMENT_BODY="@prompt-expert programming evaluate all prompt changes in this PR"
-          node scripts/claude-code-session-simplified.js
+          node .github/scripts/claude-code-session-simplified.js
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
