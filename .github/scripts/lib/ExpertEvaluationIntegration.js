@@ -164,7 +164,7 @@ class ExpertEvaluationIntegration {
         const { data } = await this.octokit.repos.getContent({
           owner: this.repoOwner,
           repo: this.repoName,
-          path: `expert-definitions/${domain}-expert.md`,
+          path: `experts/${domain}-expert.md`,
           ref: 'main' // Use main branch for stable expert definitions
         });
         expertDefinition = Buffer.from(data.content, 'base64').toString('utf8');

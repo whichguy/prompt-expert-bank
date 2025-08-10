@@ -38,9 +38,9 @@ class ABTestTool {
    * @param {string} pathToExpertPromptDefinition - GitHub path to expert definition file
    *   Format: "path/in/repo/file.md" (fetched from current repo context)
    *   OR: "owner/repo:path/to/file.md" (fetched from specified repo)
-   *   Default experts available at: whichguy/prompt-expert-bank/expert-definitions/
-   *   Example: "expert-definitions/programming-expert.md" fetches from current repo
-   *   Example: "whichguy/prompt-expert-bank:expert-definitions/programming-expert.md" explicit repo
+   *   Default experts available at: whichguy/prompt-expert-bank/experts/
+   *   Example: "experts/programming-expert.md" fetches from current repo
+   *   Example: "whichguy/prompt-expert-bank:experts/programming-expert.md" explicit repo
    * @param {string} pathToPromptA - GitHub path to baseline prompt (fetched via API)
    *   Format: "path/to/file.md@ref" where ref = branch/tag/commit
    *   Example: "prompts/code-reviewer.md@main" fetches from main branch
@@ -1046,11 +1046,11 @@ Compare two versions of a prompt to determine which performs better according to
 IMPORTANT: All paths are GitHub repository paths fetched via GitHub API, not local filesystem paths.
 
 EXPERT DEFINITIONS:
-Default experts repository: whichguy/prompt-expert-bank/expert-definitions/
-Browse available: https://github.com/whichguy/prompt-expert-bank/tree/main/expert-definitions
+Default experts repository: whichguy/prompt-expert-bank/experts/
+Browse available: https://github.com/whichguy/prompt-expert-bank/tree/main/experts
 
-To use an expert from current repo: "expert-definitions/[filename].md"
-To use from specific repo: "whichguy/prompt-expert-bank:expert-definitions/[filename].md"
+To use an expert from current repo: "experts/[filename].md"
+To use from specific repo: "whichguy/prompt-expert-bank:experts/[filename].md"
 Files are fetched using GitHub API (same as 'gh api repos/{owner}/{repo}/contents/{path}')
 
 KEY FEATURES:
@@ -1084,15 +1084,15 @@ VERSION FORMATS:
 
 HOW TO SPECIFY EXPERTS:
 AVAILABLE EXPERTS:
-• Browse at: https://github.com/whichguy/prompt-expert-bank/tree/main/expert-definitions
-• Path format: "expert-definitions/[filename].md"
+• Browse at: https://github.com/whichguy/prompt-expert-bank/tree/main/experts
+• Path format: "experts/[filename].md"
 • Custom experts: "path/to/custom-expert.md" or "owner/repo:path/to/expert.md"
 
 REAL EXAMPLES WITH CORRECT PATHS:
 
 Example 1 - Code Review PR Testing:
 {
-  pathToExpertPromptDefinition: "expert-definitions/programming-expert.md",
+  pathToExpertPromptDefinition: "experts/programming-expert.md",
   pathToPromptA: "prompts/code-reviewer.md@main",
   pathToPromptB: "prompts/code-reviewer.md",
   testContextPaths: ["test-scenarios/"]
@@ -1101,7 +1101,7 @@ Expected: Compare main branch with PR changes
 
 Example 2 - Security Prompt Enhancement:
 {
-  pathToExpertPromptDefinition: "expert-definitions/security-expert.md",
+  pathToExpertPromptDefinition: "experts/security-expert.md",
   pathToPromptA: "prompts/security-scanner.md@v1.0",
   pathToPromptB: "prompts/security-scanner.md@v2.0",  
   testContextPaths: ["test-scenarios/security/"]
@@ -1110,7 +1110,7 @@ Expected: Validate security improvements between versions
 
 Example 3 - Different Approaches:
 {
-  pathToExpertPromptDefinition: "expert-definitions/data-analysis-expert.md",
+  pathToExpertPromptDefinition: "experts/data-analysis-expert.md",
   pathToPromptA: "prompts/analyzer-statistical.md",
   pathToPromptB: "prompts/analyzer-ml-based.md",
   testContextPaths: ["datasets/training/", "datasets/validation/"]
@@ -1119,7 +1119,7 @@ Expected: Determine which approach is more effective
 
 Example 4 - Version History:
 {
-  pathToExpertPromptDefinition: "expert-definitions/general-expert.md",
+  pathToExpertPromptDefinition: "experts/general-expert.md",
   pathToPromptA: "prompts/assistant.md@v2.0",
   pathToPromptB: "prompts/assistant.md@v2.1",
   testContextPaths: ["test-scenarios/regressions/"]
@@ -1167,7 +1167,7 @@ BEST PRACTICES:
         properties: {
           pathToExpertPromptDefinition: {
             type: 'string',
-            description: 'GitHub repository path to expert definition MD file (fetched via API). Format: "path/to/file.md" for current repo or "owner/repo:path/to/file.md" for cross-repo. Default experts at whichguy/prompt-expert-bank/expert-definitions/. Example: "expert-definitions/programming-expert.md" or "whichguy/prompt-expert-bank:expert-definitions/programming-expert.md"'
+            description: 'GitHub repository path to expert definition MD file (fetched via API). Format: "path/to/file.md" for current repo or "owner/repo:path/to/file.md" for cross-repo. Default experts at whichguy/prompt-expert-bank/experts/. Example: "experts/programming-expert.md" or "whichguy/prompt-expert-bank:experts/programming-expert.md"'
           },
           pathToPromptA: {
             type: 'string',
