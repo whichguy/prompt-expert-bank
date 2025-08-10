@@ -113,11 +113,27 @@ jobs:
       - name: Handle errors
         if: failure()
         run: |
-          ERROR_MSG="❌ **Prompt Expert Processing Failed**
-
-          The request could not be processed due to a system error. Please check the workflow logs for details and try again.
+          # Build workflow URL with hyperlink
+          WORKFLOW_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           
-          If this issue persists, please report it to the repository maintainers."
+          ERROR_MSG="## ❌ Prompt Expert Processing Failed
+
+          The request could not be processed due to a system error.
+          
+          ### 🔍 Debug Information
+          
+          [**Click here to view the full workflow logs →**]($WORKFLOW_URL)
+          
+          **To investigate:**
+          1. Click the link above to open the workflow run
+          2. Check the 'Run Prompt Expert Session' step for detailed logs
+          3. Look for error messages and stack traces
+          4. Review any API or tool execution failures
+          
+          If this issue persists, please report it to the repository maintainers.
+          
+          ---
+          <sub>Run ID: ${{ github.run_id }} | Workflow: ${{ github.workflow }}</sub>"
           
           TARGET_NUMBER=""
           if [[ "$IS_PR" == "true" ]]; then

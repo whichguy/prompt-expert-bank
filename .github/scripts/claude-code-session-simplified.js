@@ -870,14 +870,38 @@ Use your expert tools to examine the changed files and provide detailed analysis
       stack: error.stack
     });
     
-    // Try to post error message
+    // Try to post error message with workflow link
     try {
       const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
-      const body = `## ❌ Prompt Expert Error
+      
+      // Build workflow run URL
+      const runId = process.env.GITHUB_RUN_ID;
+      const workflowUrl = runId 
+        ? `https://github.com/${this.repoOwner}/${this.repoName}/actions/runs/${runId}`
+        : null;
+      
+      // Build error message with hyperlink
+      let body = `## ❌ Prompt Expert Error
 
-${error.message}
+**Error:** ${error.message}
 
-Please check the workflow logs for details.`;
+**Session ID:** \`${this.sessionId}\``;
+
+      if (workflowUrl) {
+        body += `\n\n### 🔍 Debug Information
+        
+[**Click here to view the full workflow logs →**](${workflowUrl})
+
+**To investigate this error:**
+1. Click the link above to open the workflow run
+2. Look for session ID: \`${this.sessionId}\` in the logs
+3. Check the detailed logs for API requests and responses
+4. Review any tool execution failures`;
+      } else {
+        body += `\n\nPlease check the GitHub Actions tab for workflow logs.`;
+      }
+
+      body += `\n\n---\n<sub>Run ID: ${runId || 'unknown'} | Session: ${this.sessionId.split('-').pop()}</sub>`;
 
       const issueNumber = parseInt(process.env.PR_NUMBER || process.env.ISSUE_NUMBER);
       if (issueNumber) {
