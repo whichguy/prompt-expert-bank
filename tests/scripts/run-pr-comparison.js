@@ -4,7 +4,7 @@
  * PR Comparison Script - Runs A/B test between main and PR branch prompts
  */
 
-const { ABTest } = require('../../scripts/abtest');
+const { ABTest } = require('./scripts/abtest');
 const { Octokit } = require('@octokit/rest');
 const Anthropic = require('@anthropic-ai/sdk');
 require('dotenv').config();

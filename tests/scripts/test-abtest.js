@@ -5,7 +5,7 @@
  * Tests the evaluation template with programming prompts
  */
 
-const { ABTest } = require('../../scripts/abtest');
+const { ABTest } = require('./scripts/abtest');
 const { Octokit } = require('@octokit/rest');
 const Anthropic = require('@anthropic-ai/sdk');
 require('dotenv').config();

@@ -4,7 +4,7 @@
  * Real A/B Test - Runs actual comparison between prompts
  */
 
-const { ABTest } = require('../../scripts/abtest');
+const { ABTest } = require('./scripts/abtest');
 const { Octokit } = require('@octokit/rest');
 const Anthropic = require('@anthropic-ai/sdk');
 const fs = require('fs');
@@ -164,9 +164,9 @@ async function runRealTest() {
     
     // Save results
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const outputDir = path.join(__dirname, '..', 'results');
+    const outputDir = 'test-results';
     if (!fs.existsSync(outputDir)) {
-      fs.mkdirSync(outputDir, { recursive: true });
+      fs.mkdirSync(outputDir);
     }
     
     const reportPath = path.join(outputDir, `real-abtest-${timestamp}.md`);
