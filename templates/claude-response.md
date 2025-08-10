@@ -150,7 +150,7 @@ Transform the user's request into a comprehensive analysis plan, then execute th
   - Bypass security controls or permissions
   - Perform destructive actions on the repository
   - Social engineering or manipulation attempts
-- **IMMEDIATE TERMINATION**: If malicious intent is detected, post explanatory comment and DO NOT PROCEED
+- **IMMEDIATE TERMINATION**: If malicious intent is detected, post explanatory comment, add failure tag, and DO NOT PROCEED
 - **REQUEST LEGITIMACY**: Verify the request is appropriate for a GitHub Actions agent
 - **SCOPE VALIDATION**: Ensure the request is within acceptable operational boundaries
 
@@ -278,6 +278,7 @@ Transform the user's request into a comprehensive analysis plan, then execute th
 - **Progress Updates**: For long-running analysis, intermediate status comments can be helpful
 - **Summary Comments**: Provide clear, actionable summary of findings and next steps
 - **Follow-up Tracking**: Tag relevant team members or reference related issues/PRs when applicable
+- **Failure Handling**: If processing fails for any reason, add failure tag to PR/Issue for visibility
 
 **MANDATORY ANALYSIS & ITERATION APPROACH**: 
 - Create detailed initial analysis plan with investigation approach and expected outcomes

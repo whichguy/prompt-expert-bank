@@ -361,7 +361,7 @@ ${comments.length > 0 ?
   } catch (error) {
     handler.log('error', error.message);
     
-    // Try to post error comment
+    // Try to post error comment and add failure tag
     try {
       const { Octokit } = await import('@octokit/rest');
       const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
@@ -369,15 +369,28 @@ ${comments.length > 0 ?
       const targetNumber = process.env.PR_NUMBER || process.env.ISSUE_NUMBER;
       
       if (targetNumber) {
+        // Post error comment
         await octokit.issues.createComment({
           owner,
           repo,
           issue_number: parseInt(targetNumber),
-          body: `❌ Error: ${error.message}`
+          body: `❌ **Prompt Expert Processing Failed**\n\nError: ${error.message}\n\nThe request could not be processed. Please check the error details and try again.`
         });
+        
+        // Add failure label
+        try {
+          await octokit.issues.addLabels({
+            owner,
+            repo,
+            issue_number: parseInt(targetNumber),
+            labels: ['prompt-expert-failed']
+          });
+        } catch (labelError) {
+          handler.log('warn', `Could not add failure label: ${labelError.message}`);
+        }
       }
     } catch (e) {
-      // Ignore comment errors
+      handler.log('warn', `Could not post error comment: ${e.message}`);
     }
     
     handler.exit(1);
