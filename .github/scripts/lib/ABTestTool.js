@@ -1,14 +1,38 @@
 /**
- * ABTest Tool for Comparative Prompt Analysis
- * Performs expert evaluation comparing two prompt versions
- * Supports version comparison within the same file
+ * @fileoverview ABTest Tool for Comparative Prompt Analysis
+ * @description Performs expert evaluation comparing two prompt versions with LLM-as-Judge methodology
+ * @module ABTestTool
+ * @requires @octokit/rest
+ * @author Prompt Expert Team
+ * @version 2.0.0
  */
 
 const { Octokit } = require('@octokit/rest');
 const path = require('path');
 const fs = require('fs').promises;
 
+/**
+ * @class ABTestTool
+ * @description Manages A/B testing of prompts using expert evaluation methodology
+ * @property {Octokit} octokit - GitHub API client
+ * @property {Anthropic} anthropic - Anthropic Claude API client
+ * @property {string} repoOwner - Repository owner
+ * @property {string} repoName - Repository name
+ * @property {string} workspace - Local workspace path
+ * @property {Map} contentCache - Content cache with TTL
+ * @property {number} cacheTimeout - Cache timeout in milliseconds
+ * @property {Object} metrics - Performance metrics tracking
+ */
 class ABTestTool {
+  /**
+   * @constructor
+   * @param {Object} options - Configuration options
+   * @param {Octokit} options.octokit - GitHub API client
+   * @param {Anthropic} options.anthropic - Anthropic API client
+   * @param {string} options.repoOwner - Repository owner
+   * @param {string} options.repoName - Repository name
+   * @param {string} options.workspace - Workspace directory
+   */
   constructor(options) {
     this.octokit = options.octokit;
     this.anthropic = options.anthropic;
@@ -33,8 +57,9 @@ class ABTestTool {
   }
 
   /**
-   * Main ABTest execution
-   * IMPORTANT: All paths are GitHub repository paths that will be fetched via GitHub API
+   * @method executeABTest
+   * @async
+   * @description Main ABTest execution - compares two prompts using expert evaluation
    * @param {string} pathToExpertPromptDefinition - GitHub path to expert definition file
    *   Format: "path/in/repo/file.md" (fetched from current repo context)
    *   OR: "owner/repo:path/to/file.md" (fetched from specified repo)
@@ -47,9 +72,10 @@ class ABTestTool {
    * @param {string} pathToPromptB - GitHub path to variant prompt (fetched via API)
    *   Format: "path/to/file.md@ref" or "path/to/file.md" (defaults to HEAD)
    *   Example: "prompts/code-reviewer.md" fetches current PR version
-   * @param {array} testContextPaths - Optional array of paths to reference materials for testing
-   * @param {number} iterationCount - Number of previous improvement iterations (for leniency adjustment)
-   * @returns {object} Comparative analysis results with expert verdict
+   * @param {Array<string>} [testContextPaths=[]] - Optional array of paths to reference materials for testing
+   * @param {number} [iterationCount=0] - Number of previous improvement iterations (for leniency adjustment)
+   * @returns {Promise<Object>} Comparative analysis results with expert verdict
+   * @throws {Error} If path verification fails or content cannot be fetched
    */
   async executeABTest(pathToExpertPromptDefinition, pathToPromptA, pathToPromptB, testContextPaths = [], iterationCount = 0) {
     try {
@@ -169,7 +195,14 @@ class ABTestTool {
   }
 
   /**
-   * Validate inputs
+   * @method validateInputs
+   * @description Validates input paths and parameters
+   * @param {string} expertPath - Expert definition path
+   * @param {string} promptA - First prompt path
+   * @param {string} promptB - Second prompt path
+   * @param {Array} testPaths - Test context paths
+   * @throws {Error} If any validation fails
+   * @private
    */
   validateInputs(expertPath, promptA, promptB, testPaths) {
     if (!expertPath) {
@@ -206,7 +239,11 @@ class ABTestTool {
   }
   
   /**
-   * Handle errors with context
+   * @method handleError
+   * @description Handles errors with contextual information and suggestions
+   * @param {Error} error - Error object
+   * @returns {Object} Formatted error response
+   * @private
    */
   handleError(error) {
     const errorResponse = {
@@ -334,6 +371,18 @@ class ABTestTool {
    * - "path/to/file.md@3a5f8e2" (commit SHA)
    * - "owner/repo:path/to/file.md@version" (cross-repo)
    */
+  /**
+   * @method parsePath
+   * @description Parses GitHub path string into components
+   * @param {string} pathString - Path string to parse
+   * @returns {Object} Parsed path information
+   * @returns {string} returns.owner - Repository owner
+   * @returns {string} returns.repo - Repository name
+   * @returns {string} returns.filePath - File path
+   * @returns {string} returns.version - Version reference
+   * @returns {string} returns.fullPath - Original full path
+   * @private
+   */
   parsePath(pathString) {
     let owner = this.repoOwner;
     let repo = this.repoName;
@@ -366,9 +415,19 @@ class ABTestTool {
   }
 
   /**
-   * Verify that all paths exist before processing
-   * @param {object} paths - Object containing all paths to verify
-   * @returns {object} Verification results with success status and error details
+   * @method verifyPathsExist
+   * @async
+   * @description Verifies that all paths exist before processing to fail fast
+   * @param {Object} paths - Object containing all paths to verify
+   * @param {Object} paths.expert - Expert definition path info
+   * @param {Object} paths.promptA - PromptA path info
+   * @param {Object} paths.promptB - PromptB path info
+   * @param {Array<string>} [paths.testContextPaths] - Test context paths
+   * @returns {Promise<Object>} Verification results
+   * @returns {boolean} returns.success - Whether all paths exist
+   * @returns {Array<string>} returns.errors - Error messages
+   * @returns {Array<Object>} returns.missingPaths - Details of missing paths
+   * @private
    */
   async verifyPathsExist(paths) {
     const errors = [];
@@ -434,7 +493,17 @@ class ABTestTool {
   }
 
   /**
-   * Fetch content from GitHub with version support and caching
+   * @method fetchContent
+   * @async
+   * @description Fetches content from GitHub with version support and caching
+   * @param {Object} pathInfo - Parsed path information
+   * @param {string} pathInfo.owner - Repository owner
+   * @param {string} pathInfo.repo - Repository name
+   * @param {string} pathInfo.filePath - File path in repository
+   * @param {string} pathInfo.version - Version reference (branch/tag/commit)
+   * @returns {Promise<string>} File content
+   * @throws {Error} If content cannot be fetched
+   * @private
    */
   async fetchContent(pathInfo) {
     // Check cache first
@@ -1123,6 +1192,12 @@ Production Ready: ${verdict.recommendProduction ? 'YES' : 'NO'}`;
 
   /**
    * Get tool definition for Claude
+   */
+  /**
+   * @static
+   * @method getToolDefinition
+   * @description Returns the tool definition for Claude integration
+   * @returns {Object} Tool definition object for Claude
    */
   static getToolDefinition() {
     return {

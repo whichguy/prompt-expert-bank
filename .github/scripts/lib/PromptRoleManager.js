@@ -1,14 +1,36 @@
 /**
- * Prompt Role Manager
- * Loads prompt files as Claude personas/system prompts
- * Enables Claude to adopt expert roles from prompt-expert-bank
+ * @fileoverview Prompt Role Manager
+ * @description Loads prompt files as Claude personas/system prompts from GitHub or local files
+ * @module PromptRoleManager
+ * @requires fs/promises
+ * @requires path
+ * @requires @octokit/rest
+ * @author Prompt Expert Team
+ * @version 1.0.0
  */
 
 const fs = require('fs').promises;
 const path = require('path');
 const { Octokit } = require('@octokit/rest');
 
+/**
+ * @class PromptRoleManager
+ * @description Manages loading and caching of expert role definitions
+ * @property {Octokit} octokit - GitHub API client
+ * @property {string} repoOwner - Repository owner
+ * @property {string} repoName - Repository name
+ * @property {string} workspace - Local workspace path
+ * @property {Map} roleCache - Cache for loaded roles
+ */
 class PromptRoleManager {
+  /**
+   * @constructor
+   * @param {Object} [options={}] - Configuration options
+   * @param {Octokit} options.octokit - GitHub API client
+   * @param {string} options.repoOwner - Repository owner
+   * @param {string} options.repoName - Repository name
+   * @param {string} [options.workspace] - Workspace directory
+   */
   constructor(options = {}) {
     this.octokit = options.octokit;
     this.repoOwner = options.repoOwner;
@@ -18,9 +40,15 @@ class PromptRoleManager {
   }
 
   /**
-   * Load a prompt as a system role
+   * @method loadRole
+   * @async
+   * @description Loads a prompt as a system role from file or domain
    * @param {string} roleIdentifier - Either filename or expert domain
-   * @returns {Object} Role definition with system prompt
+   * @returns {Promise<Object>} Role definition with system prompt
+   * @returns {string} returns.name - Role name
+   * @returns {string} returns.content - Role prompt content
+   * @returns {string} returns.source - Source of the role (file/github)
+   * @throws {Error} If role cannot be loaded
    */
   async loadRole(roleIdentifier) {
     // Check cache first

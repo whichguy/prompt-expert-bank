@@ -1,8 +1,13 @@
 #!/usr/bin/env node
 
 /**
- * Prompt Expert Integration Session Manager
- * Expert-driven A/B testing and evaluation system
+ * @fileoverview Prompt Expert Integration Session Manager
+ * @description Expert-driven A/B testing and evaluation system for GitHub Actions
+ * @module PromptExpertSession
+ * @requires @anthropic-ai/sdk
+ * @requires @octokit/rest
+ * @author Prompt Expert Team
+ * @version 1.0.0
  */
 
 const Anthropic = require('@anthropic-ai/sdk');
@@ -18,7 +23,26 @@ const { ExpertEvaluationIntegration } = require('./lib/ExpertEvaluationIntegrati
 const { StructuredSystemPrompt } = require('./lib/StructuredSystemPrompt');
 const { ABTestTool } = require('./lib/ABTestTool');
 
+/**
+ * @class PromptExpertSession
+ * @description Manages the lifecycle of a Prompt Expert evaluation session triggered by GitHub comments
+ * @property {string} sessionId - Unique identifier for this session
+ * @property {number} startTime - Session start timestamp
+ * @property {string} repoOwner - GitHub repository owner
+ * @property {string} repoName - GitHub repository name
+ * @property {Function} log - Thread-safe logging function
+ * @property {Object} metrics - Session metrics tracking
+ * @property {PromptRoleManager|null} roleManager - Role management instance
+ * @property {Object|null} currentRole - Currently loaded expert role
+ * @property {ExpertEvaluationIntegration|null} expertIntegration - Expert evaluation integration
+ * @property {ABTestTool|null} abTestTool - A/B testing tool instance
+ * @property {StructuredSystemPrompt} promptBuilder - System prompt builder
+ */
 class PromptExpertSession {
+  /**
+   * @constructor
+   * @description Initializes a new Prompt Expert session with unique ID and logging
+   */
   constructor() {
     this.sessionId = `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     this.startTime = Date.now();
@@ -63,7 +87,11 @@ class PromptExpertSession {
   }
 
   /**
-   * Main entry point
+   * @method run
+   * @async
+   * @description Main entry point for the Prompt Expert session
+   * @returns {Promise<void>} Exits process on completion
+   * @throws {Error} Handles and logs any errors during execution
    */
   async run() {
     try {
@@ -149,7 +177,10 @@ class PromptExpertSession {
   }
 
   /**
-   * Validate required environment variables
+   * @method validateEnvironment
+   * @description Validates that all required environment variables are present
+   * @throws {Error} If any required environment variables are missing
+   * @private
    */
   validateEnvironment() {
     const required = ['GITHUB_TOKEN', 'ANTHROPIC_API_KEY', 'GITHUB_REPOSITORY', 'COMMENT_BODY'];
@@ -161,7 +192,15 @@ class PromptExpertSession {
   }
 
   /**
-   * Parse command from comment body
+   * @method parseCommand
+   * @description Parses the @prompt-expert command from GitHub comment body
+   * @returns {Object} Parsed command object
+   * @returns {string} returns.role - Expert role/domain name
+   * @returns {string} returns.prompt - User's request text
+   * @returns {string} returns.raw - Original comment text
+   * @returns {string} returns.mode - Command mode (always 'expert')
+   * @throws {Error} If command format is invalid
+   * @private
    */
   parseCommand() {
     const comment = process.env.COMMENT_BODY || '';
@@ -181,7 +220,18 @@ class PromptExpertSession {
   }
 
   /**
-   * Build context from environment
+   * @method buildContext
+   * @description Builds execution context from environment variables
+   * @returns {Object} Context object
+   * @returns {string} returns.repository - Full repository name
+   * @returns {string} returns.repoOwner - Repository owner
+   * @returns {string} returns.repoName - Repository name
+   * @returns {string} returns.actor - GitHub actor who triggered the action
+   * @returns {string} returns.runId - GitHub Actions run ID
+   * @returns {string} returns.workspace - Workspace directory path
+   * @returns {Object} [returns.pr] - PR context if available
+   * @returns {Object} [returns.issue] - Issue context if available
+   * @private
    */
   buildContext() {
     const context = {
@@ -213,7 +263,12 @@ class PromptExpertSession {
   }
 
   /**
-   * Initialize API clients
+   * @method initializeClients
+   * @description Initializes Anthropic and GitHub API clients
+   * @returns {Object} Initialized clients
+   * @returns {Anthropic} returns.anthropic - Anthropic Claude API client
+   * @returns {Octokit} returns.octokit - GitHub API client
+   * @private
    */
   initializeClients() {
     const anthropic = new Anthropic({
@@ -231,7 +286,17 @@ class PromptExpertSession {
   }
 
   /**
-   * Process request with Claude
+   * @method processRequest
+   * @async
+   * @description Processes the user request through Claude with available tools
+   * @param {Object} command - Parsed command object
+   * @param {Object} context - Execution context
+   * @param {Anthropic} anthropic - Anthropic API client
+   * @param {Octokit} octokit - GitHub API client
+   * @returns {Promise<Object>} Processing results
+   * @returns {string} returns.response - Final response text
+   * @returns {Array} returns.toolCalls - Array of tool call results
+   * @private
    */
   async processRequest(command, context, anthropic, octokit) {
     // Define available tools based on mode
@@ -359,7 +424,14 @@ class PromptExpertSession {
   }
 
   /**
-   * Execute tool calls
+   * @method executeTools
+   * @async
+   * @description Executes tool calls requested by Claude
+   * @param {Array<Object>} toolUses - Array of tool use requests from Claude
+   * @param {Object} context - Execution context
+   * @param {Octokit} octokit - GitHub API client
+   * @returns {Promise<Array>} Array of tool execution results
+   * @private
    */
   async executeTools(toolUses, context, octokit) {
     const results = [];
@@ -424,7 +496,16 @@ class PromptExpertSession {
   }
 
   /**
-   * Tool: Get file contents
+   * @method getFile
+   * @async
+   * @description Tool implementation: Reads file contents from workspace
+   * @param {Object} args - Tool arguments
+   * @param {string} args.path - File path relative to workspace
+   * @param {Object} context - Execution context
+   * @returns {Promise<Object>} File content
+   * @returns {string} returns.content - File content as string
+   * @throws {Error} If path is invalid or file cannot be read
+   * @private
    */
   async getFile(args, context) {
     // Validate path doesn't escape workspace
@@ -439,7 +520,18 @@ class PromptExpertSession {
   }
 
   /**
-   * Tool: Update file
+   * @method updateFile
+   * @async
+   * @description Tool implementation: Writes content to file in workspace
+   * @param {Object} args - Tool arguments
+   * @param {string} args.path - File path relative to workspace
+   * @param {string} args.content - Content to write
+   * @param {Object} context - Execution context
+   * @returns {Promise<Object>} Update result
+   * @returns {boolean} returns.success - Whether update succeeded
+   * @returns {string} returns.path - Path that was updated
+   * @throws {Error} If path is invalid or file cannot be written
+   * @private
    */
   async updateFile(args, context) {
     // Validate path doesn't escape workspace
@@ -454,7 +546,16 @@ class PromptExpertSession {
   }
 
   /**
-   * Tool: List files
+   * @method listFiles
+   * @async
+   * @description Tool implementation: Lists files in a directory
+   * @param {Object} args - Tool arguments
+   * @param {string} [args.path=''] - Directory path relative to workspace
+   * @param {Object} context - Execution context
+   * @returns {Promise<Object>} Directory listing
+   * @returns {Array<string>} returns.files - Array of file names
+   * @throws {Error} If path is invalid or directory cannot be read
+   * @private
    */
   async listFiles(args, context) {
     // Validate path doesn't escape workspace
@@ -469,7 +570,17 @@ class PromptExpertSession {
   }
 
   /**
-   * Tool: Run command
+   * @method runCommand
+   * @async
+   * @description Tool implementation: Executes safe shell commands
+   * @param {Object} args - Tool arguments
+   * @param {string} args.command - Command to execute
+   * @param {Object} context - Execution context
+   * @returns {Promise<Object>} Command execution result
+   * @returns {string} [returns.stdout] - Standard output
+   * @returns {string} [returns.stderr] - Standard error
+   * @returns {string} [returns.error] - Error message if command failed
+   * @private
    */
   async runCommand(args, context) {
     // Allow safe commands including gh and git for analysis
@@ -503,7 +614,16 @@ class PromptExpertSession {
   }
 
   /**
-   * Tool: GitHub API call
+   * @method githubApi
+   * @async
+   * @description Tool implementation: Makes GitHub API calls
+   * @param {Object} args - Tool arguments
+   * @param {string} [args.method='GET'] - HTTP method
+   * @param {string} args.endpoint - API endpoint path
+   * @param {Object} [args.data] - Request data for POST/PATCH
+   * @param {Octokit} octokit - GitHub API client
+   * @returns {Promise<Object>} API response data
+   * @private
    */
   async githubApi(args, octokit) {
     const { method = 'GET', endpoint, data } = args;
@@ -513,7 +633,12 @@ class PromptExpertSession {
   }
 
   /**
-   * Get tool definitions
+   * @method getTools
+   * @description Gets available tool definitions based on mode
+   * @param {Object} context - Execution context
+   * @param {string} [mode='standard'] - Tool mode ('standard' or 'expert')
+   * @returns {Array<Object>} Array of tool definitions for Claude
+   * @private
    */
   getTools(context, mode = 'standard') {
     // Start with standard tools
@@ -590,7 +715,12 @@ class PromptExpertSession {
   }
 
   /**
-   * Build system message (action-oriented v3.0)
+   * @method buildSystemMessage
+   * @description Builds system message for Claude with role and context
+   * @param {Object} context - Execution context
+   * @param {Object} command - Parsed command object
+   * @returns {string} System message for Claude
+   * @private
    */
   buildSystemMessage(context, command) {
     // If we have a specific role, blend it with structured prompt
@@ -608,7 +738,12 @@ class PromptExpertSession {
   }
 
   /**
-   * Build user message (mode-aware)
+   * @method buildUserMessage
+   * @description Builds user message for Claude based on command mode
+   * @param {Object} command - Parsed command object
+   * @param {Object} context - Execution context
+   * @returns {string} User message for Claude
+   * @private
    */
   buildUserMessage(command, context) {
     if (command.mode === 'expert') {
@@ -630,7 +765,14 @@ Use your expert tools to examine the changed files and provide detailed analysis
   }
 
   /**
-   * Post results back to GitHub
+   * @method postResults
+   * @async
+   * @description Posts Claude's response back to GitHub as a comment
+   * @param {Object} context - Execution context
+   * @param {Object} result - Processing results from Claude
+   * @param {Octokit} octokit - GitHub API client
+   * @returns {Promise<void>}
+   * @private
    */
   async postResults(context, result, octokit) {
     // Build response with minimal stats footer
@@ -667,7 +809,12 @@ Use your expert tools to examine the changed files and provide detailed analysis
   }
 
   /**
-   * Handle errors
+   * @method handleError
+   * @async
+   * @description Handles and logs errors, attempts to post error message to GitHub
+   * @param {Error} error - Error object
+   * @returns {Promise<void>}
+   * @private
    */
   async handleError(error) {
     this.log('error', 'Session failed', {

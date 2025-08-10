@@ -1,14 +1,38 @@
 /**
- * Expert Evaluation Integration
- * Bridges the gap between existing prompt evaluation and GitHub bot tooling
- * Enables Claude to use expert evaluation capabilities as tools
+ * @fileoverview Expert Evaluation Integration
+ * @description Bridges the gap between prompt evaluation and GitHub bot tooling
+ * @module ExpertEvaluationIntegration
+ * @requires ./PromptVersionManager
+ * @requires fs/promises
+ * @requires path
+ * @author Prompt Expert Team
+ * @version 1.0.0
  */
 
 const { PromptVersionManager } = require('./PromptVersionManager');
 const path = require('path');
 const fs = require('fs').promises;
 
+/**
+ * @class ExpertEvaluationIntegration
+ * @description Provides expert evaluation capabilities as tools for Claude
+ * @property {Octokit} octokit - GitHub API client
+ * @property {Anthropic} anthropic - Anthropic API client
+ * @property {string} repoOwner - Repository owner
+ * @property {string} repoName - Repository name
+ * @property {string} workspace - Local workspace path
+ * @property {PromptVersionManager} versionManager - Version management instance
+ */
 class ExpertEvaluationIntegration {
+  /**
+   * @constructor
+   * @param {Object} [options={}] - Configuration options
+   * @param {Octokit} options.octokit - GitHub API client
+   * @param {Anthropic} options.anthropic - Anthropic API client
+   * @param {string} options.repoOwner - Repository owner
+   * @param {string} options.repoName - Repository name
+   * @param {string} [options.workspace] - Workspace directory
+   */
   constructor(options = {}) {
     this.octokit = options.octokit;
     this.anthropic = options.anthropic;
@@ -19,7 +43,9 @@ class ExpertEvaluationIntegration {
   }
 
   /**
-   * Get evaluation tools for Claude to use
+   * @method getEvaluationTools
+   * @description Returns tool definitions for Claude to use for evaluation
+   * @returns {Array<Object>} Array of tool definitions
    */
   getEvaluationTools() {
     return [
