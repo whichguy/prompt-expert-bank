@@ -240,6 +240,14 @@ class ClaudeCodeSession {
     const systemMessage = this.buildSystemMessage(context, command);
     const userMessage = this.buildUserMessage(command, context);
     
+    this.log('info', '🎯 CLAUDE CONTEXT:', {
+      systemMessage: systemMessage.substring(0, 500) + (systemMessage.length > 500 ? '...' : ''),
+      userRequest: command.prompt,
+      mode: command.mode,
+      role: command.role || 'default',
+      availableTools: tools.map(t => t.name).join(', ')
+    });
+    
     // Start conversation
     let messages = [
       { role: 'user', content: `${systemMessage}\n\n${userMessage}` }
@@ -255,6 +263,11 @@ class ClaudeCodeSession {
     while (iterations < maxIterations) {
       iterations++;
       
+      this.log('info', `🔄 ITERATION ${iterations}: Sending request to Claude`, {
+        messageCount: messages.length,
+        toolsAvailable: tools.length
+      });
+      
       const response = await anthropic.messages.create({
         model: 'claude-3-5-sonnet-20241022',
         max_tokens: 4000,
@@ -266,6 +279,17 @@ class ClaudeCodeSession {
       // Check for tool use
       const toolUses = response.content.filter(c => c.type === 'tool_use');
       
+      this.log('info', `📝 ASSISTANT RESPONSE:`, {
+        iteration: iterations,
+        hasTools: toolUses.length > 0,
+        toolCount: toolUses.length,
+        toolsRequested: toolUses.map(t => t.name).join(', '),
+        responsePreview: response.content
+          .filter(c => c.type === 'text')
+          .map(c => c.text.substring(0, 200))
+          .join('')
+      });
+      
       if (toolUses.length === 0) {
         // No tools, get final response
         const textContent = response.content
@@ -273,13 +297,40 @@ class ClaudeCodeSession {
           .map(c => c.text)
           .join('\n');
         
+        this.log('info', '✅ FINAL RESPONSE GENERATED', {
+          responseLength: textContent.length,
+          totalIterations: iterations
+        });
+        
         results.response = textContent;
         break;
       }
       
+      this.log('info', '🔧 TOOLING REQUESTS:', {
+        iteration: iterations,
+        tools: toolUses.map(t => ({
+          name: t.name,
+          id: t.id,
+          input: Object.keys(t.input || {}).join(', ')
+        }))
+      });
+      
       // Execute tools
       const toolResults = await this.executeTools(toolUses, context, octokit);
       results.toolCalls.push(...toolResults);
+      
+      this.log('info', '⚙️ TOOLING RESPONSES:', {
+        iteration: iterations,
+        results: toolResults.map(r => ({
+          tool: r.name,
+          id: r.id,
+          success: !r.result.error,
+          resultSummary: r.result.error ? `ERROR: ${r.result.error}` : 
+            (typeof r.result === 'object' ? 
+              `${Object.keys(r.result).join(', ')}` : 
+              `${String(r.result).substring(0, 100)}`)
+        }))
+      });
       
       // Add to conversation
       messages.push({
