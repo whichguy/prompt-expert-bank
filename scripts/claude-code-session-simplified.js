@@ -132,9 +132,15 @@ async function main() {
         handler.log('debug', `Could not fetch comments: ${e.message}`);
       }
 
-      // Fetch content for mentioned files
+      // Fetch content for PR files
+      // Default: include all PR files unless request specifically mentions other files
+      const shouldIncludeAllPRFiles = !files.some(file => request.includes(file.filename));
+      
       for (const file of files) {
-        if (request.includes(file.filename)) {
+        // Include file if: specifically mentioned OR we're including all PR files by default
+        const shouldIncludeFile = request.includes(file.filename) || shouldIncludeAllPRFiles;
+        
+        if (shouldIncludeFile) {
           try {
             const { data } = await octokit.repos.getContent({
               owner,
