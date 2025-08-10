@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
 /**
- * Simplified Claude Code Integration Session Manager
- * Consolidated and cleaned up version with reduced complexity
+ * Prompt Expert Integration Session Manager
+ * Expert-driven A/B testing and evaluation system
  */
 
 const Anthropic = require('@anthropic-ai/sdk');
@@ -18,7 +18,7 @@ const { ExpertEvaluationIntegration } = require('./lib/ExpertEvaluationIntegrati
 const { StructuredSystemPrompt } = require('./lib/StructuredSystemPrompt');
 const { ABTestTool } = require('./lib/ABTestTool');
 
-class ClaudeCodeSession {
+class PromptExpertSession {
   constructor() {
     this.sessionId = `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     this.startTime = Date.now();
@@ -67,7 +67,7 @@ class ClaudeCodeSession {
    */
   async run() {
     try {
-      this.log('info', '🚀 Starting Claude Code session', {
+      this.log('info', '🚀 Starting Prompt Expert session', {
         conversationThread: this.sessionId,
         startTime: new Date().toISOString(),
         githubContext: {
@@ -166,19 +166,8 @@ class ClaudeCodeSession {
   parseCommand() {
     const comment = process.env.COMMENT_BODY || '';
     
-    // Enhanced command parsing to support role-based execution
-    let match = comment.match(/@claude-code\s+--role=(\S+)\s+(.+)/i);
-    if (match) {
-      return {
-        role: match[1],
-        prompt: match[2].trim(),
-        raw: comment,
-        mode: 'role'
-      };
-    }
-
     // Check for prompt-expert commands
-    match = comment.match(/@prompt-expert\s+(\S+)\s*(.*)/i);
+    const match = comment.match(/@prompt-expert\s+(\S+)\s*(.*)/i);
     if (match) {
       return {
         role: match[1], // Domain expert
@@ -187,18 +176,8 @@ class ClaudeCodeSession {
         mode: 'expert'
       };
     }
-
-    // Standard claude-code command
-    match = comment.match(/@claude-code\s+(.+)/i);
-    if (match) {
-      return {
-        prompt: match[1].trim(),
-        raw: comment,
-        mode: 'standard'
-      };
-    }
     
-    throw new Error('Invalid command format. Use: @claude-code <request>, @claude-code --role=<role> <request>, or @prompt-expert <domain> <request>');
+    throw new Error('Invalid command format. Use: @prompt-expert <expert-name> <request>');
   }
 
   /**
@@ -699,7 +678,7 @@ Use your expert tools to examine the changed files and provide detailed analysis
     // Try to post error message
     try {
       const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
-      const body = `## ❌ Claude Code Error
+      const body = `## ❌ Prompt Expert Error
 
 ${error.message}
 
@@ -722,11 +701,11 @@ Please check the workflow logs for details.`;
 
 // Run if executed directly
 if (require.main === module) {
-  const session = new ClaudeCodeSession();
+  const session = new PromptExpertSession();
   session.run().catch(error => {
     console.error('Fatal error:', error);
     process.exit(1);
   });
 }
 
-module.exports = ClaudeCodeSession;
+module.exports = PromptExpertSession;

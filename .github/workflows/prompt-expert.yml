@@ -12,7 +12,7 @@ permissions:
   pull-requests: write
 
 jobs:
-  claude-respond:
+  prompt-expert-respond:
     # Only run if comment contains @prompt-expert
     if: |
       (github.event_name == 'issue_comment' && 
@@ -94,7 +94,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Run Claude Code Session
+      - name: Run Prompt Expert Session
         id: claude
         run: |
           node .github/scripts/claude-code-session-simplified.js
